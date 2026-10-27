@@ -80,17 +80,20 @@ test('adapter factories use data/minigames.json metadata and extend MiniGameBase
     assert.equal(adapter.meta.kind, metas[id].kind);
   }
 
-  assert.deepEqual(Object.keys(ADAPTER_FACTORIES).sort(), ['checkers', 'chess', 'fetch', 'tic-tac-toe']);
+  assert.deepEqual(
+    Object.keys(ADAPTER_FACTORIES).sort(),
+    ['checkers', 'chess', 'connect-four', 'fetch', 'memory-grid', 'tic-tac-toe']
+  );
   assert.equal(winnerSeatFor('X'), 0);
   assert.equal(winnerSeatFor('O'), 1);
   assert.equal(winnerSeatFor('draw'), null);
 });
 
-test('all four adapters register with the host using their data metadata', () => {
+test('all six adapters register with the host using their data metadata', () => {
   const { world } = makeWorld();
   const host = new MiniGameHost({ game: world });
   const results = registerContractGames(host);
-  assert.equal(results.length, 4);
+  assert.equal(results.length, 6);
   for (const result of results) assert.equal(result.ok, true, `${result.id} should register`);
   assert.equal(host.getMeta('tic-tac-toe').board.width, 3);
   assert.equal(host.getMeta('fetch').board, null);

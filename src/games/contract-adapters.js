@@ -1,5 +1,6 @@
 /**
- * Contract adapters for the four legacy mini-games.
+ * Contract adapters for the legacy mini-games plus the contract-native
+ * Memory Grid and Connect Four factories.
  *
  * The legacy classes stay the source of truth for rules and rendering. These
  * adapters only translate between the host contract (milliseconds, input
@@ -21,6 +22,8 @@ import { TicTacToeMiniGame } from './tic-tac-toe.js';
 import { CheckersMiniGame } from './checkers.js';
 import { ChessMiniGame } from './chess.js';
 import { FetchMiniGame } from './fetch.js';
+import { createMemoryGridGame } from './memory-grid.js';
+import { createConnectFourGame } from './connect-four.js';
 import { findPath } from '../world.js';
 import miniGamesData from '../../data/minigames.json' with { type: 'json' };
 
@@ -551,6 +554,8 @@ export const ADAPTER_FACTORIES = Object.freeze({
   'tic-tac-toe': createTicTacToeAdapter,
   checkers: createCheckersAdapter,
   chess: createChessAdapter,
+  'memory-grid': createMemoryGridGame,
+  'connect-four': createConnectFourGame,
   fetch: createFetchAdapter
 });
 
@@ -561,7 +566,7 @@ export function createAdapter(gameId, context = {}) {
 }
 
 /**
- * Convenience for runtime integration: register all four adapters in one call.
+ * Convenience for runtime integration: register all six games in one call.
  * Metadata is read from data/minigames.json by default and validated by the host.
  */
 export function registerContractGames(host, metaById = DEFAULT_META) {

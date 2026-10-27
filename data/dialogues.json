@@ -73,6 +73,34 @@
         { "label": "Pack up", "className": "pill quiet", "action": "pack_up" }
       ]
     },
+    "memory-grid": {
+      "win": "Sharp memory! You found the most pairs. Want another grid?",
+      "loss": "Nice matching! Good game of Memory Grid. Rematch?",
+      "draw": "Even pairs all round! That grid is a draw. Rematch?",
+      "abandonPrompt": "{name}: Leaving the cards? Abandon Memory Grid and pack up?",
+      "abandonChoices": [
+        { "label": "Abandon & Pack up", "className": "danger", "action": "abandon" },
+        { "label": "Keep Playing", "className": "pill", "action": "keep_playing" }
+      ],
+      "endChoices": [
+        { "label": "Play again", "className": "primary", "action": "play_again" },
+        { "label": "Pack up", "className": "pill quiet", "action": "pack_up" }
+      ]
+    },
+    "connect-four": {
+      "win": "Four in a row! Great game of Connect Four. Want another round?",
+      "loss": "Four in a row for me! Good match. Rematch?",
+      "draw": "The whole board is full! That Connect Four game is a draw. Rematch?",
+      "abandonPrompt": "{name}: Leaving the board? Abandon Connect Four and pack up?",
+      "abandonChoices": [
+        { "label": "Abandon & Pack up", "className": "danger", "action": "abandon" },
+        { "label": "Keep Playing", "className": "pill", "action": "keep_playing" }
+      ],
+      "endChoices": [
+        { "label": "Play again", "className": "primary", "action": "play_again" },
+        { "label": "Pack up", "className": "pill quiet", "action": "pack_up" }
+      ]
+    },
     "fetch": {
       "win": "What a throw! Good fetch.",
       "loss": "Good try! One more throw?",

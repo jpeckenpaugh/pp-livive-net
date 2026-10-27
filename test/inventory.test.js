@@ -14,10 +14,10 @@ import {
 
 test('createStarterInventory keeps the existing catalog behaviour', () => {
   const inventory = createStarterInventory();
-  assert.equal(inventory.length, 7);
+  assert.equal(inventory.length, 9);
   assert.deepEqual(
     inventory.map(item => item.id),
-    ['ball', 'tic-tac-toe', 'checkers', 'chess', 'big-o-bracelet', 'chamo-clip', 'teleport-tricorder']
+    ['ball', 'tic-tac-toe', 'checkers', 'chess', 'memory-grid', 'connect-four', 'big-o-bracelet', 'chamo-clip', 'teleport-tricorder']
   );
 
   const ball = inventory.find(item => item.id === 'ball');

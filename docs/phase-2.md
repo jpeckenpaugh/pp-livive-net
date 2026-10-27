@@ -360,10 +360,26 @@ It converts existing NPC-vs-NPC games into the dynamic system you described with
 **Known gaps / deferred**
 
 - NPC-vs-NPC checkers/chess.
-- New mini-games (Memory Grid, Race, Timing).
 - Reserve activation UI for NPC buddies (debug/card only for now).
 - Player-managed NPC gear (read-only card by design).
 - NPC reward log / history.
 - NPC coins have no shop or spend sink yet.
 - Performance test at the 80-active-companion ceiling in a real browser.
+
+---
+
+## 12. Phase 3 — new games (implemented)
+
+Two contract-native board games are now live:
+
+| Game | Board | Rules |
+| --- | --- | --- |
+| **Memory Grid** | 4×4 | 8 symbol pairs, alternating seats, match keeps turn, mismatch reveals then flips back, AI remembers seen cards |
+| **Connect Four** | 7×6 | drop discs into columns, gravity, four-in-a-row, AI wins/blocks/prefers center |
+
+- Both have catalog items (starter inventory), metadata, dialogue beats, reward specs, host factories, staging, AI drivers, and ground-layer rendering.
+- Both are available from the friend dialogue game list and the backpack.
+- New games currently support **player-vs-NPC**; NPC auto-play remains TTT-only until generic NPC drivers are added.
+- Tests: **330/330 passing**.
+
 

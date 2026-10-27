@@ -93,7 +93,7 @@ function makeWorld() {
 function makeHost(world, hooks = {}) {
   const host = new MiniGameHost({ game: world, hooks });
   const registrations = registerContractGames(host, metas);
-  assert.equal(registrations.length, 4);
+  assert.equal(registrations.length, 6);
   assert.ok(registrations.every(result => result.ok === true));
   return host;
 }
@@ -106,13 +106,13 @@ function seeded(seed = 99) {
   };
 }
 
-test('host registers all four adapter factories and starts each one in an all-grass world', () => {
+test('host registers all six adapter factories and starts each one in an all-grass world', () => {
   assert.deepEqual(
     Object.keys(ADAPTER_FACTORIES).sort(),
-    ['checkers', 'chess', 'fetch', 'tic-tac-toe']
+    ['checkers', 'chess', 'connect-four', 'fetch', 'memory-grid', 'tic-tac-toe']
   );
 
-  for (const gameId of ['tic-tac-toe', 'checkers', 'chess']) {
+  for (const gameId of ['tic-tac-toe', 'checkers', 'chess', 'connect-four', 'memory-grid']) {
     const { world, player, npc } = makeWorld();
     const host = makeHost(world);
     const started = host.start(gameId, {

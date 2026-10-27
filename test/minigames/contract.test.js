@@ -36,9 +36,9 @@ test('canonical phases and enums are frozen', () => {
   assert.deepEqual([...OUTCOMES], ['win', 'loss', 'draw', 'complete', 'abandoned']);
 });
 
-test('data/minigames.json contains valid metadata for all four games', () => {
+test('data/minigames.json contains valid metadata for all six games', () => {
   assert.ok(Object.isFrozen(data) === false);
-  assert.deepEqual(Object.keys(data.miniGames).sort(), ['checkers', 'chess', 'fetch', 'tic-tac-toe']);
+  assert.deepEqual(Object.keys(data.miniGames).sort(), ['checkers', 'chess', 'connect-four', 'fetch', 'memory-grid', 'tic-tac-toe']);
   for (const [id, meta] of Object.entries(data.miniGames)) {
     assert.equal(meta.id, id);
     const result = validateMeta(meta);

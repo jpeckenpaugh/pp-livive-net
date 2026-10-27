@@ -88,6 +88,64 @@
       "persist": false,
       "activity": "turn-based"
     },
+    "memory-grid": {
+      "id": "memory-grid",
+      "title": "Memory Grid",
+      "kind": "board",
+      "itemId": "memory-grid",
+      "dialogueKey": "memory-grid",
+      "rewardKey": "memory-grid",
+      "players": 2,
+      "seats": 2,
+      "board": {
+        "width": 4,
+        "height": 4,
+        "margin": 1,
+        "blocksMovement": true,
+        "hiddenZones": []
+      },
+      "input": {
+        "mode": "tile",
+        "actionLabel": "flip"
+      },
+      "renderLayers": ["ground"],
+      "timing": {
+        "openMs": 700,
+        "closeMs": 600,
+        "turnMs": 700
+      },
+      "persist": false,
+      "activity": "turn-based"
+    },
+    "connect-four": {
+      "id": "connect-four",
+      "title": "Connect Four",
+      "kind": "board",
+      "itemId": "connect-four",
+      "dialogueKey": "connect-four",
+      "rewardKey": "connect-four",
+      "players": 2,
+      "seats": 2,
+      "board": {
+        "width": 7,
+        "height": 6,
+        "margin": 1,
+        "blocksMovement": true,
+        "hiddenZones": []
+      },
+      "input": {
+        "mode": "tile",
+        "actionLabel": "drop"
+      },
+      "renderLayers": ["ground"],
+      "timing": {
+        "openMs": 700,
+        "closeMs": 600,
+        "turnMs": 700
+      },
+      "persist": false,
+      "activity": "turn-based"
+    },
     "fetch": {
       "id": "fetch",
       "title": "Fetch",

@@ -29,6 +29,20 @@
       "description": "Unfurl an 8x8 chess board on the grass.",
       "icon": "♟️"
     },
+    "memory-grid": {
+      "id": "memory-grid",
+      "name": "Memory Grid",
+      "action": "unfurl",
+      "description": "Unfurl a 4x4 card-matching mat on the grass.",
+      "icon": "🧠"
+    },
+    "connect-four": {
+      "id": "connect-four",
+      "name": "Connect Four",
+      "action": "unfurl",
+      "description": "Unfurl a 7x6 disc-dropping board on the grass.",
+      "icon": "🔴"
+    },
     "big-o-bracelet": {
       "id": "big-o-bracelet",
       "name": "Big-O Bracelet",
@@ -163,6 +177,12 @@
     },
     {
       "id": "chess"
+    },
+    {
+      "id": "memory-grid"
+    },
+    {
+      "id": "connect-four"
     },
     {
       "id": "big-o-bracelet"
