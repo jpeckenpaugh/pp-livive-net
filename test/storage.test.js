@@ -439,3 +439,26 @@ test('loadSave migrates a stored v1 save to v2', () => {
     assert.ok(loaded.behavior);
   });
 });
+
+test('migration grants newly added starter games to existing saves once', () => {
+  const v2 = {
+    version: 2,
+    player: { inventory: [{ id: 'ball', uid: 'ball-0' }], equipped: [] },
+    npcs: [],
+    companions: []
+  };
+  const migrated = migrateSave(v2);
+  const ids = migrated.player.inventory.map(item => item.id);
+  assert.ok(ids.includes('memory-grid'));
+  assert.ok(ids.includes('connect-four'));
+
+  const again = migrateSave(JSON.parse(JSON.stringify(migrated)));
+  assert.equal(
+    again.player.inventory.filter(item => item.id === 'memory-grid').length,
+    1
+  );
+  assert.equal(
+    again.player.inventory.filter(item => item.id === 'connect-four').length,
+    1
+  );
+});

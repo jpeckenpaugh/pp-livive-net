@@ -9,6 +9,10 @@ export const SAVE_VERSION = 2;
 // so existing testers can see the headline effects without using Debug.
 const V1_STARTER_EFFECTS = ['big-o-bracelet', 'chamo-clip', 'teleport-tricorder'];
 
+// Starter games added after a save was created should still appear in that
+// player's bag. Idempotent: matching ids are skipped.
+const STARTER_GAME_ITEMS = ['memory-grid', 'connect-four'];
+
 // Fields that belong to a live frame (paths, staging, fetch AI, timers) and must
 // never leak into a save. Profit: reloads start with clean, deterministic actors.
 const TRANSIENT_CHARACTER_KEYS = [
@@ -288,6 +292,12 @@ export function migrateSave(state) {
         const item = createItemInstance(id);
         if (item) player.inventory.push(item);
       }
+    }
+    const ownedGames = new Set(player.inventory.map(item => item.id));
+    for (const id of STARTER_GAME_ITEMS) {
+      if (ownedGames.has(id)) continue;
+      const item = createItemInstance(id);
+      if (item) player.inventory.push(item);
     }
     next.player = player;
   }
