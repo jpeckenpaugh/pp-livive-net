@@ -149,6 +149,7 @@ test('stageCompanions spreads spectators using spectatorOffsets', () => {
   assert.deepEqual(targets.map(target => ({ x: target.x, y: target.y })), [
     { x: 9, y: 12 }, { x: 9, y: 10 }, { x: 9, y: 13 }
   ]);
+  assert.ok(companions.every(companion => companion.inMiniGame === true));
   assert.equal(companions[0].fetchTarget, null);
   assert.deepEqual(companions[0].stagedDestination, { x: 9, y: 12 });
   assert.equal(companions[0].inMiniGame, true);

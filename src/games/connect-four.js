@@ -76,9 +76,16 @@ export class ConnectFourGame extends MiniGameBase {
     this.moveCount = 0;
     this.finished = false;
     this.seatEntries = [];
+    this.seatTargets = [];
     this.aiTimer = 0;
     this.aiPlan = null;
     this.aiWaitMs = 0;
+    this.fallingDisc = null;
+    this.dropMs = Number.isFinite(this.options.dropMs)
+      ? Math.max(0, this.options.dropMs)
+      : 320;
+    this.abandonPromptActive = false;
+    this.returningToBoard = false;
     this.board = {
       width: COLUMNS,
       height: ROWS,
@@ -106,6 +113,12 @@ export class ConnectFourGame extends MiniGameBase {
     this.aiTimer = 0;
     this.aiPlan = null;
     this.aiWaitMs = 0;
+    this.fallingDisc = null;
+    this.dropMs = Number.isFinite(options.dropMs)
+      ? Math.max(0, options.dropMs)
+      : this.dropMs;
+    this.abandonPromptActive = false;
+    this.returningToBoard = false;
 
     const rawSeats = Array.isArray(seats) ? seats : [];
     this.seatEntries = rawSeats
@@ -150,7 +163,7 @@ export class ConnectFourGame extends MiniGameBase {
     const seatCharacters = this.seatEntries.map(entry => entry.character);
     const companions = this._resolveCompanions(seatCharacters);
 
-    stageSeats({
+    this.seatTargets = stageSeats({
       terrain,
       seats: this.seatEntries,
       placement: this.placement,
@@ -203,16 +216,29 @@ export class ConnectFourGame extends MiniGameBase {
 
   /** AI decision/movement timer. No setTimeout; the host ticks this. */
   update(dtMs = 0) {
-    if (!this.active || this.phase !== PHASES.PLAYING || this.finished) {
+    if (!this.active || this.phase !== PHASES.PLAYING) {
       return emptyStepResult();
     }
-    if (this.turn !== 1) return emptyStepResult();
 
+    const dt = Number.isFinite(dtMs) ? Math.max(0, dtMs) : 0;
+    let changed = false;
+    if (this.fallingDisc) {
+      this.fallingDisc.elapsed += dt;
+      changed = true;
+      if (this.fallingDisc.elapsed >= this.fallingDisc.duration) {
+        this.fallingDisc = null;
+      }
+    }
+    if (this.finished || this.fallingDisc) {
+      return createStepResult({ handled: changed, changed });
+    }
+
+    this._checkAbandon();
+    if (this.turn !== 1) return emptyStepResult();
     const entry = this.seatEntries.find(seat => seat.index === 1) || null;
     if (entry?.controller === 'human' && !this.options.autoPlay) return emptyStepResult();
     const ai = entry?.character || null;
 
-    const dt = Number.isFinite(dtMs) ? Math.max(0, dtMs) : 0;
     if (!this.aiPlan) {
       this.aiTimer += dt;
       const thinkMs = Number.isFinite(this.options.aiThinkMs)
@@ -268,7 +294,7 @@ export class ConnectFourGame extends MiniGameBase {
    * of the column; the disc drops to the lowest empty row.
    */
   handleInput(input = {}) {
-    if (!this.active || this.phase !== PHASES.PLAYING || this.finished) {
+    if (!this.active || this.phase !== PHASES.PLAYING || this.finished || this.fallingDisc) {
       return emptyStepResult();
     }
     const kind = input.kind || input.type;
@@ -302,6 +328,16 @@ export class ConnectFourGame extends MiniGameBase {
     }
 
     this.lastMove = drop;
+    if (this.dropMs > 0) {
+      this.fallingDisc = {
+        row: drop.row,
+        column: drop.column,
+        col: drop.col,
+        seat: drop.seat,
+        elapsed: 0,
+        duration: this.dropMs
+      };
+    }
 
     const winner = this.checkWinner(drop);
     if (winner !== null) {
@@ -444,11 +480,23 @@ export class ConnectFourGame extends MiniGameBase {
     ctx.fillRect(originX, originY, width, height);
 
     const radius = tile * 0.36;
+    const falling = this.fallingDisc;
     for (let row = 0; row < ROWS; row++) {
       for (let column = 0; column < COLUMNS; column++) {
         const cx = originX + (column + 0.5) * tile;
         const cy = originY + (row + 0.5) * tile;
         const disc = this.grid[row][column];
+        if (falling && falling.row === row && falling.column === column) {
+          // The falling disc is drawn separately, above the board.
+          ctx.beginPath();
+          ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+          ctx.fillStyle = '#123f78';
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(8, 30, 60, 0.55)';
+          ctx.lineWidth = Math.max(1, tile * 0.04);
+          ctx.stroke();
+          continue;
+        }
 
         ctx.beginPath();
         ctx.arc(cx, cy, radius, 0, Math.PI * 2);
@@ -462,8 +510,24 @@ export class ConnectFourGame extends MiniGameBase {
       }
     }
 
+    if (falling) {
+      const progress = Math.min(1, Math.max(0, falling.elapsed / falling.duration));
+      const ease = progress * progress;
+      const startY = originY - tile * 0.8;
+      const endY = originY + (falling.row + 0.5) * tile;
+      const cx = originX + (falling.column + 0.5) * tile;
+      const cy = startY + (endY - startY) * ease;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fillStyle = falling.seat === 0 ? '#d64541' : '#f2c94c';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(30, 20, 10, 0.35)';
+      ctx.lineWidth = Math.max(1, tile * 0.04);
+      ctx.stroke();
+    }
+
     // Last-drop highlight.
-    if (this.lastMove) {
+    if (this.lastMove && !falling) {
       const cx = originX + (this.lastMove.column + 0.5) * tile;
       const cy = originY + (this.lastMove.row + 0.5) * tile;
       ctx.beginPath();
@@ -491,6 +555,9 @@ export class ConnectFourGame extends MiniGameBase {
   close({ reason = 'closed' } = {}) {
     this.active = false;
     this.aiPlan = null;
+    this.fallingDisc = null;
+    this.abandonPromptActive = false;
+    this.returningToBoard = false;
     return super.close({ reason });
   }
 
@@ -528,6 +595,50 @@ export class ConnectFourGame extends MiniGameBase {
     this.turn = null;
     this.aiPlan = null;
     return this.finish({ winnerSeat: null });
+  }
+
+  _checkAbandon() {
+    if (this.abandonPromptActive || this.finished) return;
+    const player = this._characterForSeat(0);
+    const footprint = this.getFootprint();
+    if (!player || !footprint) return;
+    const minX = footprint.x;
+    const maxX = footprint.x + footprint.width - 1;
+    const minY = footprint.y;
+    const maxY = footprint.y + footprint.height - 1;
+    const distance = Math.max(0, minX - player.x, player.x - maxX, minY - player.y, player.y - maxY);
+    if (distance <= 2) {
+      this.returningToBoard = false;
+      return;
+    }
+    if (this.returningToBoard) return;
+
+    const handler = this.options?.onAbandonPrompt;
+    if (typeof handler !== 'function') return;
+    this.abandonPromptActive = true;
+    handler(
+      () => { this.abandonPromptActive = false; },
+      () => {
+        this.abandonPromptActive = false;
+        this.returningToBoard = true;
+        this._returnPlayerToSeat();
+      }
+    );
+  }
+
+  _returnPlayerToSeat() {
+    const player = this._characterForSeat(0);
+    const target = this.seatTargets?.[0];
+    if (!player || !target) return;
+    const path = this.game?.terrain
+      ? findPath(this.game.terrain, { x: player.x, y: player.y }, target)
+      : [];
+    if (path.length) player.path = path;
+    else {
+      player.x = target.x;
+      player.y = target.y;
+      player.path = [];
+    }
   }
 
   _characterForSeat(seat) {

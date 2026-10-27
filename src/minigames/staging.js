@@ -197,6 +197,7 @@ export function stageCompanions({ terrain = null, companions = [], placement, bo
     const target = { x: origin.x - 1, y: centerRow + offsets[index], direction: RIGHT };
     companion.fetchTarget = null;
     companion.stagedDestination = { x: target.x, y: target.y };
+    companion.inMiniGame = true;
     walkTo(terrain, companion, target);
     companion.direction = target.direction;
     targets.push({ ...target, companion });

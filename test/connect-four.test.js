@@ -64,10 +64,11 @@ function openGame(context = {}) {
   const game = context.game || makeGame(context);
   const player = game.player;
   const npc = game.npcs[0];
+  const options = { dropMs: 0, ...(context.options || {}) };
   const instance = new ConnectFourGame({
     meta: context.meta || META,
     game,
-    options: context.options || {}
+    options
   });
   const result = instance.open({
     seats: context.seats || [
@@ -75,7 +76,7 @@ function openGame(context = {}) {
       { character: npc, controller: 'ai' }
     ],
     placement: context.placement || null,
-    options: context.options || {}
+    options
   });
   return { instance, game, player, npc, result };
 }
@@ -451,4 +452,37 @@ test('close delegates to the base close result', () => {
   assert.equal(instance.active, false);
   assert.equal(player.inMiniGame, true); // host's releaseSession owns cleanup
   assert.equal(npc.inMiniGame, true);
+});
+
+test('a drop animates from above the board before settling', () => {
+  const { instance, player } = openGame({ options: { dropMs: 200 } });
+  player.x = instance.placement.originX + 3;
+  player.y = instance.placement.originY + 5;
+
+  const result = instance.handleInput({ type: 'action', seat: 0, character: player });
+  assert.equal(result.handled, true);
+  assert.equal(instance.grid[5][3], 0);
+  assert.ok(instance.fallingDisc, 'drop should create a falling disc');
+  assert.equal(instance.fallingDisc.row, 5);
+  assert.equal(instance.fallingDisc.column, 3);
+
+  instance.update(100);
+  assert.ok(instance.fallingDisc, 'disc should still be falling halfway');
+  instance.update(120);
+  assert.equal(instance.fallingDisc, null, 'disc settles after its duration');
+});
+
+test('walking away opens the abandon prompt and cancel walks the player back', () => {
+  let prompt = null;
+  const { instance, player } = openGame({
+    options: { onAbandonPrompt: (confirm, cancel) => { prompt = { confirm, cancel }; } }
+  });
+  player.x = instance.placement.originX + 20;
+  player.y = instance.placement.originY + 20;
+  instance.update(16);
+  assert.ok(prompt, 'abandon prompt should fire away from the board');
+  prompt.cancel();
+  assert.equal(instance.abandonPromptActive, false);
+  assert.equal(instance.returningToBoard, true);
+  assert.ok(player.path.length > 0, 'player should walk back to the seat');
 });

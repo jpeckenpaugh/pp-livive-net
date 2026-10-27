@@ -267,7 +267,7 @@ test('input ignores the wrong seat, matched cards, face-up cards, and reveal tim
   assert.equal(flip(game, info, 0, 2).handled, false);
   assert.deepEqual(game.faceUp, [0, 1]);
 
-  game.update(1000);
+  game.update(4000);
   assert.equal(game.turnSeat, 1);
   assert.deepEqual(game.faceUp, []);
 });
@@ -293,7 +293,7 @@ test('a match scores a pair and keeps the turn', () => {
   assert.equal(flip(game, info, 0, 0).handled, false);
 });
 
-test('a mismatch holds both cards for ~900ms, then flips back and switches seats', () => {
+test('a mismatch holds both cards for ~3 seconds, then flips back and switches seats', () => {
   const info = makeWorld();
   const { game } = openGame(info, { rng: mulberry32(7) });
   game.turnSeat = 0;
@@ -302,16 +302,16 @@ test('a mismatch holds both cards for ~900ms, then flips back and switches seats
 
   flip(game, info, 0, 0);
   flip(game, info, 0, 1);
-  assert.equal(game.revealTimer, 900);
+  assert.equal(game.revealTimer, 3000);
   assert.equal(game.scores[0], 0);
 
-  const mid = game.update(400);
+  const mid = game.update(1000);
   assert.equal(mid.handled, true);
-  assert.equal(game.revealTimer, 500);
+  assert.equal(game.revealTimer, 2000);
   assert.deepEqual(game.faceUp, [0, 1]);
   assert.equal(game.turnSeat, 0);
 
-  game.update(500);
+  game.update(2000);
   assert.equal(game.revealTimer, 0);
   assert.deepEqual(game.faceUp, []);
   assert.equal(game.cards[0].matched, false);
@@ -509,4 +509,20 @@ test('the host registers, opens, and packs up the game through the factory', () 
   assert.equal(host.isOpen(), false);
   assert.equal(info.player.inMiniGame, false);
   assert.equal(info.npc.inMiniGame, false);
+});
+
+test('walking away opens the abandon prompt and cancel walks the player back', () => {
+  const info = makeWorld();
+  let prompt = null;
+  const { game } = openGame(info, {
+    onAbandonPrompt: (confirm, cancel) => { prompt = { confirm, cancel }; }
+  });
+  info.player.x = 30;
+  info.player.y = 30;
+  game.update(16);
+  assert.ok(prompt, 'abandon prompt should fire away from the board');
+  prompt.cancel();
+  assert.equal(game.abandonPromptActive, false);
+  assert.equal(game.returningToBoard, true);
+  assert.ok(info.player.path.length > 0, 'player should walk back to the seat');
 });

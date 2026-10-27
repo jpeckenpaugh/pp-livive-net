@@ -595,19 +595,20 @@ export class CheckersMiniGame {
           }, 300);
         }
 
-        // Check for end of game
+        // Check for end of game only after handing the turn to the opponent.
+        // Otherwise a mover with no remaining moves can be declared the loser
+        // even though the opponent has not taken their last turn yet.
+        this.activeBoard.turn = isPlayer ? 'opponent' : 'player';
         const winner = this.checkWinner();
         if (winner) {
           this.finishGame(winner);
           return true;
         }
 
-        // Switch turn
+        // Switch-turn messaging/timers
         if (isPlayer) {
-          this.activeBoard.turn = 'opponent';
           this.activeBoard.thinkingTimer = 0.5 + Math.random() * 0.5;
         } else {
-          this.activeBoard.turn = 'player';
           this.onToast('Your turn! Select a piece to move.');
         }
       } else {

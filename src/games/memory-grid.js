@@ -29,7 +29,7 @@ import { findPath } from '../world.js';
 export const MEMORY_GRID_SIZE = 4;
 export const MEMORY_GRID_PAIRS = 8;
 export const MEMORY_GRID_CARDS = MEMORY_GRID_SIZE * MEMORY_GRID_SIZE;
-export const DEFAULT_MISMATCH_MS = 900;
+export const DEFAULT_MISMATCH_MS = 3000;
 
 /** Symbols are plain data keys; render() maps them to canvas glyphs. */
 export const MEMORY_SYMBOLS = Object.freeze([
@@ -52,6 +52,17 @@ const GLYPHS = Object.freeze({
   shell: '●',
   gem: '◈',
   drop: '☾'
+});
+
+const SYMBOL_COLORS = Object.freeze({
+  leaf: '#1f7a4c',
+  acorn: '#a8642a',
+  flower: '#c43d7a',
+  star: '#d9a400',
+  mushroom: '#9b4de0',
+  shell: '#1f6fb2',
+  gem: '#0f8f8f',
+  drop: '#5964c9'
 });
 
 const DEFAULT_BOARD = Object.freeze({
@@ -108,9 +119,13 @@ export class MemoryGridGame extends MiniGameBase {
     this.winnerSeat = null;
 
     this.seatCharacters = [null, null];
+    this.seatTargets = [];
     /** Seat 1's memory: card index -> symbol, filled from every reveal. */
     this.aiMemory = new Map();
     this.aiTarget = null;
+    this.aiNeedsSideline = false;
+    this.abandonPromptActive = false;
+    this.returningToBoard = false;
   }
 
   get board() {
@@ -145,7 +160,7 @@ export class MemoryGridGame extends MiniGameBase {
     this.active = true;
 
     const companions = this._collectCompanions();
-    stageSeats({
+    this.seatTargets = stageSeats({
       terrain,
       seats: this.seatCharacters.filter(Boolean),
       placement: this.placement,
@@ -192,9 +207,17 @@ export class MemoryGridGame extends MiniGameBase {
     let changed = false;
     const events = [];
 
+    const sideline = this._updateAiSideline();
+    if (sideline) {
+      changed = changed || sideline.changed;
+      events.push(...sideline.events);
+    }
+
+    this._checkAbandon();
+
     if (this.revealTimer > 0) {
       this.revealTimer = Math.max(0, this.revealTimer - dt);
-      if (this.revealTimer > 0) return createStepResult({ handled: true });
+      if (this.revealTimer > 0) return createStepResult({ handled: true, changed });
       this._finishReveal();
       changed = true;
     }
@@ -356,7 +379,9 @@ export class MemoryGridGame extends MiniGameBase {
             ctx.fillRect(x, y, w, h);
           }
 
-          ctx.fillStyle = card.matched ? '#245c39' : '#3b3224';
+          ctx.fillStyle = card.matched
+            ? (SYMBOL_COLORS[card.symbol] || '#245c39')
+            : (SYMBOL_COLORS[card.symbol] || '#3b3224');
           ctx.font = `${Math.max(12, Math.round(tile * 0.5))}px system-ui, sans-serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
@@ -464,6 +489,9 @@ export class MemoryGridGame extends MiniGameBase {
     this.finishEvent = null;
     this.aiMemory = new Map();
     this.aiTarget = null;
+    this.aiNeedsSideline = false;
+    this.abandonPromptActive = false;
+    this.returningToBoard = false;
   }
 
   _buildDeck() {
@@ -529,6 +557,7 @@ export class MemoryGridGame extends MiniGameBase {
     const match = this.cards[first].symbol === this.cards[second].symbol;
 
     if (!match) {
+      if (seat === 1) this.aiNeedsSideline = true;
       if (this.mismatchMs <= 0) {
         // Zero-beat option (tests/tuning): flip back and pass the turn at once.
         this.faceUp = [];
@@ -544,6 +573,7 @@ export class MemoryGridGame extends MiniGameBase {
     this.cards[second].matched = true;
     this.scores[seat] += 1;
     this.faceUp = [];
+    if (seat === 1) this.aiNeedsSideline = true;
 
     const matchedPairs = this.cards.filter(card => card.matched).length / 2;
     if (matchedPairs < MEMORY_GRID_PAIRS) {
@@ -565,10 +595,96 @@ export class MemoryGridGame extends MiniGameBase {
     this.revealTimer = 0;
     this.revealSeat = null;
     this.turnSeat = 1 - seat;
+    if (seat === 1) this.aiNeedsSideline = true;
+  }
+
+  _updateAiSideline() {
+    if (!this.aiNeedsSideline) return null;
+    const character = this.seatCharacters[1];
+    const target = this.seatTargets?.[1];
+    if (!character || !target) {
+      this.aiNeedsSideline = false;
+      return null;
+    }
+
+    const path = Array.isArray(character.path) ? character.path : [];
+    const arrived = !character.moving
+      && path.length === 0
+      && character.x === target.x
+      && character.y === target.y;
+    if (arrived) {
+      this.aiNeedsSideline = false;
+      character.miniGameTarget = null;
+      character.direction = target.direction ?? 3;
+      return null;
+    }
+
+    character.inMiniGame = true;
+    character.miniGameTarget = { x: target.x, y: target.y };
+    if (character.moving) return createStepResult({ handled: true, changed: true });
+
+    const terrain = this.game?.terrain || null;
+    const pathToSideline = terrain
+      ? findPath(terrain, { x: character.x, y: character.y }, target)
+      : [];
+    if (pathToSideline.length) {
+      character.path = pathToSideline;
+    } else {
+      character.x = target.x;
+      character.y = target.y;
+      character.path = [];
+      character.moving = false;
+    }
+    return createStepResult({ handled: true, changed: true });
+  }
+
+  _checkAbandon() {
+    if (this.abandonPromptActive || this.finished) return;
+    const player = this.seatCharacters[0];
+    const footprint = this.getFootprint();
+    if (!player || !footprint) return;
+
+    const minX = footprint.x;
+    const maxX = footprint.x + footprint.width - 1;
+    const minY = footprint.y;
+    const maxY = footprint.y + footprint.height - 1;
+    const distance = Math.max(0, minX - player.x, player.x - maxX, minY - player.y, player.y - maxY);
+    if (distance <= 2) {
+      this.returningToBoard = false;
+      return;
+    }
+    if (this.returningToBoard) return;
+
+    const handler = this.options?.onAbandonPrompt;
+    if (typeof handler !== 'function') return;
+    this.abandonPromptActive = true;
+    handler(
+      () => { this.abandonPromptActive = false; },
+      () => {
+        this.abandonPromptActive = false;
+        this.returningToBoard = true;
+        this._returnPlayerToSeat();
+      }
+    );
+  }
+
+  _returnPlayerToSeat() {
+    const player = this.seatCharacters[0];
+    const target = this.seatTargets?.[0];
+    if (!player || !target) return;
+    const path = this.game?.terrain
+      ? findPath(this.game.terrain, { x: player.x, y: player.y }, target)
+      : [];
+    if (path.length) player.path = path;
+    else {
+      player.x = target.x;
+      player.y = target.y;
+      player.path = [];
+    }
   }
 
   _updateAi() {
-    if (this.turnSeat !== 1 || this.finished) return null;
+    if (this.turnSeat !== 1 || this.finished || this.aiNeedsSideline) return null;
     const character = this.seatCharacters[1];
     if (!character) return null;
 
@@ -637,6 +753,9 @@ export class MemoryGridGame extends MiniGameBase {
     this.revealTimer = 0;
     this.revealSeat = null;
     this.aiMemory = new Map();
+    this.aiNeedsSideline = false;
+    this.abandonPromptActive = false;
+    this.returningToBoard = false;
     return { ok: false, phase: this.phase, message };
   }
 }

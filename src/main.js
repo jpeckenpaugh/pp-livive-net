@@ -504,6 +504,9 @@ function behaviorDeps() {
   return {
     tryStep: (actor, dx, dy, durationMs) => {
       if (!game?.tryStep) return false;
+      // Mini-game participants and staged spectators are parked by the game;
+      // behavior decisions must not drag them back onto the board.
+      if (actor?.inMiniGame || actor?.stagedDestination) return false;
       // The wander toggle parks neighbours but leaves companions following.
       if (!game.wander && actor && !actor.isCompanion) return false;
       return game.tryStep(actor, dx, dy, msToSeconds(durationMs));

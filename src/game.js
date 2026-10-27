@@ -1013,6 +1013,7 @@ export class Game {
     // 2. Prevent them from following their buddy around onto the board while playing
     const isParticipant = this.isParticipantCompanion(comp);
     if (isParticipant) {
+      comp.inMiniGame = true;
       if (comp.stagedDestination) {
         // Already at staged spectator spot: stay still facing the board
         if (comp.x === comp.stagedDestination.x && comp.y === comp.stagedDestination.y) {
