@@ -192,13 +192,14 @@ test('every effect ships valid ai metadata with the approved tiers', () => {
     'hover-halo': [45, 'self'],
     'chamo': [40, 'self'],
     'prism-pin': [35, 'self'],
+    'wings': [32, 'self'],
     'glowworm-jar': [30, 'any'],
     'tricorder': [30, 'any'],
     'bouncy-boots': [25, 'self'],
     'echo-bell': [20, 'any']
   };
 
-  assert.equal(Object.keys(EFFECT_CATALOG).length, 10);
+  assert.equal(Object.keys(EFFECT_CATALOG).length, 11);
   for (const [effectId, [priority, target]] of Object.entries(expected)) {
     const effect = EFFECT_CATALOG[effectId];
     assert.ok(effect, `missing effect ${effectId}`);

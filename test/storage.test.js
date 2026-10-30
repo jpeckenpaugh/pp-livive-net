@@ -451,6 +451,7 @@ test('migration grants newly added starter games to existing saves once', () => 
   const ids = migrated.player.inventory.map(item => item.id);
   assert.ok(ids.includes('memory-grid'));
   assert.ok(ids.includes('connect-four'));
+  assert.ok(ids.includes('wings'));
 
   const again = migrateSave(JSON.parse(JSON.stringify(migrated)));
   assert.equal(
@@ -461,4 +462,30 @@ test('migration grants newly added starter games to existing saves once', () => 
     again.player.inventory.filter(item => item.id === 'connect-four').length,
     1
   );
+  assert.equal(
+    again.player.inventory.filter(item => item.id === 'wings').length,
+    1
+  );
+});
+
+test('forage basket, apples, and mushroom clocks round-trip through a save', () => {
+  const game = baseGame({
+    forage: {
+      apples: [{ id: 'apple:12,14', x: 12, y: 14 }],
+      basket: { apple: 6, mushroom: 3 },
+      harvested: { 'scenery-4': 123456 },
+      nextAppleAt: 999,
+      seeded: true
+    }
+  });
+  const save = serializeSave(game, {}, new Set());
+  assert.deepEqual(save.forage.apples, [{ id: 'apple:12,14', x: 12, y: 14 }]);
+  assert.deepEqual(save.forage.basket, { apple: 6, mushroom: 3 });
+  assert.deepEqual(save.forage.harvested, { 'scenery-4': 123456 });
+  assert.equal(save.forage.seeded, true);
+
+  const migrated = migrateSave({ version: 2, player: { inventory: [], equipped: [] } });
+  assert.deepEqual(migrated.forage.basket, { apple: 0, mushroom: 0 });
+  assert.deepEqual(migrated.forage.apples, []);
+  assert.equal(migrated.forage.seeded, false);
 });

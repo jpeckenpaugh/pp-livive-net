@@ -31,7 +31,8 @@ const EFFECT_IDS = [
   'bouncy-boots',
   'buddy-cape',
   'glowworm-jar',
-  'lucky-clover'
+  'lucky-clover',
+  'wings'
 ];
 
 const VISUAL_CHANNELS = [
@@ -62,7 +63,7 @@ function equipAll(character, now) {
   }
 }
 
-test('effects data defines slots, composition, motions, and all ten effects', () => {
+test('effects data defines slots, composition, motions, and all eleven effects', () => {
   assert.equal(effectsConfig.schemaVersion, 1);
 
   for (const slot of ['head', 'face', 'hand', 'back', 'feet', 'charm', 'buddy']) {
@@ -115,7 +116,7 @@ test('effects data defines slots, composition, motions, and all ten effects', ()
   }
 
   const itemIds = new Set(Object.values(EFFECT_CATALOG).map(effect => effect.itemId));
-  assert.equal(itemIds.size, 10, 'each effect should own a distinct item id');
+  assert.equal(itemIds.size, 11, 'each effect should own a distinct item id');
 });
 
 test('headline effect values match the approved design', () => {

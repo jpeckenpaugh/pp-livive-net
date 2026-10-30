@@ -11,7 +11,7 @@ import { rollReward, applyReward } from '../src/rewards.js';
 
 test('createStarterInventory yields the starter toys and the headline effects', () => {
   const inv = createStarterInventory();
-  assert.equal(inv.length, 9);
+  assert.equal(inv.length, 10);
   const ball = inv.find(i => i.id === 'ball');
   const ttt = inv.find(i => i.id === 'tic-tac-toe');
   const checkers = inv.find(i => i.id === 'checkers');
@@ -29,7 +29,7 @@ test('createStarterInventory yields the starter toys and the headline effects', 
   const effects = inv.filter(i => i.kind === 'effect');
   assert.deepEqual(
     effects.map(i => i.id).sort(),
-    ['big-o-bracelet', 'chamo-clip', 'teleport-tricorder']
+    ['big-o-bracelet', 'chamo-clip', 'teleport-tricorder', 'wings']
   );
 });
 

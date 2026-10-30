@@ -38,7 +38,7 @@ const SELECTOR_PARAM_KEYS = {
 
 test('every effect item resolves to an effects.json entry, slot, and compatible owner', () => {
   const effectItems = Object.values(catalog).filter(item => item.kind === 'effect');
-  assert.equal(effectItems.length, 10, 'the v1 catalog should contain ten effect items');
+  assert.equal(effectItems.length, 11, 'the catalog should contain eleven effect items');
 
   for (const item of effectItems) {
     const effectId = item.effect;

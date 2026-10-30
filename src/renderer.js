@@ -9,6 +9,7 @@ import { drawAvatar, getAvatarImage, loadAvatarImage } from './avatar.js';
 import { shouldMirror, UP } from './facing.js';
 import { getAnimationProfile } from './animation.js';
 import { composeRenderTransform, resolveFx } from './effects.js';
+import { isMushroomHidden, isMushroomScenery } from './forage.js';
 import sceneryAssets from '../data/nature_scenery.json' with { type: 'json' };
 
 export const TILE = 48;
@@ -248,6 +249,7 @@ export class WorldRenderer {
     if (Array.isArray(game.scenery)) {
       // Delta time calculation for smooth scenery fade tweening
       const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      const epochNow = Date.now();
       const dt = Math.min((now - (this.lastFrameTime || now)) / 1000, 0.1);
       this.lastFrameTime = now;
       const FADE_SPEED = 3.5; // ~0.28s to fade in/out completely
@@ -279,6 +281,8 @@ export class WorldRenderer {
       }
 
       for (const item of game.scenery) {
+        // Harvested mushrooms are off the ground until their respawn clock runs out.
+        if (isMushroomScenery(item) && isMushroomHidden(game.forage, item.id, epochNow)) continue;
         // Target opacity: 0 if on or adjacent to active board, 1 if clear
         const isHidden = hiddenZones.some(
           zone => item.x >= zone.minX && item.x <= zone.maxX && item.y >= zone.minY && item.y <= zone.maxY
@@ -302,11 +306,17 @@ export class WorldRenderer {
       }
     }
 
+    for (const apple of game.forage?.apples || []) {
+      renderables.push({ type: 'forage', y: apple.y, entity: apple });
+    }
+
     renderables.sort((a, b) => a.y - b.y);
 
     for (const item of renderables) {
       if (item.type === 'char') {
         this.drawCharacter(game, item.entity);
+      } else if (item.type === 'forage') {
+        this.drawForageItem(game, item.entity);
       } else {
         this.drawSceneryItem(ctx, item.entity, item.opacity);
       }
@@ -337,6 +347,62 @@ export class WorldRenderer {
     const hovered = game.hovered || game.selected;
     if (hovered) this.drawNameplate(game, hovered);
     this.drawMinimap(game);
+  }
+
+  drawForageItem(game, apple) {
+    const { ctx } = this;
+    if (!apple) return;
+    const bob = Math.sin((game.time || 0) * 3 + apple.x * 0.7) * TILE * 0.04;
+    const cx = (apple.x + 0.5) * TILE;
+    const cy = (apple.y + 0.8) * TILE + bob;
+    const r = TILE * 0.14;
+
+    // Soft collectible ring so apples read as pickups rather than scenery.
+    const pulse = 0.5 + Math.sin((game.time || 0) * 2.2 + apple.y) * 0.5;
+    ctx.save();
+    ctx.globalAlpha = 0.18 + pulse * 0.12;
+    ctx.strokeStyle = '#ffe9a8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(cx, (apple.y + 0.92) * TILE, r * 1.7, r * 0.7, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // Ground shadow.
+    ctx.save();
+    ctx.globalAlpha = 0.24;
+    ctx.fillStyle = '#0b140d';
+    ctx.beginPath();
+    ctx.ellipse(cx, (apple.y + 0.94) * TILE, r * 1.05, r * 0.42, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.fillStyle = '#d93a3a';
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#b02727';
+    ctx.beginPath();
+    ctx.arc(r * 0.22, r * 0.18, r * 0.78, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255, 246, 232, 0.45)';
+    ctx.beginPath();
+    ctx.ellipse(-r * 0.34, -r * 0.36, r * 0.26, r * 0.18, -0.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#6b4a2f';
+    ctx.lineWidth = Math.max(1.5, TILE * 0.035);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 0.8);
+    ctx.quadraticCurveTo(r * 0.1, -r * 1.35, r * 0.02, -r * 1.6);
+    ctx.stroke();
+    ctx.fillStyle = '#5fae5f';
+    ctx.beginPath();
+    ctx.ellipse(r * 0.55, -r * 1.32, r * 0.5, r * 0.24, -0.55, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   drawSceneryItem(ctx, item, opacity = 1) {
@@ -453,6 +519,15 @@ export class WorldRenderer {
       const amplitude = Number(fx.motion.amplitude) || 0;
       const strength = character.moving ? 1 : 0.28;
       offsetY -= Math.abs(Math.sin((nowMs / period) * Math.PI * 2)) * amplitude * strength;
+    } else if (fx.motionId === 'flap' && fx.motion) {
+      const period = Math.max(1, Number(fx.motion.periodMs) || 420);
+      const amplitude = Number(fx.motion.amplitude) || 0;
+      const tilt = (Number(fx.motion.tiltDeg) || 0) * DEG_TO_RAD;
+      const wing = Math.sin((nowMs / period) * Math.PI * 2);
+      // Wings keep a lazy hover at rest and beat harder while moving.
+      const strength = character.moving ? 1 : 0.55;
+      offsetY -= (wing * 0.5 + 0.5) * amplitude * strength;
+      rotate += wing * tilt * strength;
     }
 
     // Teleport is cosmetic: the step already passed collision checks in Game.
@@ -735,6 +810,19 @@ export class WorldRenderer {
       mctx.beginPath();
       mctx.arc((position.x + 0.5) * (size / WORLD_SIZE), (position.y + 0.5) * (size / WORLD_SIZE), Math.max(2, size / 110), 0, Math.PI * 2);
       mctx.fillStyle = 'rgba(233, 240, 232, 0.65)';
+      mctx.fill();
+    }
+
+    for (const apple of game.forage?.apples || []) {
+      mctx.beginPath();
+      mctx.arc(
+        (apple.x + 0.5) * (size / WORLD_SIZE),
+        (apple.y + 0.5) * (size / WORLD_SIZE),
+        Math.max(1.4, size / 240),
+        0,
+        Math.PI * 2
+      );
+      mctx.fillStyle = 'rgba(217, 58, 58, 0.9)';
       mctx.fill();
     }
 

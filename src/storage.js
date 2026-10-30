@@ -1,5 +1,6 @@
 import { decodeTerrain, encodeTerrain } from './world.js';
 import { normalizeInventory, createItemInstance } from './inventory.js';
+import { normalizeForage } from './forage.js';
 
 export const STORAGE_KEY = 'playpark.save.v1';
 export const STATS_KEY = 'playpark.stats.v1';
@@ -9,9 +10,9 @@ export const SAVE_VERSION = 2;
 // so existing testers can see the headline effects without using Debug.
 const V1_STARTER_EFFECTS = ['big-o-bracelet', 'chamo-clip', 'teleport-tricorder'];
 
-// Starter games added after a save was created should still appear in that
-// player's bag. Idempotent: matching ids are skipped.
-const STARTER_GAME_ITEMS = ['memory-grid', 'connect-four'];
+// Starter games and gear added after a save was created should still appear in
+// that player's bag. Idempotent: matching ids are skipped.
+const EXTRA_STARTER_ITEMS = ['memory-grid', 'connect-four', 'wings'];
 
 // Fields that belong to a live frame (paths, staging, fetch AI, timers) and must
 // never leak into a save. Profit: reloads start with clean, deterministic actors.
@@ -237,6 +238,7 @@ export function serializeSave(game, draft, friends, behaviorState = null) {
     })),
     friends: [...friends],
     wander: game.wander,
+    forage: normalizeForage(game.forage),
     behavior: normalizeBehaviorBlock(behaviorState)
   };
 }
@@ -294,7 +296,7 @@ export function migrateSave(state) {
       }
     }
     const ownedGames = new Set(player.inventory.map(item => item.id));
-    for (const id of STARTER_GAME_ITEMS) {
+    for (const id of EXTRA_STARTER_ITEMS) {
       if (ownedGames.has(id)) continue;
       const item = createItemInstance(id);
       if (item) player.inventory.push(item);
@@ -309,6 +311,7 @@ export function migrateSave(state) {
     ? state.companions.filter(isObject).map(comp => migrateCharacterRecord(stripTransient(comp)))
     : [];
   next.friends = Array.isArray(state.friends) ? state.friends.filter(id => typeof id === 'string') : [];
+  next.forage = normalizeForage(state.forage);
   next.behavior = normalizeBehaviorBlock(state.behavior);
 
   return next;

@@ -21,10 +21,12 @@ const EFFECT_ITEMS = [
   { id: 'bouncy-boots', effect: 'bouncy-boots', slot: 'feet' },
   { id: 'buddy-cape', effect: 'buddy-cape', slot: 'back' },
   { id: 'glowworm-jar', effect: 'glowworm-jar', slot: 'hand' },
-  { id: 'lucky-clover', effect: 'lucky-clover', slot: 'charm' }
+  { id: 'lucky-clover', effect: 'lucky-clover', slot: 'charm' },
+  { id: 'wings', effect: 'wings', slot: 'back' }
 ];
 
 const HEADLINE_ITEM_IDS = ['big-o-bracelet', 'chamo-clip', 'teleport-tricorder'];
+const STARTER_EFFECT_IDS = [...HEADLINE_ITEM_IDS, 'wings'];
 
 function makeGame(companionCount = 0) {
   const companions = Array.from({ length: companionCount }, (_, index) => ({ id: `comp-${index}` }));
@@ -73,18 +75,18 @@ test('every effect item maps to an effects.json entry and a valid slot', () => {
   }
 });
 
-test('starter inventory grants the three headline effect items', () => {
+test('starter inventory grants the headline effect items and wings', () => {
   const inventory = createStarterInventory();
   const ids = inventory.map(item => item.id);
 
-  for (const id of ['ball', 'tic-tac-toe', 'checkers', 'chess', ...HEADLINE_ITEM_IDS]) {
+  for (const id of ['ball', 'tic-tac-toe', 'checkers', 'chess', ...STARTER_EFFECT_IDS]) {
     assert.ok(ids.includes(id), `starter is missing ${id}`);
   }
 
   const effects = inventory.filter(item => item.kind === 'effect');
   assert.deepEqual(
     effects.map(item => item.id).sort(),
-    [...HEADLINE_ITEM_IDS].sort()
+    [...STARTER_EFFECT_IDS].sort()
   );
 });
 

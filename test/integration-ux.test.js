@@ -89,9 +89,9 @@ test('host registers all six metadata-backed adapters', () => {
   assert.equal(host.getMeta('chess').dialogueKey, 'chess');
 });
 
-test('all ten effect items equip and unequip without losing inventory instances', () => {
+test('all eleven effect items equip and unequip without losing inventory instances', () => {
   const itemIds = Object.values(effectsConfig.effects).map(effect => effect.itemId);
-  assert.equal(itemIds.length, 10);
+  assert.equal(itemIds.length, 11);
   for (const id of itemIds) assert.ok(ITEM_CATALOG[id], `missing catalog item ${id}`);
 
   const character = {
@@ -105,11 +105,11 @@ test('all ten effect items equip and unequip without losing inventory instances'
   }
   // Slots hold 7 at once: head, face, hand, back, feet, and charm x2.
   assert.equal(activeEntries(character, 1000).length, 7);
-  assert.equal(character.inventory.length, 10);
+  assert.equal(character.inventory.length, 11);
 
   const first = character.equipped[0];
   const removed = unequip(character, first.uid, 1000);
   assert.equal(removed.ok, true);
   assert.equal(activeEntries(character, 1400).length, 6);
-  assert.equal(character.inventory.length, 10);
+  assert.equal(character.inventory.length, 11);
 });

@@ -162,6 +162,18 @@
       "icon": "🍀",
       "description": "+1 coin every time you earn a reward.",
       "ui": { "summary": "+1 coin when you earn a reward.", "badge": "+1 coin", "slotLabel": "Charm" }
+    },
+    "wings": {
+      "id": "wings",
+      "name": "Glider Wings",
+      "kind": "effect",
+      "action": "equip",
+      "slot": "back",
+      "effect": "wings",
+      "owners": ["player", "npc", "companion"],
+      "icon": "🪽",
+      "description": "Fly over ponds and paths. Water no longer stops you.",
+      "ui": { "summary": "fly over water and keep walking.", "badge": "fly", "slotLabel": "Back" }
     }
   },
   "starter": [
@@ -192,6 +204,9 @@
     },
     {
       "id": "teleport-tricorder"
+    },
+    {
+      "id": "wings"
     }
   ]
 }

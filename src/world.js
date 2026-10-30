@@ -344,8 +344,17 @@ export function findOpenTile(grid, origin, occupied = new Set(), minDistance = 1
   return fallback || start;
 }
 
-export function findPath(grid, from, to, blocked = null) {
-  if (!isWalkable(typeAt(grid, to.x, to.y)) || !isWalkable(typeAt(grid, from.x, from.y))) return [];
+/**
+ * BFS over walkable tiles. Pass `{ fly: true }` to let a path cross water (the
+ * Glider Wings effect); out-of-bounds tiles are still refused.
+ */
+export function findPath(grid, from, to, blocked = null, options = {}) {
+  const fly = Boolean(options && options.fly);
+  const canStand = (x, y) => {
+    const type = typeAt(grid, x, y);
+    return type !== null && (isWalkable(type) || fly);
+  };
+  if (!canStand(to.x, to.y) || !canStand(from.x, from.y)) return [];
   if (from.x === to.x && from.y === to.y) return [];
   if (blocked?.has(`${to.x},${to.y}`)) return [];
 
@@ -366,7 +375,7 @@ export function findPath(grid, from, to, blocked = null) {
     for (const { dx, dy } of DIRS) {
       const nx = x + dx;
       const ny = y + dy;
-      if (!inBounds(nx, ny) || !isWalkable(grid[ny][nx])) continue;
+      if (!inBounds(nx, ny) || !canStand(nx, ny)) continue;
       if (blocked?.has(`${nx},${ny}`)) continue;
       const nextIndex = ny * width + nx;
       if (seen[nextIndex]) continue;

@@ -34,6 +34,8 @@ commit `node_modules/`.
 | `data/avatar_config.json` | Avatar variants, color palettes, and companion style list |
 | `data/engine_config.json` | Movement timings, tile dimensions, and crowd parameters |
 | `data/items.json` | Item catalog, starter loadouts, metadata, and default icons |
+| `data/forage.json` | Apple/mushroom pickup caps and respawn timings |
+| `data/sounds.json` | Oscillator recipes for synthesized game cues |
 | `data/dialogues.json` | Dialogue templates, prompts with `{name}` interpolation, and menu schemas |
 | `data/entities.json` | NPC names, player names, and vibes/flavour text |
 | `data/cubeworld_pets.json` | Pre-rendered offline sprite sheets for Cube World animal pets and creatures |
@@ -49,6 +51,8 @@ commit `node_modules/`.
 | `src/facing.js` | Four-direction mapping and Voxel Art left/right mirroring |
 | `src/names.js` | Name picker and vibe generator backed by `data/entities.json` |
 | `src/inventory.js` | Starter inventory factory and item definition getters |
+| `src/forage.js` | Apple spawning, harvestable mushrooms, and basket persistence |
+| `src/audio.js` | Synthesized sound effects and the saved mute preference |
 | `src/ui/panels.js` | Unified 5-tab HUD player menu, keyboard navigation, and side panels |
 | `src/ui/wizard.js` | Park setup wizard, draft creation, and avatar customizer |
 | `src/games/fetch.js` | Fetch mini-game: ball trajectory and companion fetch AI |

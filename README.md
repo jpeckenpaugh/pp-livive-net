@@ -24,6 +24,11 @@ and ES modules — there is no build step to serve it.
   - **Fetch**: Throw the ball onto the park grass and watch your companion fetch and return it.
   - **Tic-Tac-Toe**: Unfurl a giant 3×3 game mat directly onto park tiles. Walk onto squares and
     press `Enter` or `Space` to place your piece while playing with friends.
+- **Glider Wings** — equip the wings to fly over ponds and paths; click a water tile to glide there.
+- **Foraging** — apples dot the grass and mushrooms already grow in the park. Walk over either one
+  to collect it into your basket; apples sprout again on a timer and mushrooms regrow after a while.
+- **Sound effects** — a tiny synthesized cue set plays when games open, turns change, pieces land,
+  and matches are won or lost. Toggle it from the 🔊 button in the top bar.
 - **Match Stats & Head-to-Head Records** — win, loss, and draw records are tracked across all
   Tic-Tac-Toe matches with each park neighbour in the **🏆 Stats** panel.
 - **Neighbour generator** — roll a crowd, reroll individuals, and add more later.
@@ -84,6 +89,7 @@ Requires Node.js 20 or newer for the tooling; the game itself only needs a moder
 | Trigger Menu Action | `Enter` or `Space` (when menu item highlighted) |
 | Close panel or dialogue | `Escape` |
 | Throw / Action key | `Enter` or `Space` (place TTT mark or interact) |
+| Toggle sound effects | 🔊 button in the top bar |
 
 ## How it works
 
@@ -93,6 +99,8 @@ css/app.css                    Layout, panels, responsive rules
 data/avatar_config.json        Avatar variants, palettes, and companion styles
 data/engine_config.json        Movement timings, tile dimensions, crowd limits
 data/items.json                Item catalog, starter loadouts, icons, actions
+data/forage.json               Apple/mushroom pickup and respawn settings
+data/sounds.json               Synthesized sound cue recipes
 data/dialogues.json            Dialogue templates and HUD action menu schemas
 data/entities.json             NPC names, player names, and personality vibe text
 data/cubeworld_pets.json       Pre-rendered offline 3D voxel sprite sheets
@@ -108,6 +116,8 @@ src/characters.js              Pure tile-occupancy, exclusions, companion format
 src/facing.js                  Direction mapping and left/right mirroring
 src/names.js                   Name picker and vibe selectors backed by entities.json
 src/inventory.js               Item getters and starter inventory factory
+src/forage.js                  Apple spawning, mushroom harvests, and basket state
+src/audio.js                   Web Audio cue synthesis and sound preference
 src/ui/panels.js               Consolidated 5-tab HUD player menu & keyboard nav
 src/ui/wizard.js               Character and park setup wizard
 src/games/fetch.js             Fetch mini-game: ball trajectory and companion fetch AI
@@ -147,8 +157,9 @@ which is cached as a data URL and drawn onto the canvas. No uploaded images are 
 
 `generateWorld(seed)` creates the terrain deterministically from a seed. The save format
 stores the terrain compactly as a 4,096-character string (`g`, `d`, `s`, `w`, `f` for
-grass, dirt, sand, water, field) plus character recipes, positions, friendships, and the
-wander flag. State is saved under `playpark.save.v1` in `localStorage`.
+grass, dirt, sand, water, field) plus character recipes, positions, friendships, the
+wander flag, and the forage basket (picked apples/mushrooms plus regrow clocks). State is
+saved under `playpark.save.v1` in `localStorage`.
 
 ### Collision rules
 
@@ -165,9 +176,10 @@ The pure logic is tested with Node's built-in test runner:
 npm test
 ```
 
-Coverage includes world generation, terrain round-tripping, pathfinding, blocked paths,
-tile reservation/collision helpers, facing/mirroring rules, avatar determinism, and name
-generation. `src/game.js` is intentionally import-safe in Node so the module can at least
+Coverage includes world generation, terrain round-tripping, pathfinding (including the
+wings' water-crossing mode), blocked paths, tile reservation/collision helpers,
+facing/mirroring rules, avatar determinism, name generation, forage respawn and
+basket state, effect abilities, and sound cue data. `src/game.js` is intentionally import-safe in Node so the module can at least
 be smoke-tested without a browser.
 
 ## Attributions & Credits

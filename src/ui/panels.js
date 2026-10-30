@@ -2,6 +2,7 @@ import { avatarDataUrl, bindAnimatedAvatar } from '../avatar.js';
 import { loadStats } from '../storage.js';
 import { formatCompanionInfo } from '../characters.js';
 import { activeEntries, equip, getEffectForItem, unequip } from '../effects.js';
+import { basketSummary } from '../forage.js';
 import { COMPANION_CAPS } from '../game.js';
 
 const $ = id => document.getElementById(id);
@@ -259,7 +260,8 @@ export class PanelsUI {
     onSimulateNpcWin,
     onAutoEquipNpc,
     onRosterChanged,
-    onToast
+    onToast,
+    onSound
   }) {
     this.getGame = getGame;
     this.getFriends = getFriends;
@@ -292,6 +294,7 @@ export class PanelsUI {
     this.onAutoEquipNpc = onAutoEquipNpc;
     this.onRosterChanged = onRosterChanged;
     this.onToast = onToast;
+    this.onSound = onSound;
     this.cardCharacter = null;
     this.lastNpcCharacter = null;
     this.activeTab = null;
@@ -556,6 +559,7 @@ export class PanelsUI {
       this.renderInventory();
       if (this.cardCharacter) this.renderCardEffects(this.cardCharacter);
       const where = equipped.owner === player ? '' : ` from ${equipped.owner.name || 'buddy'}`;
+      this.onSound?.('ui-click');
       this.notify(`Took off ${item.name}${where}.`);
       return;
     }
@@ -587,6 +591,7 @@ export class PanelsUI {
     this.renderInventory();
     if (this.cardCharacter) this.renderCardEffects(this.cardCharacter);
     const suffix = target === player ? '' : ` on ${target.name || 'buddy'}`;
+    this.onSound?.('equip');
     this.notify(`Wearing ${item.name}${suffix}.`);
   }
 
@@ -629,8 +634,9 @@ export class PanelsUI {
       }
     }
     const coins = game?.player?.coins || 0;
+    const basket = basketSummary(game?.forage);
 
-    // Coin banner
+    // Coin + basket banner
     const coinRow = document.createElement('div');
     coinRow.className = 'panel-note';
     coinRow.style.display = 'flex';
@@ -639,7 +645,7 @@ export class PanelsUI {
     coinRow.style.margin = '0 0 10px 0';
     coinRow.style.fontWeight = '600';
     coinRow.style.color = 'var(--accent)';
-    coinRow.textContent = `Wallet: 🪙 ${coins} Coins`;
+    coinRow.textContent = `Wallet: 🪙 ${coins} · Basket: ${basket.label}`;
     list.append(coinRow);
 
     this.renderWornStrip(game?.player, list);

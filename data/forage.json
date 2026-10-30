@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "items": {
+    "apple": {
+      "id": "apple",
+      "label": "Apple",
+      "icon": "🍎"
+    },
+    "mushroom": {
+      "id": "mushroom",
+      "label": "Mushroom",
+      "icon": "🍄"
+    }
+  },
+  "apples": {
+    "initial": 14,
+    "max": 18,
+    "respawnMs": 20000,
+    "tiles": ["grass", "field"]
+  },
+  "mushrooms": {
+    "respawnMs": 75000,
+    "sceneryTypes": ["mushroom", "mushroom-cluster"]
+  }
+}

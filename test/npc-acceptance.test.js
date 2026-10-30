@@ -251,8 +251,8 @@ test('won items auto-equip on the winner first and then on an active buddy', () 
   const game = makeGame({ npcs: [npc], companions: [buddy] });
 
   const first = rollNpcReward(game, npc, 'tic-tac-toe', 'win', {
-    // item chance, pick glowworm-jar (index 7 of the 10-item pool), no buddy/bonus
-    random: scripted([0, 0.75, 0.99, 0.99])
+    // item chance, pick glowworm-jar (index 7 of the 11-item pool), no buddy/bonus
+    random: scripted([0, 0.65, 0.99, 0.99])
   });
   const second = rollNpcReward(game, npc, 'tic-tac-toe', 'win', {
     // item chance, pick teleport-tricorder (last pool item), no buddy/bonus

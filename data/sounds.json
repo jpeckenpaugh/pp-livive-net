@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "masterGain": 0.22,
+  "storageKey": "playpark.sound.v1",
+  "cues": {
+    "ui-click": {
+      "notes": [
+        { "freq": 620, "ms": 55, "wave": "triangle", "gain": 0.5 }
+      ]
+    },
+    "game-open": {
+      "notes": [
+        { "at": 0, "freq": 392, "ms": 110, "wave": "triangle", "gain": 0.7 },
+        { "at": 90, "freq": 523, "ms": 130, "wave": "triangle", "gain": 0.7 },
+        { "at": 190, "freq": 659, "ms": 190, "wave": "sine", "gain": 0.8 }
+      ]
+    },
+    "place": {
+      "notes": [
+        { "freq": 330, "ms": 70, "wave": "square", "gain": 0.35 },
+        { "at": 45, "freq": 220, "ms": 85, "wave": "triangle", "gain": 0.35 }
+      ]
+    },
+    "turn": {
+      "notes": [
+        { "freq": 494, "ms": 90, "wave": "sine", "gain": 0.55 },
+        { "at": 80, "freq": 587, "ms": 120, "wave": "sine", "gain": 0.55 }
+      ]
+    },
+    "win": {
+      "notes": [
+        { "at": 0, "freq": 523, "ms": 130, "wave": "triangle", "gain": 0.7 },
+        { "at": 120, "freq": 659, "ms": 130, "wave": "triangle", "gain": 0.7 },
+        { "at": 240, "freq": 784, "ms": 200, "wave": "triangle", "gain": 0.8 },
+        { "at": 430, "freq": 1047, "ms": 260, "wave": "sine", "gain": 0.7 }
+      ]
+    },
+    "loss": {
+      "notes": [
+        { "at": 0, "freq": 392, "ms": 160, "wave": "triangle", "gain": 0.6 },
+        { "at": 150, "freq": 330, "ms": 180, "wave": "triangle", "gain": 0.6 },
+        { "at": 320, "freq": 262, "ms": 260, "wave": "sine", "gain": 0.55 }
+      ]
+    },
+    "draw": {
+      "notes": [
+        { "at": 0, "freq": 440, "ms": 150, "wave": "sine", "gain": 0.55 },
+        { "at": 150, "freq": 440, "ms": 220, "wave": "sine", "gain": 0.45 }
+      ]
+    },
+    "cheer": {
+      "notes": [
+        { "at": 0, "freq": 784, "ms": 70, "wave": "sine", "gain": 0.45 },
+        { "at": 70, "freq": 988, "ms": 80, "wave": "sine", "gain": 0.45 },
+        { "at": 150, "freq": 1175, "ms": 110, "wave": "sine", "gain": 0.4 }
+      ]
+    },
+    "pickup": {
+      "notes": [
+        { "freq": 880, "ms": 60, "wave": "sine", "gain": 0.5 },
+        { "at": 55, "freq": 1320, "ms": 110, "wave": "sine", "gain": 0.45 }
+      ]
+    },
+    "equip": {
+      "notes": [
+        { "freq": 523, "ms": 80, "wave": "triangle", "gain": 0.5 },
+        { "at": 70, "freq": 784, "ms": 140, "wave": "triangle", "gain": 0.5 }
+      ]
+    },
+    "error": {
+      "notes": [
+        { "freq": 180, "ms": 160, "wave": "sawtooth", "gain": 0.28 }
+      ]
+    }
+  }
+}

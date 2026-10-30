@@ -40,6 +40,14 @@ import miniGamesData from '../data/minigames.json' with { type: 'json' };
 import { rollReward, applyReward } from './rewards.js';
 import { awardNpcGame } from './npc/game-rewards.js';
 import { autoEquipOwner } from './npc/loadout.js';
+import {
+  basketSummary,
+  collectForageAt,
+  createForageState,
+  growForage,
+  seedApples
+} from './forage.js';
+import { SoundBoard } from './audio.js';
 
 const MAX_NPCS = engineConfig.crowd.maxNpcs;
 const DEFAULT_CROWD = engineConfig.crowd.defaultCount;
@@ -62,6 +70,7 @@ let entered = false;
 let lastFrameAt = 0;
 let npcWatchPrompt = null;
 let delegated = { host: false, runtime: false, bubbles: false };
+const sounds = new SoundBoard();
 
 function makeId(prefix) {
   const value = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2, 10);
@@ -99,6 +108,53 @@ function showToast(message) {
 function friendNpcs() {
   if (!game) return [];
   return game.npcs.filter(npc => friends.has(npc.id));
+}
+
+/** Tiles apples must not share: scenery, characters, and open mini-game boards. */
+function forageOccupiedTiles({ scenery = [], characters = [], blocked = [] } = {}) {
+  const occupied = new Set();
+  for (const item of scenery) {
+    if (item) occupied.add(`${item.x},${item.y}`);
+  }
+  for (const character of characters) {
+    if (character) occupied.add(`${character.x},${character.y}`);
+  }
+  for (const key of blocked) occupied.add(key);
+  return occupied;
+}
+
+function liveForageOccupied() {
+  return forageOccupiedTiles({
+    scenery: game?.scenery || [],
+    characters: [game?.player, ...(game?.npcs || []), ...(game?.companions || [])],
+    blocked: host?.getBlockedTiles?.() || []
+  });
+}
+
+/**
+ * Grow and pick forage once per frame. Apples and mushrooms are collected by
+ * standing on their tile, exactly like walking over a coin would feel.
+ */
+function updateForageGround(nowMs = Date.now()) {
+  const player = game?.player;
+  if (!game?.forage || !game.terrain || !player) return;
+  growForage(game.forage, {
+    grid: game.terrain,
+    nowMs,
+    occupied: liveForageOccupied()
+  });
+  const pickup = collectForageAt(game.forage, {
+    x: player.x,
+    y: player.y,
+    scenery: game.scenery,
+    nowMs
+  });
+  if (!pickup) return;
+  const basket = basketSummary(game.forage);
+  showToast(`+1 ${pickup.item.icon} ${pickup.item.label} · basket ${basket.label}`);
+  sounds.play('pickup');
+  panels?.renderInventory?.();
+  saveNow();
 }
 
 function onFriendshipChanged(npcId, isFriend) {
@@ -438,6 +494,7 @@ function openDebugMenu() {
 function handleActionKey(character) {
   if (host?.isOpen()) {
     const result = host.handleAction(character);
+    if (result?.changed) sounds.play('place');
     if (result?.handled || result?.changed) return;
     const seated = Boolean(character && host.session?.seats?.some(seat => seat.character === character));
     if (seated) return;
@@ -477,7 +534,20 @@ function hostHooks() {
     },
     dialogues: dialogueData,
     onEvent: event => {
-      if (event?.type === 'open') refreshMiniGameFlags();
+      if (!event) return;
+      if (event.type === 'open') {
+        refreshMiniGameFlags();
+        sounds.play('game-open');
+      } else if (event.type === 'turn') {
+        sounds.play('turn');
+      } else if (event.type === 'cheer') {
+        sounds.play('cheer');
+      } else if (event.type === 'finish') {
+        if (event.winnerSeat === null || event.winnerSeat === undefined) sounds.play('draw');
+        else sounds.play(Number(event.winnerSeat) === 0 ? 'win' : 'loss');
+      } else if (event.type === 'abandon') {
+        sounds.play('ui-click');
+      }
     }
   };
 }
@@ -833,6 +903,7 @@ function ensureGame() {
       npcGameAdapter?.activeToken?.();
 
       completeContinuousActivity();
+      updateForageGround();
       if (host && !host.isOpen()) refreshMiniGameFlags();
     };
   }
@@ -846,6 +917,18 @@ function updateWanderButton() {
   button.setAttribute('aria-pressed', String(on));
   const label = button.querySelector('.label');
   if (label) label.textContent = on ? 'Wander on' : 'Wander paused';
+}
+
+function updateSoundButton() {
+  const button = $('sound-toggle');
+  if (!button) return;
+  const on = sounds.enabled;
+  button.setAttribute('aria-pressed', String(on));
+  button.setAttribute('aria-label', on ? 'Mute sound effects' : 'Unmute sound effects');
+  const icon = button.querySelector('.icon');
+  if (icon) icon.textContent = on ? '🔊' : '🔇';
+  const label = button.querySelector('.label');
+  if (label) label.textContent = on ? 'Sound' : 'Muted';
 }
 
 function updateMeta() {
@@ -1146,6 +1229,16 @@ function applyState(state) {
   }
 
   ensureGame();
+  const forage = createForageState(state.forage);
+  if (!forage.seeded) {
+    seedApples(forage, {
+      grid: terrain,
+      occupied: forageOccupiedTiles({
+        scenery,
+        characters: [rawPlayer, ...npcs, ...companions]
+      })
+    });
+  }
   game.setWorld({
     terrain,
     worldSeed: state.worldSeed,
@@ -1153,6 +1246,7 @@ function applyState(state) {
     npcs,
     companions,
     scenery,
+    forage,
     wander: state.wander !== false
   });
   syncBehaviorWorld({ reset: true });
@@ -1435,6 +1529,11 @@ function removeCardCharacter() {
 function bindEvents() {
   $('wander-toggle')?.addEventListener('click', toggleWander);
   $('add-npc')?.addEventListener('click', addNeighbour);
+  $('sound-toggle')?.addEventListener('click', () => {
+    const on = sounds.toggle();
+    updateSoundButton();
+    if (on) sounds.play('ui-click');
+  });
   $('new-park')?.addEventListener('click', () => {
     if (!window.confirm('Start a new park? Your current park and neighbours will be replaced.')) return;
     clearSave();
@@ -1522,6 +1621,11 @@ function bindEvents() {
     if (document.visibilityState === 'hidden') saveNow();
   });
 
+  // Browsers only allow audio after a user gesture; unlock once, quietly.
+  const unlockAudio = () => sounds.unlock();
+  window.addEventListener('pointerdown', unlockAudio, { once: true });
+  window.addEventListener('keydown', unlockAudio, { once: true });
+
   window.setInterval(saveNow, 8000);
 }
 
@@ -1546,6 +1650,7 @@ function boot() {
     onTriggerNpcGame: triggerNpcGame,
     onRosterChanged: () => syncBehaviorWorld({ reset: true }),
     onToast: showToast,
+    onSound: cue => sounds.play(cue),
     onSave: saveNow,
     onSelect: character => panels?.showCard(character),
     onAddNeighbour: addNeighbour,
@@ -1575,6 +1680,7 @@ function boot() {
   });
 
   bindEvents();
+  updateSoundButton();
 
   const saved = loadSave();
   if (saved) {

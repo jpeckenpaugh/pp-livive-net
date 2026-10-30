@@ -533,6 +533,7 @@ export function resolveFx(character, now, owner) {
   let outlineWeight = 0;
   let stepDurationScale = 1;
   let coinBonus = 0;
+  let fly = false;
   let motion = null;
   let motionPriority = -Infinity;
   const aura = [];
@@ -580,6 +581,7 @@ export function resolveFx(character, now, owner) {
     const stats = isObject(effect.stats) ? effect.stats : {};
     stepDurationScale *= 1 + (num(stats.stepDurationScale, 1) - 1) * weight;
     coinBonus += num(stats.coinBonus, 0) * weight;
+    if (stats.fly === true && weight >= 0.5) fly = true;
 
     if (typeof effect.motion === 'string' && effect.motion) {
       const candidate = EFFECT_MOTIONS[effect.motion];
@@ -630,6 +632,9 @@ export function resolveFx(character, now, owner) {
       stepDurationScale: round(stepDurationScale),
       coinBonus: round(coinBonus)
     },
+    abilities: {
+      fly
+    },
     vfx,
     entries,
     effects
@@ -662,6 +667,10 @@ export function composeRenderTransform(base, fx) {
   result.stats = {
     ...(isObject(b.stats) ? b.stats : {}),
     ...(isObject(f.stats) ? f.stats : {})
+  };
+  result.abilities = {
+    ...(isObject(b.abilities) ? b.abilities : {}),
+    ...(isObject(f.abilities) ? f.abilities : {})
   };
   return result;
 }

@@ -203,6 +203,8 @@ export class Game {
 
     this.terrain = null;
     this.worldSeed = null;
+    this.scenery = [];
+    this.forage = null;
     this.player = null;
     this.npcs = [];
     this.companions = [];
@@ -402,10 +404,11 @@ export class Game {
     return Array.isArray(this.companions) ? this.companions.length : 0;
   }
 
-  setWorld({ terrain, worldSeed, player, npcs, companions = [], scenery = [], wander = true }) {
+  setWorld({ terrain, worldSeed, player, npcs, companions = [], scenery = [], forage = null, wander = true }) {
     this.terrain = terrain;
     this.worldSeed = worldSeed;
     this.scenery = scenery;
+    this.forage = forage;
     this.player = player ? this.makeCharacter(player, true) : null;
     this.npcs = (npcs || []).map(npc => this.makeCharacter(npc, false));
 
@@ -434,6 +437,8 @@ export class Game {
   setPreview(terrain, worldSeed, focus) {
     this.terrain = terrain;
     this.worldSeed = worldSeed;
+    this.scenery = [];
+    this.forage = null;
     this.player = null;
     this.npcs = [];
     this.companions = [];
@@ -624,6 +629,11 @@ export class Game {
     return resolveFx(character, this.time * 1000, owner);
   }
 
+  canFly(character) {
+    const fx = this.resolveFxFor(character);
+    return Boolean(fx?.abilities?.fly);
+  }
+
   interpolated(character) {
     if (!character) return { x: 0, y: 0 };
     if (!character.moving) return { x: character.x, y: character.y };
@@ -653,7 +663,14 @@ export class Game {
 
     const nx = character.x + dx;
     const ny = character.y + dy;
-    if (!isWalkable(typeAt(this.terrain, nx, ny))) return false;
+    const tileType = typeAt(this.terrain, nx, ny);
+    const flying = Boolean(fx?.abilities?.fly);
+    // A character stranded on water (wings removed mid-flight) may wade out
+    // rather than being permanently stuck.
+    const stranded = !isWalkable(typeAt(this.terrain, character.x, character.y));
+    if (tileType === null || (!flying && !isWalkable(tileType) && !stranded)) return false;
+    // Flying lets a character cross water; solid board footprints and other
+    // characters still block below.
 
     // Strict occupancy and reservation collision with collision exclusion rule:
     // Filter other characters using canCollide(character, other)
@@ -1206,7 +1223,9 @@ export class Game {
     const tileX = Math.floor(x / TILE);
     const tileY = Math.floor(y / TILE);
     if (!this.player || !this.terrain) return;
-    if (!isWalkable(typeAt(this.terrain, tileX, tileY))) {
+    const flying = this.canFly(this.player)
+      || !isWalkable(typeAt(this.terrain, this.player.x, this.player.y));
+    if (!flying && !isWalkable(typeAt(this.terrain, tileX, tileY))) {
       this.onToast('That spot is water.');
       return;
     }
@@ -1216,7 +1235,13 @@ export class Game {
       blocked.add(`${npc.x},${npc.y}`);
       if (npc.moving) blocked.add(`${npc.toX},${npc.toY}`);
     }
-    const path = findPath(this.terrain, { x: this.player.x, y: this.player.y }, { x: tileX, y: tileY }, blocked);
+    const path = findPath(
+      this.terrain,
+      { x: this.player.x, y: this.player.y },
+      { x: tileX, y: tileY },
+      blocked,
+      { fly: flying }
+    );
     if (path.length) {
       this.player.path = path;
       this.destination = { x: tileX, y: tileY, until: this.time + 1.4 };

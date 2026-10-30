@@ -78,6 +78,15 @@
       "periodMs": 260,
       "easing": "sine"
     },
+    "flap": {
+      "id": "flap",
+      "label": "Flap",
+      "priority": 55,
+      "amplitude": 7,
+      "tiltDeg": 2,
+      "periodMs": 420,
+      "easing": "sine"
+    },
     "teleport": {
       "id": "teleport",
       "label": "Blink",
@@ -521,6 +530,63 @@
         "summary": "+1 coin whenever you earn a reward.",
         "badge": "+1 coin",
         "icon": "🍀"
+      }
+    },
+    "wings": {
+      "id": "wings",
+      "itemId": "wings",
+      "name": "Glider Wings",
+      "slot": "back",
+      "target": "self",
+      "ai": { "priority": 32, "target": "self" },
+      "trigger": "move",
+      "duration": "permanent",
+      "stacking": "unique",
+      "visual": {
+        "scale": 1,
+        "alpha": 1,
+        "offsetX": 0,
+        "offsetY": -2,
+        "rotate": 0,
+        "tint": null,
+        "aura": [
+          {
+            "key": "wings.breeze",
+            "color": "#bfe9ff",
+            "radius": 26,
+            "opacity": 0.34,
+            "pulseMs": 1100,
+            "blend": "screen"
+          }
+        ],
+        "trail": [
+          {
+            "key": "wings.gust",
+            "style": "dust",
+            "color": "#e8f7ff",
+            "count": 5,
+            "lifeMs": 480,
+            "alpha": 0.45
+          }
+        ],
+        "outline": "#bfe9ff"
+      },
+      "motion": "flap",
+      "stats": {
+        "stepDurationScale": 0.72,
+        "coinBonus": 0,
+        "fly": true
+      },
+      "vfx": ["wings.glide", "wings.gust"],
+      "transition": {
+        "equipMs": 260,
+        "unequipMs": 200,
+        "easing": "ease-out"
+      },
+      "ui": {
+        "summary": "fly over water and move a little faster.",
+        "badge": "fly",
+        "icon": "🪽"
       }
     }
   }
