@@ -37,11 +37,12 @@ export function resolveGameChoices(options = {}, friendSpec = {}) {
 }
 
 export class DialogueManager {
-  constructor({ containerId = 'dialogue', onDialogueEnd, onFriendshipChange, onPlayGame, getGame } = {}) {
+  constructor({ containerId = 'dialogue', onDialogueEnd, onFriendshipChange, onPlayGame, onBeat, getGame } = {}) {
     this.dialogueNpc = null;
     this.onDialogueEnd = onDialogueEnd;
     this.onFriendshipChange = onFriendshipChange;
     this.onPlayGame = onPlayGame;
+    this.onBeat = onBeat;
     this.getGame = getGame;
     this.container = document.getElementById(containerId);
     this.name = document.getElementById('dialogue-name');
@@ -73,6 +74,16 @@ export class DialogueManager {
 
   setText(text) {
     if (this.text) this.text.textContent = text;
+  }
+
+  /**
+   * Announce a spoken beat for the current NPC. Called from the beat call
+   * sites after `setBeat`, so custom beats, menus, and choice re-renders stay
+   * silent. Listeners must never block the dialogue.
+   */
+  emitBeat(event) {
+    if (!this.dialogueNpc || !event) return;
+    this.onBeat?.(this.dialogueNpc, event);
   }
 
   bindArrowNavigation() {
@@ -153,6 +164,7 @@ export class DialogueManager {
       });
 
       this.setBeat(interpolate(friendSpec.text, { name: npc.name }), choices);
+      this.emitBeat('dialogue.friend');
       return;
     }
 
@@ -163,6 +175,7 @@ export class DialogueManager {
       onClick: c.action === 'accept' ? () => this.acceptFriendship() : () => this.declineFriendship()
     }));
     this.setBeat(interpolate(strangerSpec.text, { name: npc.name }), choices);
+    this.emitBeat('dialogue.stranger');
   }
 
   openCustomBeat(npc, text, choices) {
@@ -258,6 +271,7 @@ export class DialogueManager {
       onClick: () => this.close()
     }));
     this.setBeat(interpolate(spec.text, { name: npc.name }), choices);
+    this.emitBeat('dialogue.accepted');
   }
 
   declineFriendship() {
@@ -268,6 +282,7 @@ export class DialogueManager {
       onClick: () => this.close()
     }));
     this.setBeat(spec.text, choices);
+    this.emitBeat('dialogue.declined');
   }
 
   close() {

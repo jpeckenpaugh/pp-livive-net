@@ -74,11 +74,55 @@ let npcWatchPrompt = null;
 let delegated = { host: false, runtime: false, bubbles: false };
 const sounds = new SoundBoard();
 let voice = null;
+let audioUnlocked = false;
+const prefetchedVoices = new Set();
 
 /** Voice engine is built on the first gesture, never at module load. */
 function ensureVoice() {
   if (!voice) voice = new VoiceEngine();
   return voice;
+}
+
+/** Friends hear the warmer greeting; strangers hear the hello. */
+function greetingEventFor(npc) {
+  return friends.has(npc?.id) ? 'dialogue.friend' : 'dialogue.stranger';
+}
+
+/**
+ * Warm one event for one neighbour so the eventual `speak()` is a cache hit.
+ * Prefetch is one event per call: the engine rotates phrases by list index, so
+ * batching would warm a different phrase than `speak()` asks for.
+ */
+function prefetchVoiceBeat(npc, event) {
+  if (!voice?.enabled || !audioUnlocked || !npc || !event) return;
+  voice.prefetch(npc, [event]).catch(() => {});
+}
+
+/**
+ * Beat hook from `DialogueManager`. Speech renders and plays off the critical
+ * path; a muted, missing, or failed voice never delays the dialogue.
+ */
+function onDialogueBeat(npc, event) {
+  if (!npc || !event) return;
+  const engine = ensureVoice();
+  engine.speak(npc, event).catch(() => {});
+  if (event !== 'dialogue.stranger') return;
+  prefetchVoiceBeat(npc, 'dialogue.accepted');
+  prefetchVoiceBeat(npc, 'dialogue.declined');
+}
+
+/** Warm the greeting of any neighbour the player is walking up to. */
+function prefetchNearbyGreetings() {
+  const player = game?.player;
+  if (!player || !voice?.enabled || !audioUnlocked || dialogue?.isOpen()) return;
+  const radius = Number(voice.policy?.prefetchRadiusTiles) || 3;
+  for (const npc of game.npcs || []) {
+    if (!npc?.voice || prefetchedVoices.has(npc.id)) continue;
+    const distance = Math.abs(player.x - npc.x) + Math.abs(player.y - npc.y);
+    if (distance > radius) continue;
+    prefetchedVoices.add(npc.id);
+    prefetchVoiceBeat(npc, greetingEventFor(npc));
+  }
 }
 
 function makeId(prefix) {
@@ -173,7 +217,8 @@ function onFriendshipChanged(npcId, isFriend) {
   saveNow();
 }
 
-function onDialogueEnded() {
+function onDialogueEnded(npc) {
+  if (npc?.id) voice?.stopActor(npc.id);
   game?.select(null);
   game?.resumeFromDialogue();
   behaviorRuntime?.setDialogue(false);
@@ -442,6 +487,7 @@ function openWizard({ fresh = false } = {}) {
   }
   refreshMiniGameFlags();
   bubbles?.clear();
+  prefetchedVoices.clear();
 
   if (dialogue?.isOpen()) dialogue.close();
   panels?.closeAllPanels();
@@ -871,6 +917,7 @@ function ensureGame() {
       onDialogueEnd: onDialogueEnded,
       onFriendshipChange: onFriendshipChanged,
       onPlayGame,
+      onBeat: onDialogueBeat,
       getGame: () => game
     });
 
@@ -915,6 +962,7 @@ function ensureGame() {
 
       completeContinuousActivity();
       updateForageGround();
+      prefetchNearbyGreetings();
       if (host && !host.isOpen()) refreshMiniGameFlags();
     };
   }
@@ -940,6 +988,18 @@ function updateSoundButton() {
   if (icon) icon.textContent = on ? '🔊' : '🔇';
   const label = button.querySelector('.label');
   if (label) label.textContent = on ? 'Sound' : 'Muted';
+}
+
+function updateVoiceButton() {
+  const button = $('voice-toggle');
+  if (!button) return;
+  const on = ensureVoice().enabled;
+  button.setAttribute('aria-pressed', String(on));
+  button.setAttribute('aria-label', on ? 'Mute neighbour voices' : 'Unmute neighbour voices');
+  const icon = button.querySelector('.icon');
+  if (icon) icon.textContent = on ? '🗣' : '🔇';
+  const label = button.querySelector('.label');
+  if (label) label.textContent = on ? 'Voices' : 'Voices off';
 }
 
 function updateMeta() {
@@ -1157,6 +1217,7 @@ function applyState(state) {
   }
   refreshMiniGameFlags();
   bubbles?.clear();
+  prefetchedVoices.clear();
 
   const worldData = generateWorld(state.worldSeed);
   const terrain = decodeTerrain(state.terrain) || worldData.grid;
@@ -1551,6 +1612,12 @@ function bindEvents() {
     updateSoundButton();
     if (on) sounds.play('ui-click');
   });
+  $('voice-toggle')?.addEventListener('click', () => {
+    const engine = ensureVoice();
+    const on = engine.setEnabled(!engine.enabled);
+    if (on) engine.unlock();
+    updateVoiceButton();
+  });
   $('new-park')?.addEventListener('click', () => {
     if (!window.confirm('Start a new park? Your current park and neighbours will be replaced.')) return;
     clearSave();
@@ -1645,6 +1712,7 @@ function bindEvents() {
   const unlockAudio = () => {
     sounds.unlock();
     ensureVoice().unlock();
+    audioUnlocked = true;
   };
   window.addEventListener('pointerdown', unlockAudio, { once: true });
   window.addEventListener('keydown', unlockAudio, { once: true });
@@ -1704,6 +1772,7 @@ function boot() {
 
   bindEvents();
   updateSoundButton();
+  updateVoiceButton();
 
   const saved = loadSave();
   if (saved) {
