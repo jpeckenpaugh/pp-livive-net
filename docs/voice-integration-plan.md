@@ -276,7 +276,7 @@ module that touches `AudioContext`, `fetch`, or IndexedDB.
       "clips": {
         "greet": {
           "path": "vendor/rasp/audio/ef_dora/greet.weba",
-          "bytes": 3420, "durationMs": 665, "sha256": "b86867…"
+          "bytes": 3420, "durationMs": 665, "samples": 31578, "sha256": "b86867…"
         }
       }
     }
@@ -295,6 +295,10 @@ module that touches `AudioContext`, `fetch`, or IndexedDB.
 
 Keeping the phrase text and translations in the manifest is what makes an optional
 original-language subtitle possible later without another vendor run.
+
+`durationMs` is registry metadata, not a sample-count oracle — the Phase 0 spike measured
+registry durations 0.7–1.4% longer than the decoded frame count. The manifest carries the
+decoded `samples` value and the engine sizes buffers from that, never from `durationMs`.
 
 ### Save change (v3)
 
@@ -382,7 +386,7 @@ Estimates assume one developer, existing test discipline, no upstream changes.
 
 | Task | Acceptance |
 | --- | --- |
-| `scripts/vendor_voice_bank.mjs` | Reads the published `registry.json`, verifies `sha256`/`bytes`, copies the selected voices' 26 phrases into `vendor/rasp/`, copies the wasm, writes `data/voice_bank.json` including `phrases` and `hooks`; idempotent; `--check` exits non-zero on drift |
+| `scripts/vendor_voice_bank.mjs` | Reads the published `registry.json`, verifies `sha256`/`bytes`, copies the selected voices' 26 phrases into `vendor/rasp/`, decodes each clip once to record its frame count (`samples`), copies the wasm, writes `data/voice_bank.json` including `phrases` and `hooks`; idempotent; `--check` exits non-zero on drift |
 | `scripts/build_voice_pools.mjs` | Loads the vendored wasm in Node, enumerates 100 seeds per banked voice, writes `data/voice_pools.json`; deterministic across runs |
 | Voice slice | 2 voices per language where available, all 26 phrases; recorded in the script config |
 | `npm run voice:vendor`, `npm run voice:pools` | Wired in `package.json`; documented in `AGENTS.md` |
