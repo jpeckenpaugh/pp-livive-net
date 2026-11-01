@@ -500,12 +500,21 @@ win/loss → close.
 
 ### Phase 6 — UI, docs, release (~1 day)
 
+**Converged decisions (2026-11-01)**
+
+- The 🗣 pill keeps its one-click mute. A small caret pill beside it opens a volume popover (sheet at 360 px), with a keyboard-accessible slider.
+- The chip shows a two-letter code with a full-name `aria-label` and `title`; it appears only in the dialogue header and only for actors with a `voice` and a non-English language.
+- The original-language subtitle stays deferred; the chip and subtitle would compete for the same space.
+- Raising the slider from 0 unmutes; dropping it to 0 goes silent without toggling mute.
+- No new test file; only the listed UI and doc files change.
+- Phase 6 is marked "code complete, manual smoke pending" in this commit and flipped to done after the human pass.
+
 | Task | Acceptance |
 | --- | --- |
-| Voice toggle + volume | Native button with `aria-pressed`; volume in the same panel; keyboard operable; 360 px layout holds |
-| Language chip in dialogue | Two-letter locale chip only when non-English; `aria-label` reads "speaks Spanish" |
-| Docs | `README.md` features + attribution, `AGENTS.md` architecture rows and invariants, this file updated |
-| Test suite | New suites pass; `npm test` green; no browser automation added |
+| Voice toggle + volume | Mute stays one click; caret opens a browser-native slider; keyboard operable; 360 px sheet |
+| Language chip in dialogue | Two-letter code, full-name `aria-label`, hidden for English and voiceless actors |
+| Docs | `README.md` features + controls, `AGENTS.md` architecture rows and invariants, this file updated |
+| Test suite | Existing suites green; no browser automation added |
 | Manual smoke | Chrome + Safari + one phone; voices on/off; fresh park + migrated save |
 
 **Exit:** shipped to `main`, Pages deploy verified.
