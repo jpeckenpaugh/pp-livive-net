@@ -434,6 +434,16 @@ corpus build id.
 
 ### Phase 3 — Engine and playback (~1.5 days)
 
+**Converged decisions (2026-11-01)**
+
+- Voices get their own `AudioContext` and master gain; `src/audio.js` is untouched.
+- The engine imports the vendored module via `import.meta.url` and passes an explicit `{ module_or_path }` URL for the wasm, cache-busted by `corpusBuild`.
+- IndexedDB database `playpark-voice` v1, store `pcm`, records `{ key, buffer: ArrayBuffer, sampleRate, length, channels, bytes, createdAt }`, key as the joined tuple string. No eviction in v1; the cache grows with cast size.
+- Sources are keyed per actor. A repeat `speak()` on the same actor cuts off the previous line; `stopAll()` handles mute and visibility.
+- Manual testing is console-only through `window.playPark.voice` — no dev flag, no harness page.
+- `speak()` accepts a character record or a spec, normalises through `voiceForRecord`, and resolves `Promise<boolean>`.
+- `prefs.js` defaults to `{ enabled: true, volume: 0.8 }`, swallows write failures, and stays a plain read/write module.
+
 | Task | Acceptance |
 | --- | --- |
 | `src/voice/engine.js` | Lazy wasm init; `speak(spec, phrase)`; typed failure → `false`, never throws |
