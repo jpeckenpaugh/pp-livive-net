@@ -45,6 +45,9 @@ gate.
 | `data/dialogues.json` | Dialogue templates, prompts with `{name}` interpolation, and menu schemas |
 | `data/entities.json` | NPC names, player names, and vibes/flavour text |
 | `data/cubeworld_pets.json` | Pre-rendered offline sprite sheets for Cube World animal pets and creatures |
+| `data/voice.json` | Language weights, event → hook aliases, prefetch and chat limits |
+| `data/voice_bank.json` | Generated voice manifest: voices, phrases, hooks, hashes, durations |
+| `data/voice_pools.json` | Generated seed → voice spec pools, pinned to the corpus build |
 | `src/main.js` | App state, dialogue triggers, save loop, and event wiring |
 | `src/game.js` | Movement physics, tile collision, camera, character registry, wander AI |
 | `src/renderer.js` | Canvas WorldRenderer, viewport math, layer sorting, and minimap |
@@ -59,6 +62,10 @@ gate.
 | `src/inventory.js` | Starter inventory factory and item definition getters |
 | `src/forage.js` | Apple spawning, harvestable mushrooms, and basket persistence |
 | `src/audio.js` | Synthesized sound effects and the saved mute preference |
+| `src/voice/casting.js` | Pure language/voice casting, hook phrase choice, stored-spec repair |
+| `src/voice/bank.js` | Voice manifest lookup and clip resolution |
+| `src/voice/engine.js` | Lazy wasm init, IndexedDB PCM cache, playback, mute and volume |
+| `src/voice/prefs.js` | Mute/volume persistence under `playpark.voice.v1` |
 | `src/ui/panels.js` | Unified 5-tab HUD player menu, keyboard navigation, and side panels |
 | `src/ui/wizard.js` | Park setup wizard, draft creation, and avatar customizer |
 | `src/games/fetch.js` | Fetch mini-game: ball trajectory and companion fetch AI |
@@ -66,6 +73,7 @@ gate.
 | `src/games/checkers.js` | In-world 8×8 Checkers/Draughts board on map tiles with turn-taking |
 | `vendor-src/dicebear.js` | Source entry used to build the committed vendor bundle |
 | `vendor/dicebear-voxel.js` | Generated bundle; do not hand-edit |
+| `vendor/rasp/` | Vendored RASP engine (`rasp.js`, `rasp_bg.wasm`) and voice clips; generated, do not hand-edit |
 | `scripts/render_cubeworld_pets.py` | Standalone 3D software rasterizer generating `data/cubeworld_pets.json` |
 | `test/` | `node:test` suites for pure logic |
 
@@ -96,6 +104,12 @@ extractable.
   use DiceBear Voxel Art recipes `{ seed, look }` rendered offline to local SVGs. Companion
   animals and creatures use pre-rendered 3D software-rasterized voxel sprite sheets in
   `data/cubeworld_pets.json`. No runtime external API requests are permitted for either.
+- **Voices are offline, seeded, and stored.** Each neighbour's language and RASP spec are
+  drawn at creation from `data/voice.json` + `data/voice_pools.json` and saved inside the
+  NPC's `voice` block; never re-derive or re-roll them on load. Clips and the wasm are
+  vendored under `vendor/rasp/`, so playback makes no network request. English text stays
+  on screen; the spoken cue is another language. Adding a line is an upstream bake plus
+  `npm run voice:vendor`, not a JS edit.
 - **Data-driven configuration.** Constants, avatar variants, items, engine parameters,
   and dialogue scripts belong in `data/*.json` files. Prefer updating external JSON data
   over hardcoding constants in JavaScript modules.

@@ -181,6 +181,58 @@ body.wizard-open canvas#world {
   color: var(--accent-ink);
 }
 
+/* Volume popover, anchored to the caret pill and below the whole action row. */
+.voice-volume {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  display: grid;
+  gap: 6px;
+  width: 200px;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 13px;
+  background: var(--panel);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+}
+
+.voice-volume[hidden] {
+  display: none;
+}
+
+.voice-volume label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.voice-volume output {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.voice-volume input[type="range"] {
+  width: 100%;
+  min-height: 36px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.voice-volume input[type="range"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
 .friend-row.nav-focused,
 .friend-row:focus-within {
   border-color: var(--accent);
@@ -503,7 +555,15 @@ body.wizard-open canvas#world {
 
   .dialogue-name {
     font-size: 10px !important;
+  }
+
+  .dialogue-head {
     margin-bottom: 2px !important;
+  }
+
+  .dialogue-language {
+    padding: 1px 5px;
+    font-size: 8px;
   }
 
   #dialogue-text {
@@ -531,12 +591,38 @@ body.wizard-open canvas#world {
 
 .dialogue-name {
   display: block;
-  margin-bottom: 4px;
+  min-width: 0;
+  margin-bottom: 0;
   color: var(--accent);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.dialogue-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.dialogue-language {
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgba(182, 227, 124, 0.12);
+  color: var(--accent-strong);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1.4;
+}
+
+.dialogue-language[hidden] {
+  display: none;
 }
 
 #dialogue-text {
@@ -1161,6 +1247,13 @@ body.dialogue-open .topbar {
     min-height: 33px;
     padding: 7px 10px;
     font-size: 11px;
+  }
+
+  /* Full-width sheet under the top bar on narrow screens. */
+  .voice-volume {
+    left: 0;
+    right: 0;
+    width: auto;
   }
 
   #wander-toggle .label {

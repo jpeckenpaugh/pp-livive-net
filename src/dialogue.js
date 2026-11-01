@@ -1,6 +1,26 @@
 import { avatarDataUrl, bindAnimatedAvatar } from './avatar.js';
 import { formatCompanionInfo } from './characters.js';
 import dialogueData from '../data/dialogues.json' with { type: 'json' };
+import voicePolicy from '../data/voice.json' with { type: 'json' };
+
+const LANGUAGE_LABELS = new Map(
+  (Array.isArray(voicePolicy.languages) ? voicePolicy.languages : [])
+    .filter(entry => entry && typeof entry.id === 'string')
+    .map(entry => [entry.id, entry.label || entry.id])
+);
+
+/**
+ * Resolve the dialogue language chip for an actor: a two-letter code plus the
+ * full language name. English, companions, and any actor without a stored
+ * voice return `null`, so the header shows only the name.
+ */
+export function languageChipFor(character) {
+  const lang = typeof character?.voice?.lang === 'string' ? character.voice.lang.toLowerCase() : '';
+  if (!lang || lang === 'en') return null;
+  const label = LANGUAGE_LABELS.get(lang);
+  if (!label) return null;
+  return { code: lang.toUpperCase(), label };
+}
 
 function interpolate(template, vars) {
   return template.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? '');
@@ -46,6 +66,7 @@ export class DialogueManager {
     this.getGame = getGame;
     this.container = document.getElementById(containerId);
     this.name = document.getElementById('dialogue-name');
+    this.language = document.getElementById('dialogue-language');
     this.text = document.getElementById('dialogue-text');
     this.choices = document.getElementById('dialogue-choices');
   }
@@ -74,6 +95,26 @@ export class DialogueManager {
 
   setText(text) {
     if (this.text) this.text.textContent = text;
+  }
+
+  /**
+   * Show the language chip for a voiced, non-English actor. English speakers,
+   * companions, and menu beats pass `null` and the chip is cleared.
+   */
+  setLanguageChip(character) {
+    const chip = this.language ? languageChipFor(character) : null;
+    if (!this.language) return;
+    if (!chip) {
+      this.language.hidden = true;
+      this.language.textContent = '';
+      this.language.removeAttribute('aria-label');
+      this.language.removeAttribute('title');
+      return;
+    }
+    this.language.textContent = chip.code;
+    this.language.setAttribute('aria-label', `speaks ${chip.label}`);
+    this.language.title = chip.label;
+    this.language.hidden = false;
   }
 
   /**
@@ -128,6 +169,7 @@ export class DialogueManager {
     document.body.classList.add('dialogue-open');
     this.container.hidden = false;
     this.name.textContent = character.name;
+    this.setLanguageChip(character);
     this.updatePosition();
 
     // Handle companion dialogue (shows name, class, and type)
@@ -184,6 +226,7 @@ export class DialogueManager {
     document.body.classList.add('dialogue-open');
     this.container.hidden = false;
     this.name.textContent = npc.name;
+    this.setLanguageChip(null);
     this.setBeat(text, choices);
     this.updatePosition();
   }

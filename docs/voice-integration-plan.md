@@ -507,7 +507,11 @@ win/loss → close.
 - The original-language subtitle stays deferred; the chip and subtitle would compete for the same space.
 - Raising the slider from 0 unmutes; dropping it to 0 goes silent without toggling mute.
 - No new test file; only the listed UI and doc files change.
-- Phase 6 is marked "code complete, manual smoke pending" in this commit and flipped to done after the human pass.
+- Phase 6 flips to done after the human smoke pass.
+
+**Status (2026-11-01): done.** Human smoke passed on Chrome, Safari, and a phone: volume
+popover and sheet, one-click mute, persisted volume, and the two-letter chip for voiced,
+non-English neighbours. Shipped to `main` for Pages.
 
 | Task | Acceptance |
 | --- | --- |
@@ -594,9 +598,12 @@ and its listening rounds. We test the seam.
 2. **Language mix.** Default is ~40% English, ~9% each for es/pt/ja/zh/hi, ~7–8% for fr/it.
    A more even split is a one-line change; the question is how much of the park the player
    should understand.
-3. **Show the language on screen?** A small `ES` chip is the default. The stronger version
-   is a subtitle with the original text under the English line — the manifest already
-   carries the translations, so this is a UI decision, not a data one.
+3. **Show the language on screen?** A small `ES` chip is the default, and it shipped that
+   way. The stronger version is a subtitle with the original text under the English line —
+   the manifest already carries the translations, so this is a UI decision, not a data one.
+   **Deferred (2026-11-01):** the chip and a subtitle would compete for the same dialogue
+   space at 360 px. The data stays in the manifest, so the subtitle can land later without
+   another vendor run.
 4. **Should the player's own character speak?** Scoped out; the player has a recipe seed if
    it is ever wanted.
 5. **Should companions speak?** The corpus is human speech, so a hedgehog saying "¡Hola,

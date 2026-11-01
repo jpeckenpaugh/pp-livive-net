@@ -19,7 +19,15 @@
         <button id="stats-toggle" class="pill" type="button" aria-expanded="false" aria-controls="stats-panel" aria-label="Stats" title="Stats"><span class="icon">🏆</span><span class="label">Stats</span></button>
         <button id="sound-toggle" class="pill" type="button" aria-pressed="true" aria-label="Toggle sound effects" title="Sound effects"><span class="icon">🔊</span><span class="label">Sound</span></button>
         <button id="voice-toggle" class="pill" type="button" aria-pressed="true" aria-label="Mute neighbour voices" title="Neighbour voices"><span class="icon">🗣</span><span class="label">Voices</span></button>
+        <button id="voice-volume-toggle" class="pill voice-caret" type="button" aria-expanded="false" aria-controls="voice-volume" aria-label="Voice volume" title="Voice volume"><span class="icon" aria-hidden="true">▾</span></button>
         <button id="debug-toggle" class="pill" type="button" aria-expanded="false" aria-controls="debug-panel" aria-label="Debug" title="Debug"><span class="icon">⚙️</span><span class="label">Debug</span></button>
+        <div id="voice-volume" class="voice-volume" hidden role="group" aria-label="Voice volume">
+          <label for="voice-volume-slider">
+            <span>voice volume</span>
+            <output id="voice-volume-value" for="voice-volume-slider" aria-hidden="true">80%</output>
+          </label>
+          <input id="voice-volume-slider" type="range" min="0" max="100" step="5" value="80">
+        </div>
       </div>
     </header>
 
@@ -108,7 +116,10 @@
 
     <section id="dialogue" class="dialogue" hidden role="dialog" aria-modal="true" aria-labelledby="dialogue-name">
       <div class="dialogue-copy">
-        <span id="dialogue-name" class="dialogue-name"></span>
+        <div class="dialogue-head">
+          <span id="dialogue-name" class="dialogue-name"></span>
+          <span id="dialogue-language" class="dialogue-language" role="img" hidden></span>
+        </div>
         <p id="dialogue-text"></p>
         <div id="dialogue-choices" class="dialogue-choices"></div>
       </div>

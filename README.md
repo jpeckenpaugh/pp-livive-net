@@ -29,6 +29,11 @@ and ES modules — there is no build step to serve it.
   to collect it into your basket; apples sprout again on a timer and mushrooms regrow after a while.
 - **Sound effects** — a tiny synthesized cue set plays when games open, turns change, pieces land,
   and matches are won or lost. Toggle it from the 🔊 button in the top bar.
+- **Neighbour voices** — every neighbour greets you with a short line in their own language, and
+  speaks again when they invite you to a game, react to a result, or chat nearby. The on-screen
+  words stay English; a small language chip (`ES`, `JA`, `FR`, …) appears in the dialogue header
+  when they speak something other than English. The 🗣 button mutes them, and the ▾ caret beside
+  it sets the volume.
 - **Match Stats & Head-to-Head Records** — win, loss, and draw records are tracked across all
   Tic-Tac-Toe matches with each park neighbour in the **🏆 Stats** panel.
 - **Neighbour generator** — roll a crowd, reroll individuals, and add more later.
@@ -90,6 +95,8 @@ Requires Node.js 20 or newer for the tooling; the game itself only needs a moder
 | Close panel or dialogue | `Escape` |
 | Throw / Action key | `Enter` or `Space` (place TTT mark or interact) |
 | Toggle sound effects | 🔊 button in the top bar |
+| Toggle neighbour voices | 🗣 button in the top bar |
+| Set voice volume | ▾ caret beside 🗣, then drag the slider (`Escape` closes it) |
 
 ## How it works
 

@@ -85,6 +85,8 @@ const spokenAbandonSessions = new WeakSet();
 /** Last bubble `seq` spoken per actor, so a re-show cannot replay the line. */
 const spokenChatSeqs = new Map();
 let chatGate = null;
+/** Debounce for persisting the voice volume while the slider is dragged. */
+let voiceVolumeTimer = 0;
 
 /** Voice engine is built on the first gesture, never at module load. */
 function ensureVoice() {
@@ -340,12 +342,19 @@ function tableGamesFor(opponent) {
 
 function openDialogue(npc) {
   if (!npc) return;
+  setVoiceVolumeOpen(false);
   dismissNpcWatchPrompt();
   panels?.closeAllPanels();
   game.select(npc.id);
   behaviorRuntime?.setDialogue(true);
   const isFriend = friends.has(npc.id);
   dialogue.open(npc, isFriend, { games: tableGamesFor(npc) });
+}
+
+/** Show a scripted beat, closing the volume popover so it cannot sit behind the dialogue. */
+function showDialogueBeat(npc, text, choices) {
+  setVoiceVolumeOpen(false);
+  dialogue.openCustomBeat(npc, text, choices);
 }
 
 function refreshMiniGameFlags() {
@@ -492,7 +501,7 @@ function showAbandonPrompt(meta, opponent, onConfirm, onCancel) {
       }
     }
   }));
-  dialogue.openCustomBeat(opponent && opponent.name ? opponent : { name: 'Game' }, prompt.text, choices);
+  showDialogueBeat(opponent && opponent.name ? opponent : { name: 'Game' }, prompt.text, choices);
   speakAbandonPrompt(opponent);
 }
 
@@ -527,7 +536,7 @@ function handleGameEnd(payload) {
     }
   }));
 
-  dialogue.openCustomBeat(opponent, text, choices);
+  showDialogueBeat(opponent, text, choices);
   speakSettlementResult(speaker, outcome, session);
   panels?.updateDebugUI?.();
 }
@@ -624,7 +633,7 @@ function openPlayerMenu() {
     }
   }));
 
-  dialogue.openCustomBeat(player, dialogueData.playerMenu.title, choices);
+  showDialogueBeat(player, dialogueData.playerMenu.title, choices);
 }
 
 function openDebugMenu() {
@@ -650,7 +659,7 @@ function openDebugMenu() {
     }
   }));
 
-  dialogue.openCustomBeat(player, dialogueData.debugMenu.title, choices);
+  showDialogueBeat(player, dialogueData.debugMenu.title, choices);
 }
 
 function handleActionKey(character) {
@@ -1099,13 +1108,40 @@ function updateSoundButton() {
 function updateVoiceButton() {
   const button = $('voice-toggle');
   if (!button) return;
-  const on = ensureVoice().enabled;
+  const engine = ensureVoice();
+  const on = engine.enabled;
   button.setAttribute('aria-pressed', String(on));
   button.setAttribute('aria-label', on ? 'Mute neighbour voices' : 'Unmute neighbour voices');
   const icon = button.querySelector('.icon');
   if (icon) icon.textContent = on ? '🗣' : '🔇';
   const label = button.querySelector('.label');
   if (label) label.textContent = on ? 'Voices' : 'Voices off';
+  syncVoiceVolume(engine);
+}
+
+/** Mirror the engine's volume into the popover slider and its percentage. */
+function syncVoiceVolume(engine = ensureVoice()) {
+  const slider = $('voice-volume-slider');
+  const value = $('voice-volume-value');
+  const percent = Math.round(Math.max(0, Math.min(1, Number(engine.volume) || 0)) * 100);
+  if (slider && Number(slider.value) !== percent) slider.value = String(percent);
+  if (value) value.textContent = `${percent}%`;
+}
+
+/** Open or close the volume popover, keeping `aria-expanded` in step. */
+function setVoiceVolumeOpen(open) {
+  const popover = $('voice-volume');
+  const button = $('voice-volume-toggle');
+  if (!popover || !button) return;
+  const next = Boolean(open);
+  popover.hidden = !next;
+  button.setAttribute('aria-expanded', String(next));
+  if (next) syncVoiceVolume();
+}
+
+function isVoiceVolumeOpen() {
+  const popover = $('voice-volume');
+  return Boolean(popover && !popover.hidden);
 }
 
 function updateMeta() {
@@ -1636,7 +1672,7 @@ function promptNpcGameWatch(detail = {}, session = null) {
     }
   ];
 
-  dialogue.openCustomBeat(
+  showDialogueBeat(
     game?.player || { name: 'Park' },
     textFor(remaining),
     choices
@@ -1726,6 +1762,36 @@ function bindEvents() {
     if (on) engine.unlock();
     updateVoiceButton();
   });
+
+  $('voice-volume-toggle')?.addEventListener('click', () => {
+    setVoiceVolumeOpen(!isVoiceVolumeOpen());
+  });
+
+  const volumeSlider = $('voice-volume-slider');
+  const commitVoiceVolume = () => {
+    voiceVolumeTimer = 0;
+    if (!volumeSlider) return;
+    const engine = ensureVoice();
+    const next = Math.max(0, Math.min(1, Number(volumeSlider.value) / 100));
+    // Raising the slider from silent is the same intention as unmuting.
+    if (next > 0 && !engine.enabled) {
+      engine.setEnabled(true);
+      engine.unlock();
+    }
+    engine.setVolume(next);
+    updateVoiceButton();
+  };
+
+  volumeSlider?.addEventListener('input', () => {
+    const value = $('voice-volume-value');
+    if (value) value.textContent = `${Math.round(Number(volumeSlider.value) || 0)}%`;
+    window.clearTimeout(voiceVolumeTimer);
+    voiceVolumeTimer = window.setTimeout(commitVoiceVolume, 120);
+  });
+  volumeSlider?.addEventListener('change', () => {
+    window.clearTimeout(voiceVolumeTimer);
+    commitVoiceVolume();
+  });
   $('new-park')?.addEventListener('click', () => {
     if (!window.confirm('Start a new park? Your current park and neighbours will be replaced.')) return;
     clearSave();
@@ -1789,6 +1855,20 @@ function bindEvents() {
   bindTouchButton('touch-right', 'ArrowRight');
   bindTouchButton('touch-enter', 'Enter');
   bindTouchButton('touch-esc', 'Escape');
+
+  document.addEventListener('pointerdown', event => {
+    if (!isVoiceVolumeOpen()) return;
+    const popover = $('voice-volume');
+    const button = $('voice-volume-toggle');
+    if (popover?.contains(event.target) || button?.contains(event.target)) return;
+    setVoiceVolumeOpen(false);
+  });
+
+  window.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || !isVoiceVolumeOpen()) return;
+    setVoiceVolumeOpen(false);
+    $('voice-volume-toggle')?.focus({ preventScroll: true });
+  });
 
   window.addEventListener('keydown', event => {
     if (dialogue?.isOpen()) {
