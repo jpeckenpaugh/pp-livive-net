@@ -1,0 +1,3262 @@
+{
+  "schema": 1,
+  "corpusBuild": "3e81bd1f069b",
+  "inputsVersion": 4,
+  "wasm": {
+    "js": {
+      "path": "vendor/rasp/rasp.js",
+      "bytes": 16960,
+      "sha256": "15e03ee1491205472a4f2edf5caf482f730fe1aa31cd1832f6e32dff1c3c652a"
+    },
+    "bin": {
+      "path": "vendor/rasp/rasp_bg.wasm",
+      "bytes": 632123,
+      "sha256": "c7e6cb43ed0215eaccb83f2fd74dd213706051b60359ffac66245703c3351515"
+    }
+  },
+  "voices": {
+    "af_heart": {
+      "language": "en",
+      "locale": "en-US",
+      "gender": "female",
+      "clips": {
+        "greet": {
+          "path": "vendor/rasp/audio/af_heart/greet.weba",
+          "bytes": 3420,
+          "durationMs": 665,
+          "samples": 31578,
+          "sha256": "b868675523ffde655dbbd1433786ac301d22a1341bc2da51a0da2791f2602a87"
+        },
+        "hello": {
+          "path": "vendor/rasp/audio/af_heart/hello.weba",
+          "bytes": 2967,
+          "durationMs": 573,
+          "samples": 27148,
+          "sha256": "f579513f16371dc286dd881279cf34b325d645a8475ccd099e4510789a1025ee"
+        },
+        "good-to-see": {
+          "path": "vendor/rasp/audio/af_heart/good-to-see.weba",
+          "bytes": 4334,
+          "durationMs": 872,
+          "samples": 41482,
+          "sha256": "d92ea84b2a7897007ef0d93eb26bac805ae8e72cbb839ebb16a4e61ac01316c3"
+        },
+        "hey-buddy": {
+          "path": "vendor/rasp/audio/af_heart/hey-buddy.weba",
+          "bytes": 3871,
+          "durationMs": 780,
+          "samples": 37058,
+          "sha256": "a93fed6417e0e6d4ee75fe3e81e5c5515eea273a58a8e3d6f7a1da5acb1e4302"
+        },
+        "be-friends": {
+          "path": "vendor/rasp/audio/af_heart/be-friends.weba",
+          "bytes": 5320,
+          "durationMs": 1083,
+          "samples": 51620,
+          "sha256": "f9cdcc3879e6f6c5725d3fc3c9c8f6610c2a0c8fdcca56c6a906034e57ec4632"
+        },
+        "yay": {
+          "path": "vendor/rasp/audio/af_heart/yay.weba",
+          "bytes": 2697,
+          "durationMs": 509,
+          "samples": 24072,
+          "sha256": "eed3a91a8dda570f6df7461b15dbd6c71e14fcc01eb09a1072068adc7df5c29a"
+        },
+        "lets-play": {
+          "path": "vendor/rasp/audio/af_heart/lets-play.weba",
+          "bytes": 5309,
+          "durationMs": 1086,
+          "samples": 51782,
+          "sha256": "f24eb3e3e12ba2a4baf91cdb20b7d95c3f4a256f12951f8ab1c2621b83414a99"
+        },
+        "got-time": {
+          "path": "vendor/rasp/audio/af_heart/got-time.weba",
+          "bytes": 5640,
+          "durationMs": 1180,
+          "samples": 56290,
+          "sha256": "cd6846b1bd07d772b3edf9f0dfa2c9cd1ba5b681e2e1baabaab6ed60df3f4798"
+        },
+        "watch-this": {
+          "path": "vendor/rasp/audio/af_heart/watch-this.weba",
+          "bytes": 3953,
+          "durationMs": 784,
+          "samples": 37258,
+          "sha256": "0b7f5914bbfc8891587bf36a463ab33b39ff167f68297ce429f9b1705f538dc1"
+        },
+        "nice-one": {
+          "path": "vendor/rasp/audio/af_heart/nice-one.weba",
+          "bytes": 3898,
+          "durationMs": 775,
+          "samples": 36824,
+          "sha256": "eef747fdfe381971525e4c3170298909d23493475caf8b42a654b633524e79d0"
+        },
+        "well-played": {
+          "path": "vendor/rasp/audio/af_heart/well-played.weba",
+          "bytes": 4041,
+          "durationMs": 811,
+          "samples": 38576,
+          "sha256": "ccc1d2c5901d5b6cd2174e56c20c2d83bd35a3a6cb680368a88cedd9ae0f6684"
+        },
+        "you-got-me": {
+          "path": "vendor/rasp/audio/af_heart/you-got-me.weba",
+          "bytes": 3886,
+          "durationMs": 763,
+          "samples": 36264,
+          "sha256": "8612fa8666623cdb2bf88488e52e221131d63095c2adbe09ea359a0b88ebb78b"
+        },
+        "good-game": {
+          "path": "vendor/rasp/audio/af_heart/good-game.weba",
+          "bytes": 3702,
+          "durationMs": 731,
+          "samples": 34750,
+          "sha256": "c3e05669f8ea2200da5ff9eda81eedc35323a23c2b036152f63c5c880606480b"
+        },
+        "so-close": {
+          "path": "vendor/rasp/audio/af_heart/so-close.weba",
+          "bytes": 3990,
+          "durationMs": 798,
+          "samples": 37954,
+          "sha256": "fe0859981e335d4a3b136627689baf13d40023c9789cda70b52a62754adfc389"
+        },
+        "tough-one": {
+          "path": "vendor/rasp/audio/af_heart/tough-one.weba",
+          "bytes": 3481,
+          "durationMs": 695,
+          "samples": 33018,
+          "sha256": "0bdbfcd1a395b4dddda3faa99e3ed2fb6253c8e70a6cf3219413ab2f88efe08b"
+        },
+        "nice-day": {
+          "path": "vendor/rasp/audio/af_heart/nice-day.weba",
+          "bytes": 3828,
+          "durationMs": 772,
+          "samples": 36698,
+          "sha256": "3af3c088a7055c6c84f2ac173ef21e0119e6ab6e322782baec8d44d1322badde"
+        },
+        "no-worries": {
+          "path": "vendor/rasp/audio/af_heart/no-worries.weba",
+          "bytes": 4057,
+          "durationMs": 811,
+          "samples": 38572,
+          "sha256": "b3b5d75d3aab5294e76fca62c2c238d190ef46fc2857d45d1bac814e3fb393ff"
+        },
+        "again": {
+          "path": "vendor/rasp/audio/af_heart/again.weba",
+          "bytes": 4729,
+          "durationMs": 950,
+          "samples": 45222,
+          "sha256": "55383e748d5883929e78964233845f133f0f4a926f47655043317dadc401f48f"
+        },
+        "maybe-next-time": {
+          "path": "vendor/rasp/audio/af_heart/maybe-next-time.weba",
+          "bytes": 5076,
+          "durationMs": 1037,
+          "samples": 49426,
+          "sha256": "fb5a1080d64acabefa7c303adaa1e5c59813ad7d1f755441e5ca6386ee372611"
+        },
+        "see-you": {
+          "path": "vendor/rasp/audio/af_heart/see-you.weba",
+          "bytes": 4894,
+          "durationMs": 1005,
+          "samples": 47866,
+          "sha256": "4677237c5cb67c25046efd6ac9a6a36d557da1ed096f0e325117b27d90553b8c"
+        },
+        "hiya": {
+          "path": "vendor/rasp/audio/af_heart/hiya.weba",
+          "bytes": 2959,
+          "durationMs": 572,
+          "samples": 27106,
+          "sha256": "143211d4020a28990ad4e927ece7dc0a14aa6ec727320712bf93e3a167dad865"
+        },
+        "fancy-a-game": {
+          "path": "vendor/rasp/audio/af_heart/fancy-a-game.weba",
+          "bytes": 4769,
+          "durationMs": 977,
+          "samples": 46530,
+          "sha256": "3a877744c3f33bdd4a25b42b3effa355f9dad7c4db345fff7370c82ae5822b43"
+        },
+        "one-more": {
+          "path": "vendor/rasp/audio/af_heart/one-more.weba",
+          "bytes": 3497,
+          "durationMs": 686,
+          "samples": 32574,
+          "sha256": "bb4f1c1b7aed5957f1fb83ca86ae0cc0417c23f7ac05b9755de34cb025d9a82d"
+        },
+        "catch-you-later": {
+          "path": "vendor/rasp/audio/af_heart/catch-you-later.weba",
+          "bytes": 4493,
+          "durationMs": 907,
+          "samples": 43196,
+          "sha256": "16b89a2a1b5cf9f2e36b717e6ca28aa259c2550bcd5945d854b6ca0b4516a2a6"
+        },
+        "friends-now": {
+          "path": "vendor/rasp/audio/af_heart/friends-now.weba",
+          "bytes": 4887,
+          "durationMs": 998,
+          "samples": 47528,
+          "sha256": "b481370fccfe7f3ed3b9d68f2fef6bc89f45faac23032b25559b030723fe5b90"
+        },
+        "good-luck": {
+          "path": "vendor/rasp/audio/af_heart/good-luck.weba",
+          "bytes": 3602,
+          "durationMs": 708,
+          "samples": 33638,
+          "sha256": "568ecfd1a8e9b6593d23b1cf62e96e40b3dd01e5b35e186037e3cc377c4f2f89"
+        }
+      }
+    },
+    "am_fenrir": {
+      "language": "en",
+      "locale": "en-US",
+      "gender": "male",
+      "clips": {
+        "greet": {
+          "path": "vendor/rasp/audio/am_fenrir/greet.weba",
+          "bytes": 3239,
+          "durationMs": 630,
+          "samples": 29896,
+          "sha256": "e770c7767561471200a268ddc8da37ffe104286a4102c02e957664f82878f7a3"
+        },
+        "hello": {
+          "path": "vendor/rasp/audio/am_fenrir/hello.weba",
+          "bytes": 3243,
+          "durationMs": 583,
+          "samples": 27626,
+          "sha256": "335af09017cacef9e74af25a780a29d8bb64bd3cdab6c4aaf75c1daea89856d7"
+        },
+        "good-to-see": {
+          "path": "vendor/rasp/audio/am_fenrir/good-to-see.weba",
+          "bytes": 4327,
+          "durationMs": 891,
+          "samples": 42404,
+          "sha256": "5f53f54bb104b34ce216aad64e9c65e97c82b78a7501c312fb395e4cf86c371d"
+        },
+        "hey-buddy": {
+          "path": "vendor/rasp/audio/am_fenrir/hey-buddy.weba",
+          "bytes": 3796,
+          "durationMs": 763,
+          "samples": 36242,
+          "sha256": "f967f65f73da3f6470afe78f40078b577f5e54ce4fe9a314370c150996086c58"
+        },
+        "be-friends": {
+          "path": "vendor/rasp/audio/am_fenrir/be-friends.weba",
+          "bytes": 4886,
+          "durationMs": 1001,
+          "samples": 47670,
+          "sha256": "90788e7100db8884bd5dcb2d537ffb7737fe1e237296a685c2814764fb7fcacb"
+        },
+        "yay": {
+          "path": "vendor/rasp/audio/am_fenrir/yay.weba",
+          "bytes": 2726,
+          "durationMs": 527,
+          "samples": 24938,
+          "sha256": "c677d7b40238f8e4bab6fe67f7785192b84118ec7ef8b6bea3448e01dd936bd6"
+        },
+        "lets-play": {
+          "path": "vendor/rasp/audio/am_fenrir/lets-play.weba",
+          "bytes": 4824,
+          "durationMs": 1021,
+          "samples": 48646,
+          "sha256": "08f5685c3430f235dbba7add00a22851d50d1c27cc306d940d035dfbba7c403c"
+        },
+        "got-time": {
+          "path": "vendor/rasp/audio/am_fenrir/got-time.weba",
+          "bytes": 5274,
+          "durationMs": 1109,
+          "samples": 52886,
+          "sha256": "2c129cac979d973a405632c3f50dd8b8a622a31addc1e89b1814a9a9dfe2ee44"
+        },
+        "watch-this": {
+          "path": "vendor/rasp/audio/am_fenrir/watch-this.weba",
+          "bytes": 3730,
+          "durationMs": 750,
+          "samples": 35656,
+          "sha256": "76b520571fe79b3b7f9b1073841ceb4a79f47ff7ffacd4b07d6555b3354c6f35"
+        },
+        "nice-one": {
+          "path": "vendor/rasp/audio/am_fenrir/nice-one.weba",
+          "bytes": 3600,
+          "durationMs": 717,
+          "samples": 34058,
+          "sha256": "d4ffdc62bb3095e5ea0b6f45ed2da0a03cdbb1e0dbad993feb3782e9abbd0ac7"
+        },
+        "well-played": {
+          "path": "vendor/rasp/audio/am_fenrir/well-played.weba",
+          "bytes": 3776,
+          "durationMs": 765,
+          "samples": 36336,
+          "sha256": "7d1c4c67825be1fb3649e6e61456f30240658539f71869dfff7f60acd899f654"
+        },
+        "you-got-me": {
+          "path": "vendor/rasp/audio/am_fenrir/you-got-me.weba",
+          "bytes": 3674,
+          "durationMs": 740,
+          "samples": 35156,
+          "sha256": "50dd8c30f8c5f5e17cbe9512d01b7de75b7a7a7862b21406b0f2dae31e5a2796"
+        },
+        "good-game": {
+          "path": "vendor/rasp/audio/am_fenrir/good-game.weba",
+          "bytes": 3661,
+          "durationMs": 732,
+          "samples": 34752,
+          "sha256": "4bd96d95779f10284bcdbe393bbd3784a7f9568072e53ed0c8de618911fc620a"
+        },
+        "so-close": {
+          "path": "vendor/rasp/audio/am_fenrir/so-close.weba",
+          "bytes": 3709,
+          "durationMs": 744,
+          "samples": 35336,
+          "sha256": "a7b3d94880b60169f04b223e0e2fb2a26851867de2d71115427d42d014f3da2c"
+        },
+        "tough-one": {
+          "path": "vendor/rasp/audio/am_fenrir/tough-one.weba",
+          "bytes": 3420,
+          "durationMs": 670,
+          "samples": 31802,
+          "sha256": "bafcb89075e223a347f50820863c8fc9413d9ce2b6de9905c3f5ad4dcf815ee2"
+        },
+        "nice-day": {
+          "path": "vendor/rasp/audio/am_fenrir/nice-day.weba",
+          "bytes": 3496,
+          "durationMs": 700,
+          "samples": 33234,
+          "sha256": "30caeb0799ed41b3994c1b61973a87078f6a3eb63a1a70bb679cf50a3e69164a"
+        },
+        "no-worries": {
+          "path": "vendor/rasp/audio/am_fenrir/no-worries.weba",
+          "bytes": 3930,
+          "durationMs": 788,
+          "samples": 37444,
+          "sha256": "037faf6aeaaf29f8e4919f8dd590010c0d33ab98288faebedabfcc8b0f0617e8"
+        },
+        "again": {
+          "path": "vendor/rasp/audio/am_fenrir/again.weba",
+          "bytes": 4596,
+          "durationMs": 939,
+          "samples": 44700,
+          "sha256": "3148ebef934152cbe0c6f09ee23174d5b05b83b1d0a9cdf3bcd433d36e5f0a87"
+        },
+        "maybe-next-time": {
+          "path": "vendor/rasp/audio/am_fenrir/maybe-next-time.weba",
+          "bytes": 4797,
+          "durationMs": 989,
+          "samples": 47134,
+          "sha256": "9b28b447a0b6526a385c862cff1071b240a47373a96ed963252fcc5e9842d8aa"
+        },
+        "see-you": {
+          "path": "vendor/rasp/audio/am_fenrir/see-you.weba",
+          "bytes": 4779,
+          "durationMs": 1005,
+          "samples": 47880,
+          "sha256": "a6314346a89be9f954a32a092ecabd5fe2905b6591063d1b911ec98bc2f69ff0"
+        },
+        "hiya": {
+          "path": "vendor/rasp/audio/am_fenrir/hiya.weba",
+          "bytes": 3055,
+          "durationMs": 584,
+          "samples": 27662,
+          "sha256": "f4b44fd80d0e2df70fa4634777fae4f94fe74bc5977dc0d43d642f3e394326ec"
+        },
+        "fancy-a-game": {
+          "path": "vendor/rasp/audio/am_fenrir/fancy-a-game.weba",
+          "bytes": 4398,
+          "durationMs": 895,
+          "samples": 42592,
+          "sha256": "2cfa6be1af947ee2d2266046d4c497f4195ded30a0486bbf822847d0684dce46"
+        },
+        "one-more": {
+          "path": "vendor/rasp/audio/am_fenrir/one-more.weba",
+          "bytes": 3433,
+          "durationMs": 666,
+          "samples": 31602,
+          "sha256": "c12669089b0f0fee7395de417e66bee2a34d2e8850a0fcce06d99a420047d108"
+        },
+        "catch-you-later": {
+          "path": "vendor/rasp/audio/am_fenrir/catch-you-later.weba",
+          "bytes": 4593,
+          "durationMs": 950,
+          "samples": 45258,
+          "sha256": "c5ba7e73519cef341618712669eeaae6c18ff94db744a046b7ca48baf5187620"
+        },
+        "friends-now": {
+          "path": "vendor/rasp/audio/am_fenrir/friends-now.weba",
+          "bytes": 4827,
+          "durationMs": 1000,
+          "samples": 47654,
+          "sha256": "800bf03f8d80161f31f32abc950102f0298cda99a91dd983cfdc269a31e742d1"
+        },
+        "good-luck": {
+          "path": "vendor/rasp/audio/am_fenrir/good-luck.weba",
+          "bytes": 3347,
+          "durationMs": 669,
+          "samples": 31752,
+          "sha256": "2c60a614967d8dc91dcb3b5aa0539eae0a41c08b1c8e1e053a35fea34b39e85e"
+        }
+      }
+    },
+    "ef_dora": {
+      "language": "es",
+      "locale": "es",
+      "gender": "female",
+      "clips": {
+        "greet": {
+          "path": "vendor/rasp/audio/ef_dora/greet.weba",
+          "bytes": 2905,
+          "durationMs": 566,
+          "samples": 26800,
+          "sha256": "3fc754e1f7b50fdb86ce9fbc5f33bcf96b429a8b86840c0896d3b7f9f64eb55e"
+        },
+        "hello": {
+          "path": "vendor/rasp/audio/ef_dora/hello.weba",
+          "bytes": 2898,
+          "durationMs": 566,
+          "samples": 26794,
+          "sha256": "15ee0b76e55aaf36efdb853738832f3e9f660ffad37c80a11a27427b90deafb4"
+        },
+        "good-to-see": {
+          "path": "vendor/rasp/audio/ef_dora/good-to-see.weba",
+          "bytes": 5427,
+          "durationMs": 1123,
+          "samples": 53560,
+          "sha256": "2d6799282f269368b7df9986cb2e05747fe20915c6a56f925f992c826f4ed9c6"
+        },
+        "hey-buddy": {
+          "path": "vendor/rasp/audio/ef_dora/hey-buddy.weba",
+          "bytes": 4629,
+          "durationMs": 951,
+          "samples": 45296,
+          "sha256": "3dff070109f29bc59727536aa5ebb4fb019e203ee64c78bdcf846e8015eec8b9"
+        },
+        "be-friends": {
+          "path": "vendor/rasp/audio/ef_dora/be-friends.weba",
+          "bytes": 7398,
+          "durationMs": 1568,
+          "samples": 74912,
+          "sha256": "0369926d7b14f67870c8077d6be94acc04a3d915e33952e62b52ede93ca8d9b8"
+        },
+        "yay": {
+          "path": "vendor/rasp/audio/ef_dora/yay.weba",
+          "bytes": 3359,
+          "durationMs": 650,
+          "samples": 30856,
+          "sha256": "cccf2c8311690e554f3669e944807621e1b3167e8b8efd61767cbde0bf1c1788"
+        },
+        "lets-play": {
+          "path": "vendor/rasp/audio/ef_dora/lets-play.weba",
+          "bytes": 4999,
+          "durationMs": 1052,
+          "samples": 50114,
+          "sha256": "ff408638136fd29dda2680057d7695b64d91d9785c78182bdf263ed322887803"
+        },
+        "got-time": {
+          "path": "vendor/rasp/audio/ef_dora/got-time.weba",
+          "bytes": 8289,
+          "durationMs": 1773,
+          "samples": 84752,
+          "sha256": "2c491d7626988ebe4f710294c9a501437e053861c942ff67e9f363e77ec2f65d"
+        },
+        "watch-this": {
+          "path": "vendor/rasp/audio/ef_dora/watch-this.weba",
+          "bytes": 4102,
+          "durationMs": 834,
+          "samples": 39686,
+          "sha256": "46f68a1da3dc81c49daf707d61a51017951fef9cb39c1e319a3ea42eaa0372db"
+        },
+        "nice-one": {
+          "path": "vendor/rasp/audio/ef_dora/nice-one.weba",
+          "bytes": 4101,
+          "durationMs": 814,
+          "samples": 38692,
+          "sha256": "638592a01c0ec281f2402dc2e78077113af869bb8efef06e97df754ae1ac43a8"
+        },
+        "well-played": {
+          "path": "vendor/rasp/audio/ef_dora/well-played.weba",
+          "bytes": 4456,
+          "durationMs": 907,
+          "samples": 43194,
+          "sha256": "b4f7979ecaef37f67b03be3d70c7f14e0c1e78240c34866deda6632cc418ed2b"
+        },
+        "you-got-me": {
+          "path": "vendor/rasp/audio/ef_dora/you-got-me.weba",
+          "bytes": 4556,
+          "durationMs": 937,
+          "samples": 44638,
+          "sha256": "3a778f8c02b3ee1b1b894e4a34a9e031ce31c3e3c5381ce01fcfb42d0fc697e8"
+        },
+        "good-game": {
+          "path": "vendor/rasp/audio/ef_dora/good-game.weba",
+          "bytes": 5044,
+          "durationMs": 1031,
+          "samples": 49122,
+          "sha256": "7885adb96f9368b8f45e9db2add88be918bafd4f75f0b4bc545cbdcbeef03326"
+        },
+        "so-close": {
+          "path": "vendor/rasp/audio/ef_dora/so-close.weba",
+          "bytes": 3280,
+          "durationMs": 659,
+          "samples": 31292,
+          "sha256": "d8e053db6764d07e35a48ec3656a9ab8a612d5e6975ccd4769cf60bd9812f39d"
+        },
+        "tough-one": {
+          "path": "vendor/rasp/audio/ef_dora/tough-one.weba",
+          "bytes": 4524,
+          "durationMs": 910,
+          "samples": 43332,
+          "sha256": "e242c166092fe1f3636021ac2cf3d1a08875fc344adb46e7c9bbe4dc801dae49"
+        },
+        "nice-day": {
+          "path": "vendor/rasp/audio/ef_dora/nice-day.weba",
+          "bytes": 3996,
+          "durationMs": 791,
+          "samples": 37588,
+          "sha256": "21a392388aa1c629fc027f9c57bd8c3fadc85abd87229ce96786338f88bff1de"
+        },
+        "no-worries": {
+          "path": "vendor/rasp/audio/ef_dora/no-worries.weba",
+          "bytes": 4995,
+          "durationMs": 1026,
+          "samples": 48868,
+          "sha256": "70ee5ae9a940625a18424480d2e6e14c3a02d6dce5a1795b775d575d67e668ad"
+        },
+        "again": {
+          "path": "vendor/rasp/audio/ef_dora/again.weba",
+          "bytes": 6820,
+          "durationMs": 1454,
+          "samples": 69428,
+          "sha256": "a007cffeb01067917658df7458afa7b20fd4fbcafc5f17fecbc7e4e8e4937cca"
+        },
+        "maybe-next-time": {
+          "path": "vendor/rasp/audio/ef_dora/maybe-next-time.weba",
+          "bytes": 7158,
+          "durationMs": 1530,
+          "samples": 73074,
+          "sha256": "8c6713f764315af4e7041184e5abb2d03eeb151e0dc0a4619454c116f3e3f73d"
+        },
+        "see-you": {
+          "path": "vendor/rasp/audio/ef_dora/see-you.weba",
+          "bytes": 5387,
+          "durationMs": 1109,
+          "samples": 52856,
+          "sha256": "0c3c7eb28eeb4a8a488c2c3049e335efca20288c22aac32f4d03d1d399a42909"
+        },
+        "hiya": {
+          "path": "vendor/rasp/audio/ef_dora/hiya.weba",
+          "bytes": 2909,
+          "durationMs": 566,
+          "samples": 26794,
+          "sha256": "449c77c19856013a1f173f2ee307053e0e4f69b5ea9ccb206c87f07247fc8a4a"
+        },
+        "fancy-a-game": {
+          "path": "vendor/rasp/audio/ef_dora/fancy-a-game.weba",
+          "bytes": 5899,
+          "durationMs": 1241,
+          "samples": 59188,
+          "sha256": "583e3be7c76254ce2de454f5a98af1c3ecad057b5c1f3c02fd6fb492ecd136b5"
+        },
+        "one-more": {
+          "path": "vendor/rasp/audio/ef_dora/one-more.weba",
+          "bytes": 3939,
+          "durationMs": 800,
+          "samples": 38054,
+          "sha256": "38dcee7d380df99e3f19664fd827aab06ca301e3b7ba7f3cb8dc4b6e2112b76b"
+        },
+        "catch-you-later": {
+          "path": "vendor/rasp/audio/ef_dora/catch-you-later.weba",
+          "bytes": 4658,
+          "durationMs": 955,
+          "samples": 45494,
+          "sha256": "46bb1b52993cb3f9396ed7999d767d6c6be563444273c95913a28ef8a2c7ac4d"
+        },
+        "friends-now": {
+          "path": "vendor/rasp/audio/ef_dora/friends-now.weba",
+          "bytes": 6173,
+          "durationMs": 1316,
+          "samples": 62808,
+          "sha256": "3174383b20d0d8db5773db74ac09400404ec62e2105efeab766451ea79f6effe"
+        },
+        "good-luck": {
+          "path": "vendor/rasp/audio/ef_dora/good-luck.weba",
+          "bytes": 4956,
+          "durationMs": 1033,
+          "samples": 49224,
+          "sha256": "4c96f6505483a60f758e07c1c76e23e3f96ddba5b79eadacc14eec75f1e18bca"
+        }
+      }
+    },
+    "em_alex": {
+      "language": "es",
+      "locale": "es",
+      "gender": "male",
+      "clips": {
+        "greet": {
+          "path": "vendor/rasp/audio/em_alex/greet.weba",
+          "bytes": 2975,
+          "durationMs": 588,
+          "samples": 27842,
+          "sha256": "11af5c809ca65f2188cc656a86e9ad1deb6fb33f438300777c24cb4d42665828"
+        },
+        "hello": {
+          "path": "vendor/rasp/audio/em_alex/hello.weba",
+          "bytes": 2991,
+          "durationMs": 587,
+          "samples": 27820,
+          "sha256": "e3e22e8ee754515985295116b86c49a94c2bef0793b63eea5bacca7c31ff09cb"
+        },
+        "good-to-see": {
+          "path": "vendor/rasp/audio/em_alex/good-to-see.weba",
+          "bytes": 5617,
+          "durationMs": 1171,
+          "samples": 55842,
+          "sha256": "bba382c0959f59f9ad38a1c35c4b5834a420232bd5384c37b11c6550d69c00e2"
+        },
+        "hey-buddy": {
+          "path": "vendor/rasp/audio/em_alex/hey-buddy.weba",
+          "bytes": 4665,
+          "durationMs": 972,
+          "samples": 46286,
+          "sha256": "546f08d77105bc3810fa9021830d342d7a6efd10a2683764b9075759a655ab93"
+        },
+        "be-friends": {
+          "path": "vendor/rasp/audio/em_alex/be-friends.weba",
+          "bytes": 7912,
+          "durationMs": 1683,
+          "samples": 80422,
+          "sha256": "db0f6d83f0e7aabe0c8b30213b7cfbb82cbb2b7653d9e7fb7e96db957714ad02"
+        },
+        "yay": {
+          "path": "vendor/rasp/audio/em_alex/yay.weba",
+          "bytes": 3451,
+          "durationMs": 670,
+          "samples": 31800,
+          "sha256": "00122bf85c8bccef7cec9e1feb6df153b785ec9f4a06d95d4f246e5196fed262"
+        },
+        "lets-play": {
+          "path": "vendor/rasp/audio/em_alex/lets-play.weba",
+          "bytes": 5429,
+          "durationMs": 1145,
+          "samples": 54592,
+          "sha256": "c832565facf29526093d25d9be36e10acb32b2a89367061384c60e07f5a26154"
+        },
+        "got-time": {
+          "path": "vendor/rasp/audio/em_alex/got-time.weba",
+          "bytes": 8347,
+          "durationMs": 1769,
+          "samples": 84538,
+          "sha256": "ea0760347ac2bf12dfb7970048659250ee3b1d74f6a898d6a37b281f43055a94"
+        },
+        "watch-this": {
+          "path": "vendor/rasp/audio/em_alex/watch-this.weba",
+          "bytes": 4264,
+          "durationMs": 863,
+          "samples": 41058,
+          "sha256": "dca98be61a0982268a9a7d59ec87c8474c9389eb59d6c85769cea22a3372aa9d"
+        },
+        "nice-one": {
+          "path": "vendor/rasp/audio/em_alex/nice-one.weba",
+          "bytes": 4358,
+          "durationMs": 882,
+          "samples": 41958,
+          "sha256": "54ec774263cafdd86a57aceb9399905771a686b5294d76bccceeffdf2aec1e42"
+        },
+        "well-played": {
+          "path": "vendor/rasp/audio/em_alex/well-played.weba",
+          "bytes": 4451,
+          "durationMs": 927,
+          "samples": 44126,
+          "sha256": "fa73aac560e8152904f77e569be27d69d805c0f3409821440145ff2f4e11bda3"
+        },
+        "you-got-me": {
+          "path": "vendor/rasp/audio/em_alex/you-got-me.weba",
+          "bytes": 4909,
+          "durationMs": 1026,
+          "samples": 48890,
+          "sha256": "70f3c04ba285341639636f50a6c66ab94539e6c43d856119f19b86b9d78c18b1"
+        },
+        "good-game": {
+          "path": "vendor/rasp/audio/em_alex/good-game.weba",
+          "bytes": 5216,
+          "durationMs": 1076,
+          "samples": 51268,
+          "sha256": "9e9a0633e72753d255e7b78ae0e591c36835ee7b9f191ea2aff666367cac66e7"
+        },
+        "so-close": {
+          "path": "vendor/rasp/audio/em_alex/so-close.weba",
+          "bytes": 3239,
+          "durationMs": 614,
+          "samples": 29132,
+          "sha256": "0b13a8b8d2e741afde623139c85b7f2ed0a833c5cba2832505db275f5105f953"
+        },
+        "tough-one": {
+          "path": "vendor/rasp/audio/em_alex/tough-one.weba",
+          "bytes": 4699,
+          "durationMs": 967,
+          "samples": 46042,
+          "sha256": "1d89bc5e5c38ea30c4958b1dbeec32ad464b0ffc0e71769e55f3c21c4a2f7958"
+        },
+        "nice-day": {
+          "path": "vendor/rasp/audio/em_alex/nice-day.weba",
+          "bytes": 4040,
+          "durationMs": 807,
+          "samples": 38352,
+          "sha256": "5b20a31c568d8ffec86720ea6a03f9985d7a25be4f260f204b8a256bb33b06fb"
+        },
+        "no-worries": {
+          "path": "vendor/rasp/audio/em_alex/no-worries.weba",
+          "bytes": 5427,
+          "durationMs": 1119,
+          "samples": 53352,
+          "sha256": "44da8e665738a825fbf63e43ee74aef7ab94be1ed2212971d239da8d38b74f1f"
+        },
+        "again": {
+          "path": "vendor/rasp/audio/em_alex/again.weba",
+          "bytes": 6997,
+          "durationMs": 1478,
+          "samples": 70586,
+          "sha256": "8a65f855130fbef7d90002aedb6059f1475354b54cc3a6f61a9ed47ed38a9cf1"
+        },
+        "maybe-next-time": {
+          "path": "vendor/rasp/audio/em_alex/maybe-next-time.weba",
+          "bytes": 7623,
+          "durationMs": 1618,
+          "samples": 77280,
+          "sha256": "9d4f9d716144d10b802e5f4f7c1f5f333d6b0d9322383f4e4568735f071d01ce"
+        },
+        "see-you": {
+          "path": "vendor/rasp/audio/em_alex/see-you.weba",
+          "bytes": 5568,
+          "durationMs": 1150,
+          "samples": 54852,
+          "sha256": "b3ae1c18ea86fb1b0ff312ace55fa32fe0172b7903e5aec951146efbfd1761b1"
+        },
+        "hiya": {
+          "path": "vendor/rasp/audio/em_alex/hiya.weba",
+          "bytes": 2998,
+          "durationMs": 588,
+          "samples": 27850,
+          "sha256": "7f1367673d8b3a263f262de1aa8b766e7dd8ae4e02e1a6a14000e37f49a38c2a"
+        },
+        "fancy-a-game": {
+          "path": "vendor/rasp/audio/em_alex/fancy-a-game.weba",
+          "bytes": 6454,
+          "durationMs": 1351,
+          "samples": 64472,
+          "sha256": "2c61cbd7fd2e3309b82e474f60cc4889b1ffb9beaa24eb9d2ead185ea1b70eee"
+        },
+        "one-more": {
+          "path": "vendor/rasp/audio/em_alex/one-more.weba",
+          "bytes": 4094,
+          "durationMs": 823,
+          "samples": 39148,
+          "sha256": "f41ba6a14633e3202395e903108bea1d46ac913e595af220de333ef63321914e"
+        },
+        "catch-you-later": {
+          "path": "vendor/rasp/audio/em_alex/catch-you-later.weba",
+          "bytes": 4792,
+          "durationMs": 975,
+          "samples": 46450,
+          "sha256": "a76fb9bf2aa85294b985ab1d547892498e884159b445b69d227c95ac23d20285"
+        },
+        "friends-now": {
+          "path": "vendor/rasp/audio/em_alex/friends-now.weba",
+          "bytes": 6605,
+          "durationMs": 1408,
+          "samples": 67228,
+          "sha256": "160c4e2c9b25ee7788559f6ea7f0079d7d1ed371c4782d02532737a968f8638c"
+        },
+        "good-luck": {
+          "path": "vendor/rasp/audio/em_alex/good-luck.weba",
+          "bytes": 4973,
+          "durationMs": 1031,
+          "samples": 49112,
+          "sha256": "738da16528c9f12c46cc4aa1da025d8a0eb29158d9d435053f0195e18dafa469"
+        }
+      }
+    },
+    "ff_siwis": {
+      "language": "fr",
+      "locale": "fr-FR",
+      "gender": "female",
+      "clips": {
+        "greet": {
+          "path": "vendor/rasp/audio/ff_siwis/greet.weba",
+          "bytes": 3561,
+          "durationMs": 718,
+          "samples": 34080,
+          "sha256": "6e8032bf31c3b6867ef1225e375c114732976155e9f425fad142a5c8bbeeceef"
+        },
+        "hello": {
+          "path": "vendor/rasp/audio/ff_siwis/hello.weba",
+          "bytes": 4080,
+          "durationMs": 826,
+          "samples": 39296,
+          "sha256": "982364c82761212438db7de1332a85babb19f4ce9c4ed21bf4ffb5eeb15d6417"
+        },
+        "good-to-see": {
+          "path": "vendor/rasp/audio/ff_siwis/good-to-see.weba",
+          "bytes": 7486,
+          "durationMs": 1583,
+          "samples": 75636,
+          "sha256": "665b0a165b77136872151ced7bc4754bbaf0fb5840fc49d696f5e75503f9f471"
+        },
+        "hey-buddy": {
+          "path": "vendor/rasp/audio/ff_siwis/hey-buddy.weba",
+          "bytes": 5315,
+          "durationMs": 1122,
+          "samples": 53484,
+          "sha256": "5723d02bfd51da021aff418120e533e6cfd5ba3353969fb756a2b02cd9c06ce5"
+        },
+        "be-friends": {
+          "path": "vendor/rasp/audio/ff_siwis/be-friends.weba",
+          "bytes": 5281,
+          "durationMs": 1011,
+          "samples": 48184,
+          "sha256": "878f1a6d3826e80baeccdb8c1c844c18763b59bec7dc098313ffa5bc01a47fdd"
+        },
+        "yay": {
+          "path": "vendor/rasp/audio/ff_siwis/yay.weba",
+          "bytes": 3827,
+          "durationMs": 767,
+          "samples": 36478,
+          "sha256": "5fea81d9dd224f0f51366a94f49277e9ca54129dfed82f2c0b8f96ebfd82e00c"
+        },
+        "lets-play": {
+          "path": "vendor/rasp/audio/ff_siwis/lets-play.weba",
+          "bytes": 3586,
+          "durationMs": 717,
+          "samples": 34054,
+          "sha256": "523fec53e447140af8cf0300d18b42a5e33ec9b1595ccd5f90ad85ac5a54c81e"
+        },
+        "got-time": {
+          "path": "vendor/rasp/audio/ff_siwis/got-time.weba",
+          "bytes": 5846,
+          "durationMs": 1221,
+          "samples": 58240,
+          "sha256": "abcea9c1e8549e2ee7791775003d1b22984f380f66bfecdf823027101968646e"
+        },
+        "watch-this": {
+          "path": "vendor/rasp/audio/ff_siwis/watch-this.weba",
+          "bytes": 4528,
+          "durationMs": 912,
+          "samples": 43400,
+          "sha256": "e80bb0badcee4a0768c448c5d14e6a14e350f023fe39e94fa7187129ef2c9dec"
+        },
+        "nice-one": {
+          "path": "vendor/rasp/audio/ff_siwis/nice-one.weba",
+          "bytes": 3279,
+          "durationMs": 647,
+          "samples": 30686,
+          "sha256": "dccf84cac2a8e7af85f2461f424342d792ff45fc565ea2a1fd644436ed8e5428"
+        },
+        "well-played": {
+          "path": "vendor/rasp/audio/ff_siwis/well-played.weba",
+          "bytes": 4220,
+          "durationMs": 860,
+          "samples": 40902,
+          "sha256": "226cf2b64ad0bf906371783ed60bf588e6b5b1bb24446d22627f7fa26c091e79"
+        },
+        "you-got-me": {
+          "path": "vendor/rasp/audio/ff_siwis/you-got-me.weba",
+          "bytes": 4234,
+          "durationMs": 863,
+          "samples": 41058,
+          "sha256": "830a083d878508f0f9e133c0c5df95f80fd20eb6ad88284ea86d4d96c968c42c"
+        },
+        "good-game": {
+          "path": "vendor/rasp/audio/ff_siwis/good-game.weba",
+          "bytes": 4791,
+          "durationMs": 987,
+          "samples": 47002,
+          "sha256": "1818649190c43d942f306ca45ccb258b051b7e0ce3b85d010365634996a7885f"
+        },
+        "so-close": {
+          "path": "vendor/rasp/audio/ff_siwis/so-close.weba",
+          "bytes": 3916,
+          "durationMs": 789,
+          "samples": 37510,
+          "sha256": "43098bfcb62f2aec89da78c30ef1b4dbe0cf2a3f4ab583e981570754f28294ac"
+        },
+        "tough-one": {
+          "path": "vendor/rasp/audio/ff_siwis/tough-one.weba",
+          "bytes": 4612,
+          "durationMs": 945,
+          "samples": 45006,
+          "sha256": "581e4060b9287c5604440df261df77b688df61e664be9291d7a192b6368df1a5"
+        },
+        "nice-day": {
+          "path": "vendor/rasp/audio/ff_siwis/nice-day.weba",
+          "bytes": 4367,
+          "durationMs": 891,
+          "samples": 42390,
+          "sha256": "280ef37a1dd222c3a552e8c21e6ac938ca21a86b87de847e21438f52b08efbe2"
+        },
+        "no-worries": {
+          "path": "vendor/rasp/audio/ff_siwis/no-worries.weba",
+          "bytes": 4426,
+          "durationMs": 912,
+          "samples": 43434,
+          "sha256": "4ab6df05f7b42c64dc22eb7f172afd2fad37ade5e86ebaa35fa58d50e8a63a93"
+        },
+        "again": {
+          "path": "vendor/rasp/audio/ff_siwis/again.weba",
+          "bytes": 4399,
+          "durationMs": 891,
+          "samples": 42428,
+          "sha256": "33588a44b933fa162d664ea7c5a92e958223e406eee96457fd0c4c97e6bb58bd"
+        },
+        "maybe-next-time": {
+          "path": "vendor/rasp/audio/ff_siwis/maybe-next-time.weba",
+          "bytes": 7894,
+          "durationMs": 1594,
+          "samples": 76130,
+          "sha256": "9b7e47ad33376c81c21661d94861c40801a5a907afc19a4a37d64e779fdecfb1"
+        },
+        "see-you": {
+          "path": "vendor/rasp/audio/ff_siwis/see-you.weba",
+          "bytes": 5021,
+          "durationMs": 1036,
+          "samples": 49380,
+          "sha256": "9fef734f99c2bc487bf02c0c7dd78632c71800d2b966f368a08c666502ba8e4d"
+        },
+        "hiya": {
+          "path": "vendor/rasp/audio/ff_siwis/hiya.weba",
+          "bytes": 3370,
+          "durationMs": 664,
+          "samples": 31492,
+          "sha256": "1b59eb8b89ffbba6a37dcba56de6d9356b4466dab8c9520d03771fb334261df8"
+        },
+        "fancy-a-game": {
+          "path": "vendor/rasp/audio/ff_siwis/fancy-a-game.weba",
+          "bytes": 6134,
+          "durationMs": 1314,
+          "samples": 62696,
+          "sha256": "9fb4dddece34a52820fa2d8b9e2ed08dab7245aaa5d8e35f0d07f961e6d741cd"
+        },
+        "one-more": {
+          "path": "vendor/rasp/audio/ff_siwis/one-more.weba",
+          "bytes": 4557,
+          "durationMs": 940,
+          "samples": 44750,
+          "sha256": "90ed6b1ec4e3a9e11b30f8c45e44332b7dad7ddec58ba65d24dacd086116f38f"
+        },
+        "catch-you-later": {
+          "path": "vendor/rasp/audio/ff_siwis/catch-you-later.weba",
+          "bytes": 3946,
+          "durationMs": 759,
+          "samples": 36048,
+          "sha256": "6f9a1c6b9db40f6fef0c64b9c92028f6eae100c0ae6d8715483910f4f6e0cf49"
+        },
+        "friends-now": {
+          "path": "vendor/rasp/audio/ff_siwis/friends-now.weba",
+          "bytes": 5492,
+          "durationMs": 1135,
+          "samples": 54116,
+          "sha256": "f7a53ad012c24a8329ef6b0dd3739145cb1edef821ccac8195b47e8d9f0fdac6"
+        },
+        "good-luck": {
+          "path": "vendor/rasp/audio/ff_siwis/good-luck.weba",
+          "bytes": 4585,
+          "durationMs": 946,
+          "samples": 45032,
+          "sha256": "d4f208d382f0b12219740468e248590345d0078a2382c7993bbed0e59c3835c1"
+        }
+      }
+    },
+    "hf_alpha": {
+      "language": "hi",
+      "locale": "hi-IN",
+      "gender": "female",
+      "clips": {
+        "greet": {
+          "path": "vendor/rasp/audio/hf_alpha/greet.weba",
+          "bytes": 4488,
+          "durationMs": 948,
+          "samples": 45162,
+          "sha256": "6d2a92ba7cc800465a44f20f9137bc2cde111767f87d7bf0cc1f8f38d89987c3"
+        },
+        "hello": {
+          "path": "vendor/rasp/audio/hf_alpha/hello.weba",
+          "bytes": 3685,
+          "durationMs": 776,
+          "samples": 36904,
+          "sha256": "79514c58966f415d9cb4879ef3ec7520fe983ca1e23dbf41ce8834589d3713e0"
+        },
+        "good-to-see": {
+          "path": "vendor/rasp/audio/hf_alpha/good-to-see.weba",
+          "bytes": 9451,
+          "durationMs": 2065,
+          "samples": 98778,
+          "sha256": "8fc12ea45de11295306ab64748278be139e25bfdf25a3496e75580d704c1d142"
+        },
+        "hey-buddy": {
+          "path": "vendor/rasp/audio/hf_alpha/hey-buddy.weba",
+          "bytes": 5188,
+          "durationMs": 1092,
+          "samples": 52076,
+          "sha256": "549c5a519258970f6ef7cb236c22a17ac4f307ae5a422bd9ac7c9901493a7b7e"
+        },
+        "be-friends": {
+          "path": "vendor/rasp/audio/hf_alpha/be-friends.weba",
+          "bytes": 9120,
+          "durationMs": 1981,
+          "samples": 94724,
+          "sha256": "c4f003c7c42f47d341848bb3c1f15b85b8fb3888236dd4a99f4e6b74c77198a0"
+        },
+        "yay": {
+          "path": "vendor/rasp/audio/hf_alpha/yay.weba",
+          "bytes": 3839,
+          "durationMs": 785,
+          "samples": 37312,
+          "sha256": "c1342f7ec5fe43c63f9c6949e8baaab8b377e48cd8eff7979e91fe0dbfcd17f4"
+        },
+        "lets-play": {
+          "path": "vendor/rasp/audio/hf_alpha/lets-play.weba",
+          "bytes": 6186,
+          "durationMs": 1315,
+          "samples": 62748,
+          "sha256": "dd88de7fb003222dc76621986bc03d65ebbb0662d3d2a5e51530e2bd459af8a8"
+        },
+        "got-time": {
+          "path": "vendor/rasp/audio/hf_alpha/got-time.weba",
+          "bytes": 8549,
+          "durationMs": 1848,
+          "samples": 88334,
+          "sha256": "04ec45a0f6ca17caddbd94a8abc796826469f1d308ac400343ce17fb307d078f"
+        },
+        "watch-this": {
+          "path": "vendor/rasp/audio/hf_alpha/watch-this.weba",
+          "bytes": 5126,
+          "durationMs": 1071,
+          "samples": 51042,
+          "sha256": "0637e9a70283b8759284f5129ad4f7fc42d548d5e5f80fd7199a46f0cb6ee955"
+        },
+        "nice-one": {
+          "path": "vendor/rasp/audio/hf_alpha/nice-one.weba",
+          "bytes": 4317,
+          "durationMs": 907,
+          "samples": 43196,
+          "sha256": "cd1eee9862b6af4322d954efe51bdec6ef861cf71435fcea932f701cb41aad0f"
+        },
+        "well-played": {
+          "path": "vendor/rasp/audio/hf_alpha/well-played.weba",
+          "bytes": 5822,
+          "durationMs": 1234,
+          "samples": 58848,
+          "sha256": "55a3242a78493a454207c8737f53af0cd75f20a019e5aa8e1eb4df698182920f"
+        },
+        "you-got-me": {
+          "path": "vendor/rasp/audio/hf_alpha/you-got-me.weba",
+          "bytes": 7289,
+          "durationMs": 1552,
+          "samples": 74136,
+          "sha256": "1093643b7dc2ac3dd5b5251904f8c6d0f207c1ce84bbc0992dd19ca28e8abc6a"
+        },
+        "good-game": {
+          "path": "vendor/rasp/audio/hf_alpha/good-game.weba",
+          "bytes": 5314,
+          "durationMs": 1115,
+          "samples": 53180,
+          "sha256": "bb8724c257096d99d6f35cb710bd86794da6d1b5fd7b7ddd0f58f3bea3c90c4c"
+        },
+        "so-close": {
+          "path": "vendor/rasp/audio/hf_alpha/so-close.weba",
+          "bytes": 5585,
+          "durationMs": 1187,
+          "samples": 56636,
+          "sha256": "de45b91ff114028bd5a8ad7c5c545b2a5b38c74b031ba0a33e030b9046719c3c"
+        },
+        "tough-one": {
+          "path": "vendor/rasp/audio/hf_alpha/tough-one.weba",
+          "bytes": 6749,
+          "durationMs": 1425,
+          "samples": 68040,
+          "sha256": "93e192b3755feaacd4815794bbfe1f9e85ee921de5287cfd5d7f6556ff1000e2"
+        },
+        "nice-day": {
+          "path": "vendor/rasp/audio/hf_alpha/nice-day.weba",
+          "bytes": 6589,
+          "durationMs": 1387,
+          "samples": 66208,
+          "sha256": "34cfe78d6226025e0993b8170e7d641de2ba5c60fee8cd7f2ebdf728291458ac"
+        },
+        "no-worries": {
+          "path": "vendor/rasp/audio/hf_alpha/no-worries.weba",
+          "bytes": 5555,
+          "durationMs": 1170,
+          "samples": 55800,
+          "sha256": "003a5187d01703a33458b4c2f5529e90c50fce29ff6d0354e941577bc2cdf79b"
+        },
+        "again": {
+          "path": "vendor/rasp/audio/hf_alpha/again.weba",
+          "bytes": 5453,
+          "durationMs": 1160,
+          "samples": 55296,
+          "sha256": "9cba52904eeca0f2e2aaaeb3913406f60fc441d2c10d8658c3250efdcfb66872"
+        },
+        "maybe-next-time": {
+          "path": "vendor/rasp/audio/hf_alpha/maybe-next-time.weba",
+          "bytes": 6702,
+          "durationMs": 1431,
+          "samples": 68320,
+          "sha256": "30535f25d90a802a3ee40cc64af7e6f65f861103dc976bb463696568c1c4e6e7"
+        },
+        "see-you": {
+          "path": "vendor/rasp/audio/hf_alpha/see-you.weba",
+          "bytes": 8006,
+          "durationMs": 1618,
+          "samples": 77326,
+          "sha256": "9c7cb85a95578cefa2ccdbde536ffee96d06110d9015b77c287a341d314789b3"
+        },
+        "hiya": {
+          "path": "vendor/rasp/audio/hf_alpha/hiya.weba",
+          "bytes": 3663,
+          "durationMs": 765,
+          "samples": 36336,
+          "sha256": "c1a55fd24bfe3102f43e3e5b337acd19fcb2451037b5015561318c3779de871e"
+        },
+        "fancy-a-game": {
+          "path": "vendor/rasp/audio/hf_alpha/fancy-a-game.weba",
+          "bytes": 6178,
+          "durationMs": 1312,
+          "samples": 62596,
+          "sha256": "1b31838c4bdb185e3d08a00b34006dafbbb41010ac77ff2ff5b4b8d6a387ece5"
+        },
+        "one-more": {
+          "path": "vendor/rasp/audio/hf_alpha/one-more.weba",
+          "bytes": 4451,
+          "durationMs": 910,
+          "samples": 43330,
+          "sha256": "303188ec7aad95b1138e26e8e011ff80db8fb5d4c30d5cc86449131df081868c"
+        },
+        "catch-you-later": {
+          "path": "vendor/rasp/audio/hf_alpha/catch-you-later.weba",
+          "bytes": 5143,
+          "durationMs": 1084,
+          "samples": 51690,
+          "sha256": "4220dcb283e5f35f7fec8d9c0a05ea40e4e851869ccc8b554d00f2b4e7cf8bf4"
+        },
+        "friends-now": {
+          "path": "vendor/rasp/audio/hf_alpha/friends-now.weba",
+          "bytes": 6582,
+          "durationMs": 1406,
+          "samples": 67142,
+          "sha256": "3af244481fb5107ad97a014b4c695980562a5d8cac649a004b1c2fecfb538ef8"
+        },
+        "good-luck": {
+          "path": "vendor/rasp/audio/hf_alpha/good-luck.weba",
+          "bytes": 5994,
+          "durationMs": 1278,
+          "samples": 60960,
+          "sha256": "4f9263172b6e32d22d4e6550ba4917d59bc2685eca36d826c098b39845ee4cbe"
+        }
+      }
+    },
+    "hm_omega": {
+      "language": "hi",
+      "locale": "hi-IN",
+      "gender": "male",
+      "clips": {
+        "greet": {
+          "path": "vendor/rasp/audio/hm_omega/greet.weba",
+          "bytes": 4642,
+          "durationMs": 952,
+          "samples": 45338,
+          "sha256": "08a502cc440eb94211f34c029642028ca701759282ccad46a97d166826d72c80"
+        },
+        "hello": {
+          "path": "vendor/rasp/audio/hm_omega/hello.weba",
+          "bytes": 3653,
+          "durationMs": 729,
+          "samples": 34628,
+          "sha256": "0da06e7fdcbf886bb5db51157f2dc420a25fe2a9466fc5c1a81ba79318744319"
+        },
+        "good-to-see": {
+          "path": "vendor/rasp/audio/hm_omega/good-to-see.weba",
+          "bytes": 10234,
+          "durationMs": 2032,
+          "samples": 97158,
+          "sha256": "89e5563f15bb1e1f41c50a0c8ca19897b13d988b3e2b9076943539132265a50b"
+        },
+        "hey-buddy": {
+          "path": "vendor/rasp/audio/hm_omega/hey-buddy.weba",
+          "bytes": 5052,
+          "durationMs": 1045,
+          "samples": 49786,
+          "sha256": "648f182d3e95a6f946868c2d8eb76b6ac5f40bfe118e4632a8b9ddfe2ff26166"
+        },
+        "be-friends": {
+          "path": "vendor/rasp/audio/hm_omega/be-friends.weba",
+          "bytes": 9124,
+          "durationMs": 1992,
+          "samples": 95242,
+          "sha256": "9bc8bf7c415fc02d44836e262fab9c60e9737ecc16eada21765ef7250f86c1af"
+        },
+        "yay": {
+          "path": "vendor/rasp/audio/hm_omega/yay.weba",
+          "bytes": 3851,
+          "durationMs": 719,
+          "samples": 34154,
+          "sha256": "cb951589b78fb6c433ece0416067f1f3f01ea0b8c766922b8de71ef26784588d"
+        },
+        "lets-play": {
+          "path": "vendor/rasp/audio/hm_omega/lets-play.weba",
+          "bytes": 6214,
+          "durationMs": 1317,
+          "samples": 62858,
+          "sha256": "70956e6b977bf6095598c282fcf28994603245fb5c0ea5357a7431b6fb26d5a0"
+        },
+        "got-time": {
+          "path": "vendor/rasp/audio/hm_omega/got-time.weba",
+          "bytes": 8577,
+          "durationMs": 1827,
+          "samples": 87316,
+          "sha256": "68cdce2f6c2cef5b2a5c1e29461cee033d010a8bd794cbc30d3d9d870a0f82f6"
+        },
+        "watch-this": {
+          "path": "vendor/rasp/audio/hm_omega/watch-this.weba",
+          "bytes": 5145,
+          "durationMs": 1079,
+          "samples": 51420,
+          "sha256": "9c1a762bb53991aaa958466e1c79494c8d5a02789c85425a9c846b60ab2c07dc"
+        },
+        "nice-one": {
+          "path": "vendor/rasp/audio/hm_omega/nice-one.weba",
+          "bytes": 4269,
+          "durationMs": 876,
+          "samples": 41708,
+          "sha256": "bb8b4b5f679b71451b29cdb2dd9dbf547a3f6601194ef51054784a659070d480"
+        },
+        "well-played": {
+          "path": "vendor/rasp/audio/hm_omega/well-played.weba",
+          "bytes": 5754,
+          "durationMs": 1194,
+          "samples": 56944,
+          "sha256": "009fc405a0943c3ee5fe75e42b68b49ec042ca074a5308fdccbfbd2ad42c2af4"
+        },
+        "you-got-me": {
+          "path": "vendor/rasp/audio/hm_omega/you-got-me.weba",
+          "bytes": 7509,
+          "durationMs": 1595,
+          "samples": 76222,
+          "sha256": "a46811ac68cd5d774936df4314d57b348aed650c2e2f1faf4a35a28f198c47d5"
+        },
+        "good-game": {
+          "path": "vendor/rasp/audio/hm_omega/good-game.weba",
+          "bytes": 5480,
+          "durationMs": 1140,
+          "samples": 54376,
+          "sha256": "2b7c8099e73778b0545f5f9eff7fd31cb2ea6b62a926fbf4e38345090cf77022"
+        },
+        "so-close": {
+          "path": "vendor/rasp/audio/hm_omega/so-close.weba",
+          "bytes": 5778,
+          "durationMs": 1211,
+          "samples": 57762,
+          "sha256": "d077f242ce19cfb862f24e6d18450f779dab40d9f0dc2c126461ffaaa534e543"
+        },
+        "tough-one": {
+          "path": "vendor/rasp/audio/hm_omega/tough-one.weba",
+          "bytes": 7327,
+          "durationMs": 1508,
+          "samples": 72032,
+          "sha256": "d059778d68ea56fd196388ddf54ee5d60cf0ae7832d505f7c79d431228e88152"
+        },
+        "nice-day": {
+          "path": "vendor/rasp/audio/hm_omega/nice-day.weba",
+          "bytes": 7020,
+          "durationMs": 1494,
+          "samples": 71344,
+          "sha256": "0fb8bbe7512d0cdba057187decaa0e4f283774bc8382121b43b16d69cd3e522e"
+        },
+        "no-worries": {
+          "path": "vendor/rasp/audio/hm_omega/no-worries.weba",
+          "bytes": 5669,
+          "durationMs": 1167,
+          "samples": 55676,
+          "sha256": "485c3d2bd22ca5e9d5e69f408a833abd279bed88d129cb080681b8b8d24be36a"
+        },
+        "again": {
+          "path": "vendor/rasp/audio/hm_omega/again.weba",
+          "bytes": 5389,
+          "durationMs": 1133,
+          "samples": 54026,
+          "sha256": "717dc833a592907c91d778b6b77ad0fb4a0917de37897e1a81c5b15cf6789ce5"
+        },
+        "maybe-next-time": {
+          "path": "vendor/rasp/audio/hm_omega/maybe-next-time.weba",
+          "bytes": 6956,
+          "durationMs": 1454,
+          "samples": 69416,
+          "sha256": "7210197684fcd3dc6c18b26ed08e81bcaf68d850831651dd9624c67d4deb31e5"
+        },
+        "see-you": {
+          "path": "vendor/rasp/audio/hm_omega/see-you.weba",
+          "bytes": 7917,
+          "durationMs": 1640,
+          "samples": 78360,
+          "sha256": "70dee3e9d237ebe71d8ba7e6adc7da02a4e68b1185af3aca60b24c4be92b3963"
+        },
+        "hiya": {
+          "path": "vendor/rasp/audio/hm_omega/hiya.weba",
+          "bytes": 3597,
+          "durationMs": 716,
+          "samples": 34016,
+          "sha256": "ff64c210e6083be5eaee4ccbd1fd6aa6b549af6a9bb963b1f8aad4eb9cbbdf3c"
+        },
+        "fancy-a-game": {
+          "path": "vendor/rasp/audio/hm_omega/fancy-a-game.weba",
+          "bytes": 6920,
+          "durationMs": 1312,
+          "samples": 62596,
+          "sha256": "8dbf996eb106665f1e267151b32cacc98e68af73d4bb82bf859acf8e4b000411"
+        },
+        "one-more": {
+          "path": "vendor/rasp/audio/hm_omega/one-more.weba",
+          "bytes": 4334,
+          "durationMs": 865,
+          "samples": 41144,
+          "sha256": "1d206cbfcc34843a8996dfd21523ac42ee4dfd718a726d96c22a16e05c75415b"
+        },
+        "catch-you-later": {
+          "path": "vendor/rasp/audio/hm_omega/catch-you-later.weba",
+          "bytes": 4878,
+          "durationMs": 991,
+          "samples": 47186,
+          "sha256": "1507b7509befe6e4216d1075a83eccc473e712717ece12cc67b24ca316d5037d"
+        },
+        "friends-now": {
+          "path": "vendor/rasp/audio/hm_omega/friends-now.weba",
+          "bytes": 6467,
+          "durationMs": 1360,
+          "samples": 64942,
+          "sha256": "51d9012b9ff48fd00895b28753720faf1e2f471e17b29fff5549d9399bb72094"
+        },
+        "good-luck": {
+          "path": "vendor/rasp/audio/hm_omega/good-luck.weba",
+          "bytes": 5879,
+          "durationMs": 1245,
+          "samples": 59390,
+          "sha256": "81def6c77e4af1d7e43ae7d94efde933ccbcd0c9050618baf414eb5cedc0102b"
+        }
+      }
+    },
+    "if_sara": {
+      "language": "it",
+      "locale": "it-IT",
+      "gender": "female",
+      "clips": {
+        "greet": {
+          "path": "vendor/rasp/audio/if_sara/greet.weba",
+          "bytes": 3343,
+          "durationMs": 701,
+          "samples": 32350,
+          "sha256": "efbdb6c105bd8408e709b296adc56689bd4e4e5b446fa5ff0d70e3c5883c2936"
+        },
+        "hello": {
+          "path": "vendor/rasp/audio/if_sara/hello.weba",
+          "bytes": 3356,
+          "durationMs": 680,
+          "samples": 32284,
+          "sha256": "6f6811d47054c94653455209a9bb5a8e8c327efe6a7134caf1ca0739383c6321"
+        },
+        "good-to-see": {
+          "path": "vendor/rasp/audio/if_sara/good-to-see.weba",
+          "bytes": 6772,
+          "durationMs": 1455,
+          "samples": 69498,
+          "sha256": "21451c1d8515750fce0c2a38973e56945b9b1a66578ac9cd2b8ed854e7e2e5d1"
+        },
+        "hey-buddy": {
+          "path": "vendor/rasp/audio/if_sara/hey-buddy.weba",
+          "bytes": 5004,
+          "durationMs": 1057,
+          "samples": 50382,
+          "sha256": "f10708875500ea1d337d422b41b8ec751aef0645e4251f5bf1d7c5abf40a71d5"
+        },
+        "be-friends": {
+          "path": "vendor/rasp/audio/if_sara/be-friends.weba",
+          "bytes": 7353,
+          "durationMs": 1574,
+          "samples": 75210,
+          "sha256": "899c1da718090ae37b94ff9817e46ffe086694892efccb31b90170f63c189b50"
+        },
+        "yay": {
+          "path": "vendor/rasp/audio/if_sara/yay.weba",
+          "bytes": 4692,
+          "durationMs": 901,
+          "samples": 41948,
+          "sha256": "20cfc34612751f21d78d18a4fc7835711088d420eadcf1bc0a5bd9dccfa03aae"
+        },
+        "lets-play": {
+          "path": "vendor/rasp/audio/if_sara/lets-play.weba",
+          "bytes": 7138,
+          "durationMs": 1533,
+          "samples": 73222,
+          "sha256": "e356f6a1efc737b15eb9baa2a85f29ac9e0dfd7bf0c2d76688ad000b1cbeb9ec"
+        },
+        "got-time": {
+          "path": "vendor/rasp/audio/if_sara/got-time.weba",
+          "bytes": 8143,
+          "durationMs": 1761,
+          "samples": 84166,
+          "sha256": "0333821da962269e2989518ee021fbe787df1c491ef08717ce9d28bf71af319b"
+        },
+        "watch-this": {
+          "path": "vendor/rasp/audio/if_sara/watch-this.weba",
+          "bytes": 4805,
+          "durationMs": 1000,
+          "samples": 47662,
+          "sha256": "f5005bdcdc7df7a187ab5b8c2025c8fe982081d095037e3af3a2fc8b868e7720"
+        },
+        "nice-one": {
+          "path": "vendor/rasp/audio/if_sara/nice-one.weba",
+          "bytes": 4872,
+          "durationMs": 1030,
+          "samples": 49086,
+          "sha256": "0c16ce675261c8ba2c819e7498af149594a72c110e53c1ab7a8ccbadd223f134"
+        },
+        "well-played": {
+          "path": "vendor/rasp/audio/if_sara/well-played.weba",
+          "bytes": 5735,
+          "durationMs": 1226,
+          "samples": 58484,
+          "sha256": "eb30e3d6da5adcd0e3596859459d5ca9e465ea7b5ea2bdc7b0a2ee7f2fe341b0"
+        },
+        "you-got-me": {
+          "path": "vendor/rasp/audio/if_sara/you-got-me.weba",
+          "bytes": 5783,
+          "durationMs": 1256,
+          "samples": 59934,
+          "sha256": "f5178dda9f132358f844f42b9998ddc26c33b96b160b777c09995da39388aecb"
+        },
+        "good-game": {
+          "path": "vendor/rasp/audio/if_sara/good-game.weba",
+          "bytes": 6475,
+          "durationMs": 1288,
+          "samples": 61474,
+          "sha256": "6c0b2e24baf0a1e354dc5ec6e99c9d1585df79a814229bfff1562d429be89d5d"
+        },
+        "so-close": {
+          "path": "vendor/rasp/audio/if_sara/so-close.weba",
+          "bytes": 3901,
+          "durationMs": 807,
+          "samples": 38392,
+          "sha256": "fdf54438addb3ce4fe132ff597f3d645d452973f63a1eaa012aae3cec168a784"
+        },
+        "tough-one": {
+          "path": "vendor/rasp/audio/if_sara/tough-one.weba",
+          "bytes": 6638,
+          "durationMs": 1416,
+          "samples": 67628,
+          "sha256": "9635a8dc98a4424dcaa73d1139f8ce3165086942cb92040821e916818567d77b"
+        },
+        "nice-day": {
+          "path": "vendor/rasp/audio/if_sara/nice-day.weba",
+          "bytes": 6712,
+          "durationMs": 1424,
+          "samples": 67972,
+          "sha256": "cd47a5ec10aa670a2954a9f51df043e8205241477a7c4803ec4d1c4b16563f77"
+        },
+        "no-worries": {
+          "path": "vendor/rasp/audio/if_sara/no-worries.weba",
+          "bytes": 6239,
+          "durationMs": 1326,
+          "samples": 63266,
+          "sha256": "ea7dfff81b1315f3e240c3860c048ed93a54c501e05ee10a18e8ea02ec392054"
+        },
+        "again": {
+          "path": "vendor/rasp/audio/if_sara/again.weba",
+          "bytes": 5116,
+          "durationMs": 1068,
+          "samples": 50886,
+          "sha256": "7587e0ee3ab0ff2efe6c9f326fd5ddaf9d6de5edb600ceda33a8f4b8f2635f87"
+        },
+        "maybe-next-time": {
+          "path": "vendor/rasp/audio/if_sara/maybe-next-time.weba",
+          "bytes": 8347,
+          "durationMs": 1794,
+          "samples": 85730,
+          "sha256": "411bb2abc1c50fe490a4ba93ada695267e7f972f4806792927c82bc887041ca7"
+        },
+        "see-you": {
+          "path": "vendor/rasp/audio/if_sara/see-you.weba",
+          "bytes": 8622,
+          "durationMs": 1899,
+          "samples": 90778,
+          "sha256": "7336df58fac17a688d774016184bb06630860184b17152814115c0134ee32557"
+        },
+        "hiya": {
+          "path": "vendor/rasp/audio/if_sara/hiya.weba",
+          "bytes": 4000,
+          "durationMs": 764,
+          "samples": 36308,
+          "sha256": "2fd7b531678df05e0093eb71231e79e19791a1f257bea584484ce720c2b38e11"
+        },
+        "fancy-a-game": {
+          "path": "vendor/rasp/audio/if_sara/fancy-a-game.weba",
+          "bytes": 6579,
+          "durationMs": 1418,
+          "samples": 67684,
+          "sha256": "373f730cadc3911e5bfd5a8e83ab10a33bcf0e006799201c8c644848b34bcf36"
+        },
+        "one-more": {
+          "path": "vendor/rasp/audio/if_sara/one-more.weba",
+          "bytes": 5337,
+          "durationMs": 1108,
+          "samples": 52810,
+          "sha256": "b7d8c6f84ea05393c71c590b7208a3ea68fed174f8e2007413b2c35982b050b7"
+        },
+        "catch-you-later": {
+          "path": "vendor/rasp/audio/if_sara/catch-you-later.weba",
+          "bytes": 6470,
+          "durationMs": 1381,
+          "samples": 65920,
+          "sha256": "eb8c63b5c8e9833137f5ff1f3c9b5b36941469de41e4db3a4167150d64d3034f"
+        },
+        "friends-now": {
+          "path": "vendor/rasp/audio/if_sara/friends-now.weba",
+          "bytes": 6083,
+          "durationMs": 1290,
+          "samples": 61536,
+          "sha256": "e036e4519cf548b8f4591f3f97a199e0e3f017048e7bc4d0cf60647e72e33a82"
+        },
+        "good-luck": {
+          "path": "vendor/rasp/audio/if_sara/good-luck.weba",
+          "bytes": 5885,
+          "durationMs": 1252,
+          "samples": 59722,
+          "sha256": "7f449a1fa303af0822c1685f64a6cb6ca244ccc7e837e2392f1cfee28d39f4d9"
+        }
+      }
+    },
+    "im_nicola": {
+      "language": "it",
+      "locale": "it-IT",
+      "gender": "male",
+      "clips": {
+        "greet": {
+          "path": "vendor/rasp/audio/im_nicola/greet.weba",
+          "bytes": 3078,
+          "durationMs": 591,
+          "samples": 28026,
+          "sha256": "47eb3554cd937431ad9738b79aa00878388c41140b4a56a1f8d9c52b82ca457b"
+        },
+        "hello": {
+          "path": "vendor/rasp/audio/im_nicola/hello.weba",
+          "bytes": 3080,
+          "durationMs": 591,
+          "samples": 28026,
+          "sha256": "7992becb699ffbebc19c5bbf294da6a1e5dae38a648d14371350e44ebfbba9b2"
+        },
+        "good-to-see": {
+          "path": "vendor/rasp/audio/im_nicola/good-to-see.weba",
+          "bytes": 7241,
+          "durationMs": 1448,
+          "samples": 69144,
+          "sha256": "ab24942b3f733f916d915911c5a022af03122e1d458474f672c962da137f06e8"
+        },
+        "hey-buddy": {
+          "path": "vendor/rasp/audio/im_nicola/hey-buddy.weba",
+          "bytes": 5099,
+          "durationMs": 1060,
+          "samples": 50504,
+          "sha256": "00260e2dbad4c6cc3fb9731d8092da918b14986fee8b91762d7ab3b259ba9790"
+        },
+        "be-friends": {
+          "path": "vendor/rasp/audio/im_nicola/be-friends.weba",
+          "bytes": 8140,
+          "durationMs": 1777,
+          "samples": 84916,
+          "sha256": "cd3161f994e46be99a3a2fa07793bc28833ed52c9c9d413e6a0bd7de73b3ace0"
+        },
+        "yay": {
+          "path": "vendor/rasp/audio/im_nicola/yay.weba",
+          "bytes": 4191,
+          "durationMs": 854,
+          "samples": 40616,
+          "sha256": "068e034ac8cc583332be90a586e8049b96c6c01cac8ddc74ed7b27cf0031fd18"
+        },
+        "lets-play": {
+          "path": "vendor/rasp/audio/im_nicola/lets-play.weba",
+          "bytes": 8182,
+          "durationMs": 1747,
+          "samples": 83478,
+          "sha256": "940c3c796b9f01836891bde3f071f62065bc09abdd45696828ceaaaf5a11b273"
+        },
+        "got-time": {
+          "path": "vendor/rasp/audio/im_nicola/got-time.weba",
+          "bytes": 9437,
+          "durationMs": 2025,
+          "samples": 96824,
+          "sha256": "3bd4d1b03e5a1283920313637744e1e0028e95193e401d2bfe2312621095a320"
+        },
+        "watch-this": {
+          "path": "vendor/rasp/audio/im_nicola/watch-this.weba",
+          "bytes": 4906,
+          "durationMs": 1007,
+          "samples": 47952,
+          "sha256": "673666508501e8163d86daa90acb510698da8f312251f877289f1f8f12c47de4"
+        },
+        "nice-one": {
+          "path": "vendor/rasp/audio/im_nicola/nice-one.weba",
+          "bytes": 5253,
+          "durationMs": 994,
+          "samples": 47372,
+          "sha256": "856cb56383b96c4e7b84dd59e7235c631e55e46157b22006f3171b98d3326e2e"
+        },
+        "well-played": {
+          "path": "vendor/rasp/audio/im_nicola/well-played.weba",
+          "bytes": 5439,
+          "durationMs": 1128,
+          "samples": 53762,
+          "sha256": "806355794d3d52e67fa57d364b7fc8d8fff9358ef85d638ffee87c2f5de7c02a"
+        },
+        "you-got-me": {
+          "path": "vendor/rasp/audio/im_nicola/you-got-me.weba",
+          "bytes": 6068,
+          "durationMs": 1269,
+          "samples": 60572,
+          "sha256": "1048032a653f0a6a8d2925f6a3de16fe4fe4b89cdf57926ef1fce9d3be448312"
+        },
+        "good-game": {
+          "path": "vendor/rasp/audio/im_nicola/good-game.weba",
+          "bytes": 6852,
+          "durationMs": 1391,
+          "samples": 66390,
+          "sha256": "5820dcc8432a35b0fd93db287fd81abdbca5115d45aede5b1e5c08b54e5a1359"
+        },
+        "so-close": {
+          "path": "vendor/rasp/audio/im_nicola/so-close.weba",
+          "bytes": 3797,
+          "durationMs": 769,
+          "samples": 36570,
+          "sha256": "7038a1e077d59605df97055f420483973679fffaebeb63cf723265ba9364ea72"
+        },
+        "tough-one": {
+          "path": "vendor/rasp/audio/im_nicola/tough-one.weba",
+          "bytes": 6993,
+          "durationMs": 1483,
+          "samples": 70814,
+          "sha256": "3480a9877c06af7bb21cb7de447a163676d36b1419c0ed265d5c3e2935bc55a3"
+        },
+        "nice-day": {
+          "path": "vendor/rasp/audio/im_nicola/nice-day.weba",
+          "bytes": 7001,
+          "durationMs": 1488,
+          "samples": 71060,
+          "sha256": "1ee5bff28a59b26ade7aceac69363ed9a05072c3a668e909192314b38b2f4055"
+        },
+        "no-worries": {
+          "path": "vendor/rasp/audio/im_nicola/no-worries.weba",
+          "bytes": 6773,
+          "durationMs": 1432,
+          "samples": 68354,
+          "sha256": "5000bbacfdef532a01442d4c276a63c826c34793623693965f202015a2fc9ff9"
+        },
+        "again": {
+          "path": "vendor/rasp/audio/im_nicola/again.weba",
+          "bytes": 4596,
+          "durationMs": 937,
+          "samples": 44610,
+          "sha256": "3da53a55db0ddbeaf9683eb94ae997e5c13eb5b5f4f1d913c346ccb28894c052"
+        },
+        "maybe-next-time": {
+          "path": "vendor/rasp/audio/im_nicola/maybe-next-time.weba",
+          "bytes": 9271,
+          "durationMs": 2040,
+          "samples": 97536,
+          "sha256": "6a9b1cc6589b3a5064380e35324389bdf12a6d0dc823b465e76e3ef51db99873"
+        },
+        "see-you": {
+          "path": "vendor/rasp/audio/im_nicola/see-you.weba",
+          "bytes": 9945,
+          "durationMs": 2187,
+          "samples": 104606,
+          "sha256": "b2a471d2e92f77aacd2a705ee884f5a847bc126bfc6381e8b6c13b5d7635aa1b"
+        },
+        "hiya": {
+          "path": "vendor/rasp/audio/im_nicola/hiya.weba",
+          "bytes": 3593,
+          "durationMs": 736,
+          "samples": 34982,
+          "sha256": "3263e945f5d446968c7cb7439ea207aee1e519a3b6dd80a34d08fe34faa5600f"
+        },
+        "fancy-a-game": {
+          "path": "vendor/rasp/audio/im_nicola/fancy-a-game.weba",
+          "bytes": 7423,
+          "durationMs": 1587,
+          "samples": 75792,
+          "sha256": "d16e9bcfe0c00cd7c55851c9e9e0261d3df3e149d0a988184a39aa201718c41d"
+        },
+        "one-more": {
+          "path": "vendor/rasp/audio/im_nicola/one-more.weba",
+          "bytes": 5457,
+          "durationMs": 1133,
+          "samples": 54042,
+          "sha256": "41b7248f5ec92ae2ba2063057c9fe5016b9af0fd412986548432ec5f0a5ebd00"
+        },
+        "catch-you-later": {
+          "path": "vendor/rasp/audio/im_nicola/catch-you-later.weba",
+          "bytes": 6517,
+          "durationMs": 1378,
+          "samples": 65760,
+          "sha256": "4b467104614f735c031e73840e199b850f392258269b59224e399a58ba280c59"
+        },
+        "friends-now": {
+          "path": "vendor/rasp/audio/im_nicola/friends-now.weba",
+          "bytes": 6554,
+          "durationMs": 1383,
+          "samples": 66018,
+          "sha256": "3a553d4ed9628dc21f245e089c52f1925b64174dd17ef9803347b7efe4bfe4f4"
+        },
+        "good-luck": {
+          "path": "vendor/rasp/audio/im_nicola/good-luck.weba",
+          "bytes": 6323,
+          "durationMs": 1339,
+          "samples": 63894,
+          "sha256": "d1be5255d4106fee8180aeb0036fea99d5a96e78b1924d4524b5166d089626b2"
+        }
+      }
+    },
+    "jf_alpha": {
+      "language": "ja",
+      "locale": "ja-JP",
+      "gender": "female",
+      "clips": {
+        "greet": {
+          "path": "vendor/rasp/audio/jf_alpha/greet.weba",
+          "bytes": 2824,
+          "durationMs": 560,
+          "samples": 26528,
+          "sha256": "35bf88ed1921144e8ca46a4dcad78d272829dc2dc491a25e9b860ad5711a5ad2"
+        },
+        "hello": {
+          "path": "vendor/rasp/audio/jf_alpha/hello.weba",
+          "bytes": 4925,
+          "durationMs": 1027,
+          "samples": 48924,
+          "sha256": "3573ad70468967c37645c034e340d99c491d99650ead6e635b2fd03f5862e4d1"
+        },
+        "good-to-see": {
+          "path": "vendor/rasp/audio/jf_alpha/good-to-see.weba",
+          "bytes": 5754,
+          "durationMs": 1231,
+          "samples": 58732,
+          "sha256": "456897dd6815ba7392fcd626b6f91af04f4d894ae5e1a6da57e432212d135736"
+        },
+        "hey-buddy": {
+          "path": "vendor/rasp/audio/jf_alpha/hey-buddy.weba",
+          "bytes": 4800,
+          "durationMs": 975,
+          "samples": 46442,
+          "sha256": "22783aab210d32e499e959fda221209195688b2c6edc85a9033dce1feccd8091"
+        },
+        "be-friends": {
+          "path": "vendor/rasp/audio/jf_alpha/be-friends.weba",
+          "bytes": 6538,
+          "durationMs": 1366,
+          "samples": 65196,
+          "sha256": "766639804060974cd34c7a748b6a7334bcb7ad4d48581cd89a0f2561a917ed8a"
+        },
+        "yay": {
+          "path": "vendor/rasp/audio/jf_alpha/yay.weba",
+          "bytes": 2960,
+          "durationMs": 575,
+          "samples": 27252,
+          "sha256": "7febdc6fbcba8d38ba752a8897af8736ce4b1d0586d971ea1fc66b0dca6dadc9"
+        },
+        "lets-play": {
+          "path": "vendor/rasp/audio/jf_alpha/lets-play.weba",
+          "bytes": 4901,
+          "durationMs": 1029,
+          "samples": 49030,
+          "sha256": "bbe18df00bef8a1f89a7f502e26d53f81f74e9cf1b3c57972ec69631efb110e4"
+        },
+        "got-time": {
+          "path": "vendor/rasp/audio/jf_alpha/got-time.weba",
+          "bytes": 6997,
+          "durationMs": 1499,
+          "samples": 71600,
+          "sha256": "813a9cdc6aa182949951e3f3106a3cdf1ced5a8c74caa9021a4ea87e360ffaa6"
+        },
+        "watch-this": {
+          "path": "vendor/rasp/audio/jf_alpha/watch-this.weba",
+          "bytes": 3953,
+          "durationMs": 821,
+          "samples": 38102,
+          "sha256": "dda56d89c89a18a33b7b4a692b95255fbf116372647d7210ff2e892c635f4951"
+        },
+        "nice-one": {
+          "path": "vendor/rasp/audio/jf_alpha/nice-one.weba",
+          "bytes": 3997,
+          "durationMs": 762,
+          "samples": 36196,
+          "sha256": "7da552535ac70ef7499a4a6959d4ab75e09b53045a306dedbbf4c77c030a6797"
+        },
+        "well-played": {
+          "path": "vendor/rasp/audio/jf_alpha/well-played.weba",
+          "bytes": 4724,
+          "durationMs": 988,
+          "samples": 47046,
+          "sha256": "aa9c06326692e5bf13c79734f17d6dd907d7a14334c79d85716a17d6bba420f0"
+        },
+        "you-got-me": {
+          "path": "vendor/rasp/audio/jf_alpha/you-got-me.weba",
+          "bytes": 4177,
+          "durationMs": 860,
+          "samples": 40934,
+          "sha256": "b2141af838dba6f4f2f7c78d387f606cdc66ab9087d1272e6e3fd7d1c1e5e24e"
+        },
+        "good-game": {
+          "path": "vendor/rasp/audio/jf_alpha/good-game.weba",
+          "bytes": 5722,
+          "durationMs": 1212,
+          "samples": 57792,
+          "sha256": "c69e2a55f857fb6ff25ecf18c9c7fcfb077d8058db0668c0bd02f2f31a1dff5f"
+        },
+        "so-close": {
+          "path": "vendor/rasp/audio/jf_alpha/so-close.weba",
+          "bytes": 4658,
+          "durationMs": 967,
+          "samples": 46060,
+          "sha256": "1bd850f425e5ab9cebd86d346c95ae58d13f33e40be7dd1fd6f704f3a9eea727"
+        },
+        "tough-one": {
+          "path": "vendor/rasp/audio/jf_alpha/tough-one.weba",
+          "bytes": 5058,
+          "durationMs": 1072,
+          "samples": 51086,
+          "sha256": "7b5846a7e368a8c3229cedece17d6f90928975d688014737b755be46cf971551"
+        },
+        "nice-day": {
+          "path": "vendor/rasp/audio/jf_alpha/nice-day.weba",
+          "bytes": 5408,
+          "durationMs": 1146,
+          "samples": 54650,
+          "sha256": "000c13efff66339759effda11c97d8084b8d902c26b86f85d41f8017d47b8c2b"
+        },
+        "no-worries": {
+          "path": "vendor/rasp/audio/jf_alpha/no-worries.weba",
+          "bytes": 5190,
+          "durationMs": 1093,
+          "samples": 52080,
+          "sha256": "67478600b7d427515649d4eba1a2eda58b690fdd87b4252e671ff7515a069fd9"
+        },
+        "again": {
+          "path": "vendor/rasp/audio/jf_alpha/again.weba",
+          "bytes": 5462,
+          "durationMs": 1153,
+          "samples": 55000,
+          "sha256": "0da03a71c2c04b83f8623e3a92c6ed14ba0b087a0a65b38e840fd70abd746dcd"
+        },
+        "maybe-next-time": {
+          "path": "vendor/rasp/audio/jf_alpha/maybe-next-time.weba",
+          "bytes": 5219,
+          "durationMs": 1085,
+          "samples": 51738,
+          "sha256": "033d6b4eafb3816d248b77a28f2781cf298268beb404ba2f2a55cff1c3d329c6"
+        },
+        "see-you": {
+          "path": "vendor/rasp/audio/jf_alpha/see-you.weba",
+          "bytes": 5035,
+          "durationMs": 1045,
+          "samples": 49798,
+          "sha256": "4425c808fdbaf3093088e4d8d1ff84488b2174c78b36832298e11a98535f61f3"
+        },
+        "hiya": {
+          "path": "vendor/rasp/audio/jf_alpha/hiya.weba",
+          "bytes": 3475,
+          "durationMs": 715,
+          "samples": 33972,
+          "sha256": "ae47da130a2740a5e77c5b607d137fb6cfa23865df170111f5b1d00a57f85fd3"
+        },
+        "fancy-a-game": {
+          "path": "vendor/rasp/audio/jf_alpha/fancy-a-game.weba",
+          "bytes": 4844,
+          "durationMs": 1005,
+          "samples": 47876,
+          "sha256": "dcbc69e94f9cbe15ec624cc94d0bc937d34a4520d8e339ebc54bb0d68aea2151"
+        },
+        "one-more": {
+          "path": "vendor/rasp/audio/jf_alpha/one-more.weba",
+          "bytes": 4665,
+          "durationMs": 965,
+          "samples": 45974,
+          "sha256": "aea0972441c4eddf9ba792f76d8db534bca21013a43633cd0def084afcd38c03"
+        },
+        "catch-you-later": {
+          "path": "vendor/rasp/audio/jf_alpha/catch-you-later.weba",
+          "bytes": 4836,
+          "durationMs": 999,
+          "samples": 47576,
+          "sha256": "8b5ff22e98f74050fd36484d3ffd72dfb4229f782d0674ae11a7d5d7a4440926"
+        },
+        "friends-now": {
+          "path": "vendor/rasp/audio/jf_alpha/friends-now.weba",
+          "bytes": 6904,
+          "durationMs": 1458,
+          "samples": 69646,
+          "sha256": "21b0a2f5c8244a362a0966e5530d9225e451d46810652c3712eef60c630a2419"
+        },
+        "good-luck": {
+          "path": "vendor/rasp/audio/jf_alpha/good-luck.weba",
+          "bytes": 4960,
+          "durationMs": 952,
+          "samples": 45328,
+          "sha256": "2ab6a64a4382ed568b18b815017b491545e7b4f2b80b882d437c3c72ad617888"
+        }
+      }
+    },
+    "jm_kumo": {
+      "language": "ja",
+      "locale": "ja-JP",
+      "gender": "male",
+      "clips": {
+        "greet": {
+          "path": "vendor/rasp/audio/jm_kumo/greet.weba",
+          "bytes": 2684,
+          "durationMs": 529,
+          "samples": 25016,
+          "sha256": "165e3aa3a43a6b81908f1efdb435fb7ef81095d77db442e2fb2fc1fb371bf8b9"
+        },
+        "hello": {
+          "path": "vendor/rasp/audio/jm_kumo/hello.weba",
+          "bytes": 4239,
+          "durationMs": 861,
+          "samples": 40944,
+          "sha256": "ee57ce2cc5023debdbfc88e084f850c6c9d6507628a2f51da8f2b705a9efe0de"
+        },
+        "good-to-see": {
+          "path": "vendor/rasp/audio/jm_kumo/good-to-see.weba",
+          "bytes": 5400,
+          "durationMs": 1122,
+          "samples": 53498,
+          "sha256": "d7d77779fdb4a32bacc4615eae0462020ca1ed10ed252e9a51a9fd83172dd8e4"
+        },
+        "hey-buddy": {
+          "path": "vendor/rasp/audio/jm_kumo/hey-buddy.weba",
+          "bytes": 4511,
+          "durationMs": 903,
+          "samples": 42960,
+          "sha256": "d27cc6dc684ed2805aa14fb80337f56befe3d7ee96899b6fd27d059f96e79539"
+        },
+        "be-friends": {
+          "path": "vendor/rasp/audio/jm_kumo/be-friends.weba",
+          "bytes": 6402,
+          "durationMs": 1350,
+          "samples": 64434,
+          "sha256": "dcabf062004f39bb8ae021ed97134c8376ff4131eccf09a204c2f54b7e9aa487"
+        },
+        "yay": {
+          "path": "vendor/rasp/audio/jm_kumo/yay.weba",
+          "bytes": 3647,
+          "durationMs": 741,
+          "samples": 35190,
+          "sha256": "a3d92456f9cca01a5ceb6c77475b7709fdcbd7ee7d71ec541927fd7434dd60dc"
+        },
+        "lets-play": {
+          "path": "vendor/rasp/audio/jm_kumo/lets-play.weba",
+          "bytes": 4707,
+          "durationMs": 976,
+          "samples": 46468,
+          "sha256": "d644b6ee2d9f8e7e652f6e2fc5ac532956d237ad6ece6c27eb112867d523b002"
+        },
+        "got-time": {
+          "path": "vendor/rasp/audio/jm_kumo/got-time.weba",
+          "bytes": 6912,
+          "durationMs": 1475,
+          "samples": 70462,
+          "sha256": "ca2898a73fdf8e643aa53b9200efa5ae772a283cc4e974fc2ebaa35f167831a8"
+        },
+        "watch-this": {
+          "path": "vendor/rasp/audio/jm_kumo/watch-this.weba",
+          "bytes": 4055,
+          "durationMs": 824,
+          "samples": 39188,
+          "sha256": "fdcd19961f63cb26eda1699a23e5d999159899201b4a0bcf543abcad666706e7"
+        },
+        "nice-one": {
+          "path": "vendor/rasp/audio/jm_kumo/nice-one.weba",
+          "bytes": 3139,
+          "durationMs": 613,
+          "samples": 29082,
+          "sha256": "fb0ecf3d25582e7873a12ff0c2a7e4ec333d85f90e58fd937342674f2d6fde3c"
+        },
+        "well-played": {
+          "path": "vendor/rasp/audio/jm_kumo/well-played.weba",
+          "bytes": 4547,
+          "durationMs": 938,
+          "samples": 44676,
+          "sha256": "a34f323a38fde614b580965d87be4cd060e877b08cd5ab2f5239b4989c443783"
+        },
+        "you-got-me": {
+          "path": "vendor/rasp/audio/jm_kumo/you-got-me.weba",
+          "bytes": 4409,
+          "durationMs": 897,
+          "samples": 42704,
+          "sha256": "21332d98b64a976acef0d4979c35e34dc3876a4e3f4369854b6b52b28001276d"
+        },
+        "good-game": {
+          "path": "vendor/rasp/audio/jm_kumo/good-game.weba",
+          "bytes": 5409,
+          "durationMs": 1161,
+          "samples": 55356,
+          "sha256": "292e9ee2c80ffaa9e4dc0718aaf455e202e851e03a6399aaf1187f7ae3510019"
+        },
+        "so-close": {
+          "path": "vendor/rasp/audio/jm_kumo/so-close.weba",
+          "bytes": 4424,
+          "durationMs": 941,
+          "samples": 43856,
+          "sha256": "c93509fd33172f17b95f0191802b4847b69cb4f6cf2fb8ac21a28b20c526310f"
+        },
+        "tough-one": {
+          "path": "vendor/rasp/audio/jm_kumo/tough-one.weba",
+          "bytes": 4999,
+          "durationMs": 1061,
+          "samples": 49622,
+          "sha256": "e24a822c7a53bb99479e09efb516ce7c56649aa90a4ab846b0a797900b66b6f8"
+        },
+        "nice-day": {
+          "path": "vendor/rasp/audio/jm_kumo/nice-day.weba",
+          "bytes": 5272,
+          "durationMs": 1110,
+          "samples": 52904,
+          "sha256": "cba119b2c01c106ffbbc0349787efe27dec8be3f8bc095b93c279694e72d7e86"
+        },
+        "no-worries": {
+          "path": "vendor/rasp/audio/jm_kumo/no-worries.weba",
+          "bytes": 5195,
+          "durationMs": 1077,
+          "samples": 51352,
+          "sha256": "45281c8415386586677d3c04a92bd8ece44768aec86b0a7ab4038981ea82a67e"
+        },
+        "again": {
+          "path": "vendor/rasp/audio/jm_kumo/again.weba",
+          "bytes": 5310,
+          "durationMs": 1097,
+          "samples": 52282,
+          "sha256": "eef9a6c6c5ec7df6466db42b89ce48f9063771337d2e8781f72da6fa0795c772"
+        },
+        "maybe-next-time": {
+          "path": "vendor/rasp/audio/jm_kumo/maybe-next-time.weba",
+          "bytes": 5159,
+          "durationMs": 1067,
+          "samples": 50870,
+          "sha256": "cc82a251ee336e90af5e091ab5578567e64a6eb9f99497e7671035319e42f00d"
+        },
+        "see-you": {
+          "path": "vendor/rasp/audio/jm_kumo/see-you.weba",
+          "bytes": 4794,
+          "durationMs": 983,
+          "samples": 46842,
+          "sha256": "f19c7cb44a535d53ac8d2ff9878b6d85ba2214f432e55b319a4cde7b5861fdab"
+        },
+        "hiya": {
+          "path": "vendor/rasp/audio/jm_kumo/hiya.weba",
+          "bytes": 3757,
+          "durationMs": 745,
+          "samples": 35376,
+          "sha256": "184354fd4eadf85361f26c29533d2223aa63b270a07efb33a4d6784087262272"
+        },
+        "fancy-a-game": {
+          "path": "vendor/rasp/audio/jm_kumo/fancy-a-game.weba",
+          "bytes": 4384,
+          "durationMs": 894,
+          "samples": 42528,
+          "sha256": "af84f63404795942c3e9d056bc33b1383395841460e06b13028a97bad58b0b48"
+        },
+        "one-more": {
+          "path": "vendor/rasp/audio/jm_kumo/one-more.weba",
+          "bytes": 4530,
+          "durationMs": 916,
+          "samples": 43596,
+          "sha256": "aafdb2ab02a4b04f09ef666a615ceacc9f3ea91f4d343a36faef51f52e18d2ce"
+        },
+        "catch-you-later": {
+          "path": "vendor/rasp/audio/jm_kumo/catch-you-later.weba",
+          "bytes": 4843,
+          "durationMs": 1018,
+          "samples": 48524,
+          "sha256": "e2b5af9a349043e3e01dce0d7be514c3ba380f942e4fb500ae45a41bf94561ef"
+        },
+        "friends-now": {
+          "path": "vendor/rasp/audio/jm_kumo/friends-now.weba",
+          "bytes": 6979,
+          "durationMs": 1493,
+          "samples": 71314,
+          "sha256": "a064809f3e3b088e941e6c20a2658c49614c51cd64bb8df1354d3c26af282901"
+        },
+        "good-luck": {
+          "path": "vendor/rasp/audio/jm_kumo/good-luck.weba",
+          "bytes": 4307,
+          "durationMs": 890,
+          "samples": 42356,
+          "sha256": "6252408f6b8136432a39b94a0a2aa561ec09a2f4e93edc592f5dd8800b3ef2e5"
+        }
+      }
+    },
+    "pf_dora": {
+      "language": "pt",
+      "locale": "pt-BR",
+      "gender": "female",
+      "clips": {
+        "greet": {
+          "path": "vendor/rasp/audio/pf_dora/greet.weba",
+          "bytes": 2955,
+          "durationMs": 585,
+          "samples": 27708,
+          "sha256": "7f4f6a1ee65522a1192641e980a1c99a3e0ffc0f5ee27fbcd6ca45fcb88cdfd8"
+        },
+        "hello": {
+          "path": "vendor/rasp/audio/pf_dora/hello.weba",
+          "bytes": 3061,
+          "durationMs": 590,
+          "samples": 27938,
+          "sha256": "810ff959a3d03390d49ce5d3892378bc0b050884f99b69efab9ec48f56933b66"
+        },
+        "good-to-see": {
+          "path": "vendor/rasp/audio/pf_dora/good-to-see.weba",
+          "bytes": 5158,
+          "durationMs": 1066,
+          "samples": 50808,
+          "sha256": "5a9dc561678787837925dec6f70eaf9c185a5ad81be066c436b8395ec4f9cfb6"
+        },
+        "hey-buddy": {
+          "path": "vendor/rasp/audio/pf_dora/hey-buddy.weba",
+          "bytes": 4936,
+          "durationMs": 1047,
+          "samples": 49918,
+          "sha256": "96781f102fbf8f1da7ed4f17f9dc01cbe4ba70426b806aa10d8e3392a85ee2ec"
+        },
+        "be-friends": {
+          "path": "vendor/rasp/audio/pf_dora/be-friends.weba",
+          "bytes": 6025,
+          "durationMs": 1269,
+          "samples": 60562,
+          "sha256": "e52ddf80908c92e4e3ed65ffb8f473d8d6ad1da17fa739fc0fa92e2b1098046e"
+        },
+        "yay": {
+          "path": "vendor/rasp/audio/pf_dora/yay.weba",
+          "bytes": 3176,
+          "durationMs": 618,
+          "samples": 29322,
+          "sha256": "07f6ad15934ab52ece6e576efb912d6de3ab31c06d54be9971cc46481fce1ad3"
+        },
+        "lets-play": {
+          "path": "vendor/rasp/audio/pf_dora/lets-play.weba",
+          "bytes": 4918,
+          "durationMs": 1012,
+          "samples": 48208,
+          "sha256": "f8bc74f22b3a0e2f287eabab346089d7bfcd21da59f85998298c4dcf379ea023"
+        },
+        "got-time": {
+          "path": "vendor/rasp/audio/pf_dora/got-time.weba",
+          "bytes": 7890,
+          "durationMs": 1668,
+          "samples": 79688,
+          "sha256": "ee830e82d4ee1b58efcce37964a629d1c9d1a06fe7d14efa60b6a57574a8e2be"
+        },
+        "watch-this": {
+          "path": "vendor/rasp/audio/pf_dora/watch-this.weba",
+          "bytes": 4373,
+          "durationMs": 921,
+          "samples": 42898,
+          "sha256": "60757fb74a4bda7ab004bd2b677b3293617864b35957a5bef0d1d459e2271753"
+        },
+        "nice-one": {
+          "path": "vendor/rasp/audio/pf_dora/nice-one.weba",
+          "bytes": 4613,
+          "durationMs": 955,
+          "samples": 45494,
+          "sha256": "7e6d4e697626753fb92bab769cf5354969c47ab3e722e63045f1f1ac76da9d6e"
+        },
+        "well-played": {
+          "path": "vendor/rasp/audio/pf_dora/well-played.weba",
+          "bytes": 5176,
+          "durationMs": 1096,
+          "samples": 52244,
+          "sha256": "471d4948408078971d10d3788251c537738c43b676fdc8339d8fddc2db338a30"
+        },
+        "you-got-me": {
+          "path": "vendor/rasp/audio/pf_dora/you-got-me.weba",
+          "bytes": 5783,
+          "durationMs": 1208,
+          "samples": 57628,
+          "sha256": "cd05ddbb361441d7948c9f4ef8edfb4f51ad987461f9f228568891d3a6aac13b"
+        },
+        "good-game": {
+          "path": "vendor/rasp/audio/pf_dora/good-game.weba",
+          "bytes": 5205,
+          "durationMs": 1096,
+          "samples": 52230,
+          "sha256": "e59a62e23b7e94c7e88de572c556393cdeba756f11680083d8dd40910546eec1"
+        },
+        "so-close": {
+          "path": "vendor/rasp/audio/pf_dora/so-close.weba",
+          "bytes": 3451,
+          "durationMs": 673,
+          "samples": 31942,
+          "sha256": "1e338a50ff935f29f8ea91e88c5e588f4cd237a03dbad80296ae0e8ff113a753"
+        },
+        "tough-one": {
+          "path": "vendor/rasp/audio/pf_dora/tough-one.weba",
+          "bytes": 6333,
+          "durationMs": 1335,
+          "samples": 63700,
+          "sha256": "5bd55a2237a96024293fbfa17d78981af7be223da21a0a0ec257bbb3216392c6"
+        },
+        "nice-day": {
+          "path": "vendor/rasp/audio/pf_dora/nice-day.weba",
+          "bytes": 4486,
+          "durationMs": 926,
+          "samples": 44098,
+          "sha256": "bf3aa6fb83d24aa4a549e71ff592b1ad5accc01055edd1483e865d020bc615c2"
+        },
+        "no-worries": {
+          "path": "vendor/rasp/audio/pf_dora/no-worries.weba",
+          "bytes": 4989,
+          "durationMs": 1025,
+          "samples": 48848,
+          "sha256": "9ba96bd3e4489fe3d78af5c1ed8fc8f4cd992912e7387c3e2f8b8b8047f341c1"
+        },
+        "again": {
+          "path": "vendor/rasp/audio/pf_dora/again.weba",
+          "bytes": 6324,
+          "durationMs": 1338,
+          "samples": 63844,
+          "sha256": "ac913cda9ff210b6ee24b5ba040ce5e89c8391dd88223516f91b492202cb79d2"
+        },
+        "maybe-next-time": {
+          "path": "vendor/rasp/audio/pf_dora/maybe-next-time.weba",
+          "bytes": 6368,
+          "durationMs": 1334,
+          "samples": 63674,
+          "sha256": "cbd96623aed6efb3dbbef361af1b522f6ec4f765aadc5d19b9e6a6bad1c345f9"
+        },
+        "see-you": {
+          "path": "vendor/rasp/audio/pf_dora/see-you.weba",
+          "bytes": 5449,
+          "durationMs": 1146,
+          "samples": 54640,
+          "sha256": "7d9a59a6971d7b13b25d8c966751a539957c1bc874d5d8560ab932994a78f97c"
+        },
+        "hiya": {
+          "path": "vendor/rasp/audio/pf_dora/hiya.weba",
+          "bytes": 3297,
+          "durationMs": 647,
+          "samples": 30692,
+          "sha256": "33add5be88b706be0eb2553541cb676eaced02d5e5b238737cc23d93f0b7bbee"
+        },
+        "fancy-a-game": {
+          "path": "vendor/rasp/audio/pf_dora/fancy-a-game.weba",
+          "bytes": 6126,
+          "durationMs": 1287,
+          "samples": 61436,
+          "sha256": "3bee154fe160215f4d27a4b2847714c2c12c353a67f2b03604b5f4c55272340f"
+        },
+        "one-more": {
+          "path": "vendor/rasp/audio/pf_dora/one-more.weba",
+          "bytes": 4096,
+          "durationMs": 831,
+          "samples": 39506,
+          "sha256": "251f9b012b99856a48aa831725e416a0973e788bf0247106b3ee910c6a6dd0e5"
+        },
+        "catch-you-later": {
+          "path": "vendor/rasp/audio/pf_dora/catch-you-later.weba",
+          "bytes": 4240,
+          "durationMs": 862,
+          "samples": 41016,
+          "sha256": "1c94490c0feecc5756b1f253551587ee532a349cd0b9fd63ff71fbd3e2161307"
+        },
+        "friends-now": {
+          "path": "vendor/rasp/audio/pf_dora/friends-now.weba",
+          "bytes": 6600,
+          "durationMs": 1405,
+          "samples": 67066,
+          "sha256": "b3c31fd9c1ddbf14d0c17187ed29033c3b8a967968c6e73a17f3d6b09e71ab81"
+        },
+        "good-luck": {
+          "path": "vendor/rasp/audio/pf_dora/good-luck.weba",
+          "bytes": 4527,
+          "durationMs": 932,
+          "samples": 44390,
+          "sha256": "226354bcc97d62d98c9b02ab6de29ddab931231029e75a79ad26ef70f6605a3e"
+        }
+      }
+    },
+    "pm_alex": {
+      "language": "pt",
+      "locale": "pt-BR",
+      "gender": "male",
+      "clips": {
+        "greet": {
+          "path": "vendor/rasp/audio/pm_alex/greet.weba",
+          "bytes": 2885,
+          "durationMs": 581,
+          "samples": 27506,
+          "sha256": "5f362327d773381b62f873b61ec11e315c9c9c05273b924e0af30e7a95367502"
+        },
+        "hello": {
+          "path": "vendor/rasp/audio/pm_alex/hello.weba",
+          "bytes": 3060,
+          "durationMs": 585,
+          "samples": 27736,
+          "sha256": "fde5a615ebf678cf18a6b9038d9a904e0a1a97a28c9f57acef9fa72d75bc9703"
+        },
+        "good-to-see": {
+          "path": "vendor/rasp/audio/pm_alex/good-to-see.weba",
+          "bytes": 5520,
+          "durationMs": 1154,
+          "samples": 55024,
+          "sha256": "18f5fd04a3c2d92177f5eada7f3f4f0c470d0fec501c4789fac1c1b4c30e5d77"
+        },
+        "hey-buddy": {
+          "path": "vendor/rasp/audio/pm_alex/hey-buddy.weba",
+          "bytes": 5054,
+          "durationMs": 1070,
+          "samples": 51012,
+          "sha256": "2253ff5d7850f596f81978e56d5d8603ea086262a175408df2cacecfaacf2107"
+        },
+        "be-friends": {
+          "path": "vendor/rasp/audio/pm_alex/be-friends.weba",
+          "bytes": 6024,
+          "durationMs": 1269,
+          "samples": 60546,
+          "sha256": "b15a2daee328f2b79fead233fbc6c9ab3f4cfa4d82c9ba41fbe620d4242eff16"
+        },
+        "yay": {
+          "path": "vendor/rasp/audio/pm_alex/yay.weba",
+          "bytes": 3177,
+          "durationMs": 608,
+          "samples": 28820,
+          "sha256": "f87c88093ec089b708043f041ddc8341b47e4422f602e4081ce9f7909e18de5c"
+        },
+        "lets-play": {
+          "path": "vendor/rasp/audio/pm_alex/lets-play.weba",
+          "bytes": 5017,
+          "durationMs": 1037,
+          "samples": 49400,
+          "sha256": "c618c61e0888eecb59ef4a6b6eca006f4537a099913fdeef761f01a474cea6b8"
+        },
+        "got-time": {
+          "path": "vendor/rasp/audio/pm_alex/got-time.weba",
+          "bytes": 8232,
+          "durationMs": 1759,
+          "samples": 84070,
+          "sha256": "59482acf7de8f8eabaf5a4c6bdbe3877ecf9c2766cd1990ec85bab94f638fcaa"
+        },
+        "watch-this": {
+          "path": "vendor/rasp/audio/pm_alex/watch-this.weba",
+          "bytes": 4405,
+          "durationMs": 918,
+          "samples": 43696,
+          "sha256": "3f6f724bff97cb59c33d70b84aff020b607ead055a271e64963f4e351c246cfa"
+        },
+        "nice-one": {
+          "path": "vendor/rasp/audio/pm_alex/nice-one.weba",
+          "bytes": 4756,
+          "durationMs": 980,
+          "samples": 46666,
+          "sha256": "63acd2d56e4a04867b265caa5e752b85f84977269d52b9c52de6eb53b1eb81f3"
+        },
+        "well-played": {
+          "path": "vendor/rasp/audio/pm_alex/well-played.weba",
+          "bytes": 5251,
+          "durationMs": 1086,
+          "samples": 51748,
+          "sha256": "c1da764668c2a8429ae3d752644f03916ac40c705f44e296819bf707dfaccecc"
+        },
+        "you-got-me": {
+          "path": "vendor/rasp/audio/pm_alex/you-got-me.weba",
+          "bytes": 6111,
+          "durationMs": 1293,
+          "samples": 61722,
+          "sha256": "d8c484ffe9ddd94ab9ec94a017157aa9755aea6533b339566a0aa1d8fcfbb6ca"
+        },
+        "good-game": {
+          "path": "vendor/rasp/audio/pm_alex/good-game.weba",
+          "bytes": 5133,
+          "durationMs": 1070,
+          "samples": 51020,
+          "sha256": "3b213f51dc487d6b80e10d6d544af4e7e9b4371fa835d5133a22cb0683dd5513"
+        },
+        "so-close": {
+          "path": "vendor/rasp/audio/pm_alex/so-close.weba",
+          "bytes": 3488,
+          "durationMs": 671,
+          "samples": 31826,
+          "sha256": "88249691f4cebe5281bf9c707f80bb9acec065336b61870777a4f607a327b400"
+        },
+        "tough-one": {
+          "path": "vendor/rasp/audio/pm_alex/tough-one.weba",
+          "bytes": 6344,
+          "durationMs": 1325,
+          "samples": 63222,
+          "sha256": "5cdddf68b2d98f6b20ba6792704fba37e0adbc7b5181927de7d3df8740d2b139"
+        },
+        "nice-day": {
+          "path": "vendor/rasp/audio/pm_alex/nice-day.weba",
+          "bytes": 4627,
+          "durationMs": 948,
+          "samples": 45156,
+          "sha256": "9fade5120c97311a9d031f2f4ed9b1d171f450d118c68e1524831884820be282"
+        },
+        "no-worries": {
+          "path": "vendor/rasp/audio/pm_alex/no-worries.weba",
+          "bytes": 5175,
+          "durationMs": 1071,
+          "samples": 51040,
+          "sha256": "f1e54feaa8b29e0609523c6ca497fe4c208bc46b2c5b888d7d3f7652c00f4385"
+        },
+        "again": {
+          "path": "vendor/rasp/audio/pm_alex/again.weba",
+          "bytes": 6765,
+          "durationMs": 1433,
+          "samples": 68404,
+          "sha256": "af1441a9b06713584948947e37d9f2f4d900269732375a78f4adabef6e2046c6"
+        },
+        "maybe-next-time": {
+          "path": "vendor/rasp/audio/pm_alex/maybe-next-time.weba",
+          "bytes": 6450,
+          "durationMs": 1357,
+          "samples": 64792,
+          "sha256": "2a639da39ea72f620df69308705af433a6db7ec687d6c2e74477d1820fa5a009"
+        },
+        "see-you": {
+          "path": "vendor/rasp/audio/pm_alex/see-you.weba",
+          "bytes": 5736,
+          "durationMs": 1208,
+          "samples": 57638,
+          "sha256": "fbbe52ee46ea37d199b0eab110250950c658a1c1159337e81dc2baa9be134b1f"
+        },
+        "hiya": {
+          "path": "vendor/rasp/audio/pm_alex/hiya.weba",
+          "bytes": 3394,
+          "durationMs": 665,
+          "samples": 31544,
+          "sha256": "548b1efc2d6d857ac3bb391105936f6e062223ee6931655458dd2a83bff1aa0e"
+        },
+        "fancy-a-game": {
+          "path": "vendor/rasp/audio/pm_alex/fancy-a-game.weba",
+          "bytes": 6447,
+          "durationMs": 1353,
+          "samples": 64566,
+          "sha256": "6fb727fa8834d5baf262bf3f3f2f6718b99b8492a9e3526a1169c4d83bd5edbf"
+        },
+        "one-more": {
+          "path": "vendor/rasp/audio/pm_alex/one-more.weba",
+          "bytes": 4205,
+          "durationMs": 851,
+          "samples": 40472,
+          "sha256": "579a21469e7310ad1b46b1e55204a491374fc1d72d5e953457e8e2431ab16c71"
+        },
+        "catch-you-later": {
+          "path": "vendor/rasp/audio/pm_alex/catch-you-later.weba",
+          "bytes": 4472,
+          "durationMs": 923,
+          "samples": 43946,
+          "sha256": "3078df4e41664c3f4cb411a995d840702997a4ad4ee24c8d2ea22ba5a906d667"
+        },
+        "friends-now": {
+          "path": "vendor/rasp/audio/pm_alex/friends-now.weba",
+          "bytes": 6965,
+          "durationMs": 1484,
+          "samples": 70876,
+          "sha256": "f8f2b7b5babe9fffe34fb262bf465d34b4905af460d8793e3ebed8bd97eb7ca7"
+        },
+        "good-luck": {
+          "path": "vendor/rasp/audio/pm_alex/good-luck.weba",
+          "bytes": 5096,
+          "durationMs": 1071,
+          "samples": 51024,
+          "sha256": "06fc7678d85c2de26b604329729bd7ad84c008617d278893ce3fbe820c90a1fd"
+        }
+      }
+    },
+    "zf_xiaobei": {
+      "language": "zh",
+      "locale": "zh-CN",
+      "gender": "female",
+      "clips": {
+        "greet": {
+          "path": "vendor/rasp/audio/zf_xiaobei/greet.weba",
+          "bytes": 3617,
+          "durationMs": 678,
+          "samples": 32164,
+          "sha256": "8aa47e21df837e9ae2d097c6e02323670a8758beac7ebe31f40eb89efb7156d5"
+        },
+        "hello": {
+          "path": "vendor/rasp/audio/zf_xiaobei/hello.weba",
+          "bytes": 4098,
+          "durationMs": 834,
+          "samples": 39682,
+          "sha256": "c7b10a52a486ce30c1278253dd8e29db6e5db970cb052e34de2908b9a2873767"
+        },
+        "good-to-see": {
+          "path": "vendor/rasp/audio/zf_xiaobei/good-to-see.weba",
+          "bytes": 7792,
+          "durationMs": 1666,
+          "samples": 79588,
+          "sha256": "476983b650c640b781a11a99e7ed2357d517e39dba2fa3c78e4d567321af5343"
+        },
+        "hey-buddy": {
+          "path": "vendor/rasp/audio/zf_xiaobei/hey-buddy.weba",
+          "bytes": 5081,
+          "durationMs": 1053,
+          "samples": 50174,
+          "sha256": "54e21c1d3c4ca49f1d96c9ae7ff37362903e9065bea3fe2c50fc33a76c4f267f"
+        },
+        "be-friends": {
+          "path": "vendor/rasp/audio/zf_xiaobei/be-friends.weba",
+          "bytes": 7538,
+          "durationMs": 1602,
+          "samples": 76530,
+          "sha256": "736417d7639a101adbc0ca3ed18d6f96c18c5e2371c4a8d91bfaa40d91272098"
+        },
+        "yay": {
+          "path": "vendor/rasp/audio/zf_xiaobei/yay.weba",
+          "bytes": 4900,
+          "durationMs": 1016,
+          "samples": 48420,
+          "sha256": "2cda6d28434a3ceb8d7598f5b733f133067053f78feab2743fe81373c86ad91c"
+        },
+        "lets-play": {
+          "path": "vendor/rasp/audio/zf_xiaobei/lets-play.weba",
+          "bytes": 7108,
+          "durationMs": 1421,
+          "samples": 67834,
+          "sha256": "c4f1364cca16da98aa3e3141205c630869ca5a70faea163f5de40426a540e11e"
+        },
+        "got-time": {
+          "path": "vendor/rasp/audio/zf_xiaobei/got-time.weba",
+          "bytes": 7114,
+          "durationMs": 1520,
+          "samples": 72576,
+          "sha256": "82f4658e95d626e56d03948827624d0718fca6790a17752bf6f3f56fb8cbfc7c"
+        },
+        "watch-this": {
+          "path": "vendor/rasp/audio/zf_xiaobei/watch-this.weba",
+          "bytes": 5128,
+          "durationMs": 1066,
+          "samples": 50808,
+          "sha256": "9062fe38aec1d64fd934cc67682c52a9589599fb61c0bc3f3241b18030255307"
+        },
+        "nice-one": {
+          "path": "vendor/rasp/audio/zf_xiaobei/nice-one.weba",
+          "bytes": 4292,
+          "durationMs": 876,
+          "samples": 41690,
+          "sha256": "e67391b9fb81ed0a1081e78a5df7405d76e2e38d470cff80e425539e0e4f25fc"
+        },
+        "well-played": {
+          "path": "vendor/rasp/audio/zf_xiaobei/well-played.weba",
+          "bytes": 4720,
+          "durationMs": 969,
+          "samples": 46150,
+          "sha256": "25a461617ec6f6c84cb916d2bb18ff978bce5b05fadb4586ebf6078d1a5a2c11"
+        },
+        "you-got-me": {
+          "path": "vendor/rasp/audio/zf_xiaobei/you-got-me.weba",
+          "bytes": 6215,
+          "durationMs": 1212,
+          "samples": 57810,
+          "sha256": "8685dddc96c83f1c3961eb653814710a4a680d1dba55de7c7b6ffe5a11b221f9"
+        },
+        "good-game": {
+          "path": "vendor/rasp/audio/zf_xiaobei/good-game.weba",
+          "bytes": 6489,
+          "durationMs": 1371,
+          "samples": 65450,
+          "sha256": "9b751f2c91fdaf933f8c1ed28304ec4eec1dd32207c5d2fb4fd00c604533dccc"
+        },
+        "so-close": {
+          "path": "vendor/rasp/audio/zf_xiaobei/so-close.weba",
+          "bytes": 4772,
+          "durationMs": 970,
+          "samples": 46190,
+          "sha256": "7427be3131731e46f99325d16fa3d6b0fa56017415c3ff4670a6c08fe9ed5b2a"
+        },
+        "tough-one": {
+          "path": "vendor/rasp/audio/zf_xiaobei/tough-one.weba",
+          "bytes": 4984,
+          "durationMs": 1006,
+          "samples": 47940,
+          "sha256": "a30a3032d4379be8cccc4cfedc3be3050875c2f446989f60605025da78daa457"
+        },
+        "nice-day": {
+          "path": "vendor/rasp/audio/zf_xiaobei/nice-day.weba",
+          "bytes": 5809,
+          "durationMs": 1224,
+          "samples": 58386,
+          "sha256": "3119986d7be7f078d7dc0fab3f3d0e8b169ee33b884c3b00dd8dbb19484bdf9c"
+        },
+        "no-worries": {
+          "path": "vendor/rasp/audio/zf_xiaobei/no-worries.weba",
+          "bytes": 4839,
+          "durationMs": 989,
+          "samples": 47124,
+          "sha256": "eae42eb6324e4d32a390b3c7fe0cbf460cc95d17fe6c335ccd6ce9f15338a7c3"
+        },
+        "again": {
+          "path": "vendor/rasp/audio/zf_xiaobei/again.weba",
+          "bytes": 5282,
+          "durationMs": 1101,
+          "samples": 51532,
+          "sha256": "417e34bb7f5d14fcabc966af717fedde547f26658f6debe4ee44f86b897bf4c6"
+        },
+        "maybe-next-time": {
+          "path": "vendor/rasp/audio/zf_xiaobei/maybe-next-time.weba",
+          "bytes": 4850,
+          "durationMs": 1004,
+          "samples": 47816,
+          "sha256": "127b924a4e5e5f613b9071e7f9823b32887258974401540f58f38d8e18d23759"
+        },
+        "see-you": {
+          "path": "vendor/rasp/audio/zf_xiaobei/see-you.weba",
+          "bytes": 5168,
+          "durationMs": 1071,
+          "samples": 51024,
+          "sha256": "f417a85b1bae9dcd95f0cc978562597cd5353066885be5cef11294d1eefccd09"
+        },
+        "hiya": {
+          "path": "vendor/rasp/audio/zf_xiaobei/hiya.weba",
+          "bytes": 4106,
+          "durationMs": 770,
+          "samples": 36604,
+          "sha256": "05301aa9473dfba0f92c1e674cbdfcff93f6fac078624cd6ea4e465347bf2b6a"
+        },
+        "fancy-a-game": {
+          "path": "vendor/rasp/audio/zf_xiaobei/fancy-a-game.weba",
+          "bytes": 6274,
+          "durationMs": 1327,
+          "samples": 63324,
+          "sha256": "759f90c27fd54275b3a9c0137d8efc3bbca8838853486aca8a544b6f159f84ea"
+        },
+        "one-more": {
+          "path": "vendor/rasp/audio/zf_xiaobei/one-more.weba",
+          "bytes": 5332,
+          "durationMs": 1105,
+          "samples": 52688,
+          "sha256": "1ccb25e6070fb82da99e14961a01bde112d1eaa5c1856cfbe6bc66f1486d71b6"
+        },
+        "catch-you-later": {
+          "path": "vendor/rasp/audio/zf_xiaobei/catch-you-later.weba",
+          "bytes": 4965,
+          "durationMs": 1036,
+          "samples": 49390,
+          "sha256": "16ead0220a91ba8b0cacb7cdf4c84022da9c6f44d78935add8f4bab6d41c5749"
+        },
+        "friends-now": {
+          "path": "vendor/rasp/audio/zf_xiaobei/friends-now.weba",
+          "bytes": 8544,
+          "durationMs": 1838,
+          "samples": 87854,
+          "sha256": "469641c43baf3e9c7aed7f7bdc7526ebb4bb31ad8499e6012c9c7ac9b123134d"
+        },
+        "good-luck": {
+          "path": "vendor/rasp/audio/zf_xiaobei/good-luck.weba",
+          "bytes": 5191,
+          "durationMs": 1068,
+          "samples": 50886,
+          "sha256": "4e95f120a04d25f52c94249ac1884f1316edd177e32d0d4b77421197a63e85f0"
+        }
+      }
+    },
+    "zm_yunjian": {
+      "language": "zh",
+      "locale": "zh-CN",
+      "gender": "male",
+      "clips": {
+        "greet": {
+          "path": "vendor/rasp/audio/zm_yunjian/greet.weba",
+          "bytes": 2663,
+          "durationMs": 502,
+          "samples": 23718,
+          "sha256": "3b69c5a336780e305325d49e78bd735bb03e819dc72aeff17c5301cfecd76f6e"
+        },
+        "hello": {
+          "path": "vendor/rasp/audio/zm_yunjian/hello.weba",
+          "bytes": 3107,
+          "durationMs": 602,
+          "samples": 28556,
+          "sha256": "ecb224dd1ad0689983bbc26e90ae6e742bc1247eec4ad9580eff29ba2aa9ba84"
+        },
+        "good-to-see": {
+          "path": "vendor/rasp/audio/zm_yunjian/good-to-see.weba",
+          "bytes": 6908,
+          "durationMs": 1461,
+          "samples": 69754,
+          "sha256": "e00841597ef01743f828a2438fab445fb033c4264a8c4b4e744de1bb91915875"
+        },
+        "hey-buddy": {
+          "path": "vendor/rasp/audio/zm_yunjian/hey-buddy.weba",
+          "bytes": 4281,
+          "durationMs": 854,
+          "samples": 40624,
+          "sha256": "c991173bc2b8023c7af17e599b8fffc98556ec9276c498509919ec067ed585c6"
+        },
+        "be-friends": {
+          "path": "vendor/rasp/audio/zm_yunjian/be-friends.weba",
+          "bytes": 6794,
+          "durationMs": 1417,
+          "samples": 67672,
+          "sha256": "2d4c443751269674fb75e880383df217502ef452272049388ec962ed3b89d015"
+        },
+        "yay": {
+          "path": "vendor/rasp/audio/zm_yunjian/yay.weba",
+          "bytes": 3612,
+          "durationMs": 715,
+          "samples": 33946,
+          "sha256": "4afa430e5e7c53936eeb22fba830c7a787079cc6d0b662b6986e460b8cc939ac"
+        },
+        "lets-play": {
+          "path": "vendor/rasp/audio/zm_yunjian/lets-play.weba",
+          "bytes": 5941,
+          "durationMs": 1239,
+          "samples": 59102,
+          "sha256": "e8c1d64a4362e5e1111608abc158e5943cb45da9cb287dcb3017764053779758"
+        },
+        "got-time": {
+          "path": "vendor/rasp/audio/zm_yunjian/got-time.weba",
+          "bytes": 6272,
+          "durationMs": 1293,
+          "samples": 61708,
+          "sha256": "3aebd596a00f438f415327e9b39f77a2b440eaa83e15e424ffb695af15e8db04"
+        },
+        "watch-this": {
+          "path": "vendor/rasp/audio/zm_yunjian/watch-this.weba",
+          "bytes": 3880,
+          "durationMs": 779,
+          "samples": 37020,
+          "sha256": "dac058b6aa17b9ce007447f574ed72cda85322d539abf2982fc03519c6e88b7f"
+        },
+        "nice-one": {
+          "path": "vendor/rasp/audio/zm_yunjian/nice-one.weba",
+          "bytes": 3143,
+          "durationMs": 601,
+          "samples": 28468,
+          "sha256": "867cb40a83891c561080cf90d071ad4195ec1a8f55a3be102f9bb93404bc5a18"
+        },
+        "well-played": {
+          "path": "vendor/rasp/audio/zm_yunjian/well-played.weba",
+          "bytes": 3913,
+          "durationMs": 759,
+          "samples": 36088,
+          "sha256": "795db8df34a56a9691ef96634d66a5d9b898be10867dc0fedc28f044a6d20dd3"
+        },
+        "you-got-me": {
+          "path": "vendor/rasp/audio/zm_yunjian/you-got-me.weba",
+          "bytes": 5546,
+          "durationMs": 1114,
+          "samples": 53122,
+          "sha256": "2baf10f6cb4ed07cb7da7156e026871c7b2843520870217f58a8347dbe96a71c"
+        },
+        "good-game": {
+          "path": "vendor/rasp/audio/zm_yunjian/good-game.weba",
+          "bytes": 5721,
+          "durationMs": 1184,
+          "samples": 56452,
+          "sha256": "2bb3ad7c6156dc737e2a7988dcdb3de226f1b7683448ffad0bc9be0e38c1542f"
+        },
+        "so-close": {
+          "path": "vendor/rasp/audio/zm_yunjian/so-close.weba",
+          "bytes": 3959,
+          "durationMs": 797,
+          "samples": 37910,
+          "sha256": "002d8b684c639e342e09982a7cd7a56f48ce9cf32aa6a8800fa429d6ff7e4f69"
+        },
+        "tough-one": {
+          "path": "vendor/rasp/audio/zm_yunjian/tough-one.weba",
+          "bytes": 3790,
+          "durationMs": 749,
+          "samples": 35604,
+          "sha256": "1d74f31e8fe0267ecf760ca511d4d43065e26044e7a8614df1792ced82b71264"
+        },
+        "nice-day": {
+          "path": "vendor/rasp/audio/zm_yunjian/nice-day.weba",
+          "bytes": 5268,
+          "durationMs": 1096,
+          "samples": 52232,
+          "sha256": "e7fc1f08c9836253b674bf703a5942f38b8c855deed8ec8cf47668d519107ef2"
+        },
+        "no-worries": {
+          "path": "vendor/rasp/audio/zm_yunjian/no-worries.weba",
+          "bytes": 3997,
+          "durationMs": 789,
+          "samples": 37490,
+          "sha256": "0e9996a5d12d93d482949c1c2749346f28cf506d28530acc3a9c4a8d5179161e"
+        },
+        "again": {
+          "path": "vendor/rasp/audio/zm_yunjian/again.weba",
+          "bytes": 4604,
+          "durationMs": 940,
+          "samples": 44736,
+          "sha256": "0bcc2539ad60fde9e3f191deb319f04861076a63a647a82dc157021c9a685e2c"
+        },
+        "maybe-next-time": {
+          "path": "vendor/rasp/audio/zm_yunjian/maybe-next-time.weba",
+          "bytes": 4032,
+          "durationMs": 803,
+          "samples": 38196,
+          "sha256": "19d13da110e4d0f8ef5cfc94159bcc1c6e2f38b86c7057a4b4ece8d1321d4adc"
+        },
+        "see-you": {
+          "path": "vendor/rasp/audio/zm_yunjian/see-you.weba",
+          "bytes": 4550,
+          "durationMs": 928,
+          "samples": 44196,
+          "sha256": "5b17b18a4b66a7e984343b245cee48406d866669bfb71b0f5c85804e837f1931"
+        },
+        "hiya": {
+          "path": "vendor/rasp/audio/zm_yunjian/hiya.weba",
+          "bytes": 2818,
+          "durationMs": 536,
+          "samples": 25380,
+          "sha256": "92817cec3b1cc9ad8bd81e65a34e6f563b71c20d4e30253ce651fe1c939a53d7"
+        },
+        "fancy-a-game": {
+          "path": "vendor/rasp/audio/zm_yunjian/fancy-a-game.weba",
+          "bytes": 5558,
+          "durationMs": 1152,
+          "samples": 54930,
+          "sha256": "9959cac7cf54cd6c4dae74fc3b9b18d5fa3495e454dbe06f79308f091e50c688"
+        },
+        "one-more": {
+          "path": "vendor/rasp/audio/zm_yunjian/one-more.weba",
+          "bytes": 4735,
+          "durationMs": 962,
+          "samples": 45826,
+          "sha256": "6c685f42ce8fca8638174057ac57f6e47ff97fb6ea47ed5a7a134a38d8db0696"
+        },
+        "catch-you-later": {
+          "path": "vendor/rasp/audio/zm_yunjian/catch-you-later.weba",
+          "bytes": 4514,
+          "durationMs": 918,
+          "samples": 43694,
+          "sha256": "4748fa6766c1a5e45f62dca7017aa1649366143d01ea28e24811164f30149ac9"
+        },
+        "friends-now": {
+          "path": "vendor/rasp/audio/zm_yunjian/friends-now.weba",
+          "bytes": 7686,
+          "durationMs": 1630,
+          "samples": 77896,
+          "sha256": "e8cf0614b12793b3be14652053cef57f31abc0c123fd7d2ebcec176911fb19e1"
+        },
+        "good-luck": {
+          "path": "vendor/rasp/audio/zm_yunjian/good-luck.weba",
+          "bytes": 4437,
+          "durationMs": 899,
+          "samples": 42780,
+          "sha256": "158365011c4ad12153be328be2fa95767f050e01f344fbf81dceb784d45e1a8d"
+        }
+      }
+    }
+  },
+  "phrases": {
+    "greet": {
+      "text": "Hi there!",
+      "group": "greeting",
+      "translations": {
+        "es": "¡Hola!",
+        "pt": "Oi!",
+        "hi": "नमस्ते!",
+        "fr": "Salut !",
+        "it": "Ciao!",
+        "ja": "やあ！",
+        "zh": "嗨！"
+      }
+    },
+    "hello": {
+      "text": "Hello!",
+      "group": "greeting",
+      "translations": {
+        "es": "¡Hola!",
+        "pt": "Olá!",
+        "hi": "हैलो!",
+        "fr": "Bonjour !",
+        "it": "Ciao!",
+        "ja": "こんにちは！",
+        "zh": "你好！"
+      }
+    },
+    "good-to-see": {
+      "text": "Good to see you!",
+      "group": "greeting",
+      "translations": {
+        "es": "¡Qué bueno verte!",
+        "pt": "Que bom te ver!",
+        "hi": "तुम्हें देखकर अच्छा लगा!",
+        "fr": "Ça fait plaisir de te voir !",
+        "it": "Che bello vederti!",
+        "ja": "会えてうれしいよ！",
+        "zh": "见到你真高兴！"
+      }
+    },
+    "hey-buddy": {
+      "text": "Hey, buddy!",
+      "group": "greeting",
+      "translations": {
+        "es": "¡Hola, amigo!",
+        "pt": "Ei, parceiro!",
+        "hi": "अरे, दोस्त!",
+        "fr": "Salut, mon pote !",
+        "it": "Ehi, amico!",
+        "ja": "やあ、相棒！",
+        "zh": "嘿，伙计！"
+      }
+    },
+    "be-friends": {
+      "text": "Want to be friends?",
+      "group": "friendship",
+      "translations": {
+        "es": "¿Quieres que seamos amigos?",
+        "pt": "Quer ser meu amigo?",
+        "hi": "क्या हम दोस्त बन सकते हैं?",
+        "fr": "On devient amis ?",
+        "it": "Vuoi essere mio amico?",
+        "ja": "友だちにならない？",
+        "zh": "想交个朋友吗？"
+      }
+    },
+    "yay": {
+      "text": "Yay!",
+      "group": "friendship",
+      "translations": {
+        "es": "¡Genial!",
+        "pt": "Eba!",
+        "hi": "वाह!",
+        "fr": "Youpi !",
+        "it": "Evviva!",
+        "ja": "やったー！",
+        "zh": "太好了！"
+      }
+    },
+    "lets-play": {
+      "text": "Let's play a game.",
+      "group": "play",
+      "translations": {
+        "es": "Vamos a jugar.",
+        "pt": "Vamos jogar.",
+        "hi": "चलो खेलते हैं।",
+        "fr": "On joue ?",
+        "it": "Facciamo una partita.",
+        "ja": "ゲームしよう。",
+        "zh": "来玩个游戏吧。"
+      }
+    },
+    "got-time": {
+      "text": "Got time for a round?",
+      "group": "play",
+      "translations": {
+        "es": "¿Tienes tiempo para una partida?",
+        "pt": "Tem tempo para uma partida?",
+        "hi": "एक राउंड के लिए समय है?",
+        "fr": "T'as le temps d'une partie ?",
+        "it": "Hai tempo per una partita?",
+        "ja": "一戦やる時間ある？",
+        "zh": "有空玩一局吗？"
+      }
+    },
+    "watch-this": {
+      "text": "Watch this!",
+      "group": "play",
+      "translations": {
+        "es": "¡Mira esto!",
+        "pt": "Olha isso!",
+        "hi": "यह देखो!",
+        "fr": "Regarde ça !",
+        "it": "Guarda qui!",
+        "ja": "見てて！",
+        "zh": "看好了！"
+      }
+    },
+    "nice-one": {
+      "text": "Nice one!",
+      "group": "win",
+      "translations": {
+        "es": "¡Bien hecho!",
+        "pt": "Mandou bem!",
+        "hi": "बढ़िया!",
+        "fr": "Joli !",
+        "it": "Bel colpo!",
+        "ja": "いいね！",
+        "zh": "漂亮！"
+      }
+    },
+    "well-played": {
+      "text": "Well played!",
+      "group": "win",
+      "translations": {
+        "es": "¡Bien jugado!",
+        "pt": "Bem jogado!",
+        "hi": "अच्छा खेला!",
+        "fr": "Bien joué !",
+        "it": "Ben giocato!",
+        "ja": "ナイスプレー！",
+        "zh": "打得好！"
+      }
+    },
+    "you-got-me": {
+      "text": "You got me!",
+      "group": "win",
+      "translations": {
+        "es": "¡Me venciste!",
+        "pt": "Você me venceu!",
+        "hi": "तुमने मुझे हरा दिया!",
+        "fr": "Tu m'as eu !",
+        "it": "Mi hai battuto!",
+        "ja": "やられた！",
+        "zh": "被你打败了！"
+      }
+    },
+    "good-game": {
+      "text": "Good game!",
+      "group": "loss",
+      "translations": {
+        "es": "¡Buena partida!",
+        "pt": "Boa partida!",
+        "hi": "अच्छा खेल!",
+        "fr": "Belle partie !",
+        "it": "Bella partita!",
+        "ja": "いい勝負だった！",
+        "zh": "这局真不错！"
+      }
+    },
+    "so-close": {
+      "text": "So close!",
+      "group": "loss",
+      "translations": {
+        "es": "¡Casi!",
+        "pt": "Quase!",
+        "hi": "बहुत करीब!",
+        "fr": "Presque !",
+        "it": "Quasi!",
+        "ja": "おしかった！",
+        "zh": "差一点！"
+      }
+    },
+    "tough-one": {
+      "text": "Tough one!",
+      "group": "loss",
+      "translations": {
+        "es": "¡Qué difícil!",
+        "pt": "Essa foi difícil!",
+        "hi": "यह तो मुश्किल था!",
+        "fr": "C'était serré !",
+        "it": "Che partita tosta!",
+        "ja": "手ごわかった！",
+        "zh": "真难打！"
+      }
+    },
+    "nice-day": {
+      "text": "Nice day!",
+      "group": "ambient",
+      "translations": {
+        "es": "¡Buen día!",
+        "pt": "Que dia bom!",
+        "hi": "क्या अच्छा दिन है!",
+        "fr": "Belle journée !",
+        "it": "Che bella giornata!",
+        "ja": "いい天気だね！",
+        "zh": "天气真好！"
+      }
+    },
+    "no-worries": {
+      "text": "No worries.",
+      "group": "decline",
+      "translations": {
+        "es": "No hay problema.",
+        "pt": "Sem problema.",
+        "hi": "कोई बात नहीं।",
+        "fr": "Pas de souci.",
+        "it": "Nessun problema.",
+        "ja": "気にしないで。",
+        "zh": "没关系。"
+      }
+    },
+    "again": {
+      "text": "Wanna go again?",
+      "group": "close",
+      "translations": {
+        "es": "¿Quieres jugar otra vez?",
+        "pt": "Quer jogar de novo?",
+        "hi": "फिर से खेलें?",
+        "fr": "On remet ça ?",
+        "it": "Rigiochiamo?",
+        "ja": "もう一回やる？",
+        "zh": "再来一局？"
+      }
+    },
+    "maybe-next-time": {
+      "text": "Maybe next time.",
+      "group": "close",
+      "translations": {
+        "es": "Quizás la próxima vez.",
+        "pt": "Talvez na próxima.",
+        "hi": "शायद अगली बार।",
+        "fr": "Une prochaine fois, peut-être.",
+        "it": "Magari la prossima volta.",
+        "ja": "また今度ね。",
+        "zh": "下次吧。"
+      }
+    },
+    "see-you": {
+      "text": "See you next time.",
+      "group": "close",
+      "translations": {
+        "es": "Hasta la próxima.",
+        "pt": "Até a próxima.",
+        "hi": "अगली बार मिलते हैं।",
+        "fr": "À la prochaine !",
+        "it": "Ci vediamo la prossima volta.",
+        "ja": "じゃあ、またね！",
+        "zh": "下次见！"
+      }
+    },
+    "hiya": {
+      "text": "Hiya!",
+      "group": "greeting",
+      "translations": {
+        "es": "¡Hola!",
+        "pt": "E aí!",
+        "hi": "हाय!",
+        "fr": "Coucou !",
+        "it": "Ehilà!",
+        "ja": "やっほー！",
+        "zh": "嗨呀！"
+      }
+    },
+    "fancy-a-game": {
+      "text": "Fancy a game?",
+      "group": "play",
+      "translations": {
+        "es": "¿Te animas a jugar?",
+        "pt": "Tá a fim de jogar?",
+        "hi": "खेलने का मन है?",
+        "fr": "Ça te dit, une partie ?",
+        "it": "Ti va una partita?",
+        "ja": "ゲームしない？",
+        "zh": "想玩一局吗？"
+      }
+    },
+    "one-more": {
+      "text": "One more?",
+      "group": "close",
+      "translations": {
+        "es": "¿Otra vez?",
+        "pt": "Mais uma?",
+        "hi": "एक और?",
+        "fr": "Encore une ?",
+        "it": "Ancora una?",
+        "ja": "もう一回？",
+        "zh": "再来一次？"
+      }
+    },
+    "catch-you-later": {
+      "text": "Catch you later!",
+      "group": "close",
+      "translations": {
+        "es": "¡Hasta luego!",
+        "pt": "Até mais!",
+        "hi": "फिर मिलेंगे!",
+        "fr": "À plus !",
+        "it": "Ci vediamo dopo!",
+        "ja": "またあとで！",
+        "zh": "回头见！"
+      }
+    },
+    "friends-now": {
+      "text": "We're friends now!",
+      "group": "friendship",
+      "translations": {
+        "es": "¡Ahora somos amigos!",
+        "pt": "Agora somos amigos!",
+        "hi": "अब हम दोस्त हैं!",
+        "fr": "On est amis maintenant !",
+        "it": "Ora siamo amici!",
+        "ja": "これで友だちだね！",
+        "zh": "我们现在是朋友了！"
+      }
+    },
+    "good-luck": {
+      "text": "Good luck!",
+      "group": "play",
+      "translations": {
+        "es": "¡Buena suerte!",
+        "pt": "Boa sorte!",
+        "hi": "शुभकामनाएँ!",
+        "fr": "Bonne chance !",
+        "it": "Buona fortuna!",
+        "ja": "がんばって！",
+        "zh": "祝你好运！"
+      }
+    }
+  },
+  "hooks": {
+    "stranger": [
+      "greet",
+      "be-friends"
+    ],
+    "friend": [
+      "hello",
+      "good-to-see"
+    ],
+    "accepted": [
+      "yay",
+      "friends-now"
+    ],
+    "declined": [
+      "no-worries",
+      "maybe-next-time"
+    ],
+    "companion": [
+      "hey-buddy",
+      "greet"
+    ],
+    "social.greet": [
+      "greet",
+      "hello"
+    ],
+    "social.chat": [
+      "nice-day"
+    ],
+    "social.invite": [
+      "lets-play",
+      "got-time"
+    ],
+    "social.friend": [
+      "got-time",
+      "again"
+    ],
+    "social.npcGamePrompt": [
+      "watch-this"
+    ],
+    "minigame.win": [
+      "nice-one",
+      "well-played",
+      "you-got-me"
+    ],
+    "minigame.loss": [
+      "good-game",
+      "tough-one"
+    ],
+    "minigame.draw": [
+      "good-game",
+      "so-close"
+    ],
+    "minigame.abandoned": [
+      "maybe-next-time",
+      "see-you"
+    ],
+    "game.start": [
+      "good-luck"
+    ],
+    "replay": [
+      "again",
+      "one-more"
+    ],
+    "close": [
+      "see-you",
+      "catch-you-later"
+    ]
+  }
+}

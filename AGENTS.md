@@ -22,10 +22,16 @@ npm start           # static server at http://localhost:4173
 npm test            # node:test suites in test/
 npm run vendor      # rebuild vendor/dicebear-voxel.js from vendor-src/dicebear.js
 npm run render:pets # re-render data/cubeworld_pets.json from assets/cubeworld-src
+npm run voice:vendor # re-vendor vendor/rasp/ from the pinned corpus build (--check: verify)
+npm run voice:pools  # regenerate data/voice_pools.json from the vendored wasm
 ```
 
 `npm install` is only needed for `npm run vendor` or when changing dev tooling. Do not
-commit `node_modules/`.
+commit `node_modules/`. The voice assets are generated but committed: `voice:vendor` reads
+the published corpus registry (network only on the first run or with `--build <id>`) and
+writes `vendor/rasp/**` plus `data/voice_bank.json`; `voice:pools` runs offline. Both
+scripts are Node standard library only, and `npm run voice:vendor -- --check` is the drift
+gate.
 
 ## Architecture
 

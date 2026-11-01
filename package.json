@@ -9,6 +9,8 @@
     "serve": "python3 -m http.server 4173",
     "start": "python3 -m http.server 4173",
     "render:pets": "python3 scripts/render_cubeworld_pets.py",
+    "voice:vendor": "node scripts/vendor_voice_bank.mjs",
+    "voice:pools": "node scripts/build_voice_pools.mjs",
     "test": "node --test"
   },
   "devDependencies": {
