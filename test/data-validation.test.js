@@ -19,6 +19,9 @@ const minigames = readJson('minigames.json');
 const rewards = readJson('rewards.json');
 const dialogues = readJson('dialogues.json');
 const behaviors = readJson('behaviors.json');
+const voicePolicy = readJson('voice.json');
+const voiceBank = readJson('voice_bank.json');
+const voicePools = readJson('voice_pools.json');
 
 const catalog = items.catalog;
 const catalogIds = new Set(Object.keys(catalog));
@@ -241,5 +244,29 @@ test('effect motions and every metadata dialogue key resolve in data', () => {
       assert.ok(socialLines[key] || dialogues.dialogues[key],
         `${behaviorId}.${stateId} says unknown dialogue key ${key}`);
     }
+  }
+});
+
+test('voice.json resolves against the vendored bank and pools', () => {
+  assert.equal(voicePolicy.version, 1);
+  assert.equal(typeof voicePolicy.enabled, 'boolean');
+  assert.ok(voicePolicy.volume >= 0 && voicePolicy.volume <= 1);
+  assert.ok(Number(voicePolicy.prefetchRadiusTiles) > 0);
+
+  const languageIds = new Set(voicePolicy.languages.map(language => language.id));
+  assert.equal(languageIds.size, voicePolicy.languages.length, 'duplicate voice language ids');
+  for (const language of voicePolicy.languages) {
+    assert.ok(Number(language.weight) > 0, `${language.id} needs a positive weight`);
+    assert.ok(language.label, `${language.id} needs a label`);
+    assert.ok(Array.isArray(voicePools.languages[language.id]) && voicePools.languages[language.id].length,
+      `${language.id} has no pool entries`);
+  }
+
+  for (const [event, hook] of Object.entries(voicePolicy.events)) {
+    assert.ok(Array.isArray(voiceBank.hooks[hook]) && voiceBank.hooks[hook].length,
+      `${event} maps to unknown or empty hook ${hook}`);
+  }
+  for (const event of voicePolicy.prefetchEvents) {
+    assert.ok(voicePolicy.events[event], `prefetch event ${event} is not aliased`);
   }
 });

@@ -292,6 +292,7 @@ export class Game {
       id: input.id ?? (isPlayer ? 'player' : `npc-${Math.random().toString(36).slice(2, 9)}`),
       name: input.name || 'Wanderer',
       recipe: input.recipe,
+      voice: input.voice,
       vibe: input.vibe || '',
       inventory: Array.isArray(input.inventory) ? input.inventory : [],
       equipped: Array.isArray(input.equipped) ? input.equipped : [],

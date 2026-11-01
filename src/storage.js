@@ -1,10 +1,11 @@
 import { decodeTerrain, encodeTerrain } from './world.js';
 import { normalizeInventory, createItemInstance } from './inventory.js';
 import { normalizeForage } from './forage.js';
+import { voiceForRecord } from './voice/casting.js';
 
 export const STORAGE_KEY = 'playpark.save.v1';
 export const STATS_KEY = 'playpark.stats.v1';
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 // New parks receive these in data/items.json. Grant them once to pre-v2 saves
 // so existing testers can see the headline effects without using Debug.
@@ -218,6 +219,7 @@ export function serializeSave(game, draft, friends, behaviorState = null) {
       id: npc.id,
       name: npc.name,
       recipe: npc.recipe,
+      voice: voiceForRecord(npc),
       vibe: npc.vibe,
       x: npc.x,
       y: npc.y,
@@ -255,11 +257,14 @@ function migrateCharacterRecord(record) {
 /**
  * NPCs gain ownership fields in Phase 2. Old v2 saves (and v1 migrations)
  * default to zero coins and an empty reserve without bumping the version.
+ * v3 adds a voice block; an absent or malformed block is re-cast from the NPC
+ * id, so a saved NPC is voiced exactly once and never re-rolled later.
  */
 function migrateNpcRecord(record) {
   const next = migrateCharacterRecord(record);
   if (!isObject(next)) return next;
   next.coins = Number.isFinite(next.coins) ? next.coins : 0;
+  next.voice = voiceForRecord(next);
   next.stabledCompanions = Array.isArray(next.stabledCompanions)
     ? next.stabledCompanions
       .filter(isObject)
@@ -269,14 +274,14 @@ function migrateNpcRecord(record) {
 }
 
 /**
- * Upgrade a v1 save (or clean a v2 save) to the current schema. Returns null
- * for malformed input and for future versions so callers can fall back to a
- * fresh park without risking data corruption.
+ * Upgrade a v1 or v2 save (or clean a v3 save) to the current schema. Returns
+ * null for malformed input and for future versions so callers can fall back to
+ * a fresh park without risking data corruption.
  */
 export function migrateSave(state) {
   if (!isObject(state)) return null;
   const version = Number(state.version);
-  if (version !== 1 && version !== SAVE_VERSION) return null;
+  if (!Number.isInteger(version) || version < 1 || version > SAVE_VERSION) return null;
 
   const next = { ...state, version: SAVE_VERSION };
 

@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "enabled": true,
+  "volume": 0.8,
+  "bank": "vendor/rasp",
+  "languages": [
+    { "id": "en", "weight": 40, "label": "English" },
+    { "id": "es", "weight": 9, "label": "Spanish" },
+    { "id": "pt", "weight": 9, "label": "Portuguese" },
+    { "id": "ja", "weight": 9, "label": "Japanese" },
+    { "id": "zh", "weight": 9, "label": "Mandarin" },
+    { "id": "hi", "weight": 9, "label": "Hindi" },
+    { "id": "fr", "weight": 7, "label": "French" },
+    { "id": "it", "weight": 8, "label": "Italian" }
+  ],
+  "events": {
+    "dialogue.stranger": "stranger",
+    "dialogue.friend": "friend",
+    "dialogue.accepted": "accepted",
+    "dialogue.declined": "declined",
+    "dialogue.companion": "companion",
+    "bubble.chat": "social.chat",
+    "minigame.invite": "social.invite",
+    "minigame.win": "minigame.win",
+    "minigame.loss": "minigame.loss",
+    "minigame.draw": "minigame.draw",
+    "minigame.abandon": "minigame.abandoned",
+    "game.start": "game.start"
+  },
+  "prefetchRadiusTiles": 3,
+  "prefetchEvents": ["dialogue.friend", "dialogue.stranger", "bubble.chat"]
+}

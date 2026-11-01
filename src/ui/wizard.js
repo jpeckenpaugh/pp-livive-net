@@ -11,6 +11,7 @@ import {
   prettyLabel
 } from '../avatar.js';
 import { PLAYER_NAMES, pickVibe } from '../names.js';
+import { castVoice } from '../voice/casting.js';
 
 const LOOK_FIELDS = ['top', 'outfit', 'glasses', 'beard', 'skin', 'hair', 'shirt', 'pants', 'shoes'];
 const COLOR_FIELDS = ['skin', 'hair', 'shirt', 'pants', 'shoes'];
@@ -182,7 +183,9 @@ export class SetupWizard {
   }
 
   rerollDraftNpc(npc, card) {
-    npc.recipe = createRecipe();
+    const voice = castVoice();
+    npc.voice = voice;
+    npc.recipe = createRecipe(voice.seed);
     npc.vibe = pickVibe();
     if (npc.companion) npc.companion.recipe = createRecipe(); // companion creation fallback or companion recipe
     const image = card.querySelector('img');
@@ -254,7 +257,9 @@ export class SetupWizard {
     $('shuffle-crowd').addEventListener('click', () => {
       if (!this.draft) return;
       for (const npc of this.draft.npcs) {
-        npc.recipe = createRecipe();
+        const voice = castVoice();
+        npc.voice = voice;
+        npc.recipe = createRecipe(voice.seed);
         npc.vibe = pickVibe();
       }
       this.renderCrowd();

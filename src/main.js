@@ -17,6 +17,7 @@ import {
 } from './world.js';
 import { PLAYER_NAMES, COMPANION_NAMES, pickName, pickVibe } from './names.js';
 import { serializeSave, saveState, loadSave, clearSave, recordGameResult } from './storage.js';
+import { castVoice } from './voice/casting.js';
 import { DialogueManager } from './dialogue.js';
 import { createItemInstance, createStarterInventory, normalizeInventory } from './inventory.js';
 import { SetupWizard } from './ui/wizard.js';
@@ -402,10 +403,12 @@ function makeDraft() {
 function makeNpc() {
   const used = new Set(draft.npcs.map(npc => npc.name));
   const npcId = makeId('npc');
+  const voice = castVoice();
   return {
     id: npcId,
     name: pickName(used),
-    recipe: createRecipe(),
+    recipe: createRecipe(voice.seed),
+    voice,
     vibe: pickVibe(),
     inventory: createStarterInventory(),
     companion: {
@@ -938,10 +941,12 @@ function updateMeta() {
 function makeLiveNpc() {
   const used = new Set(game.npcs.map(npc => npc.name));
   const npcId = makeId('npc');
+  const voice = castVoice();
   return {
     id: npcId,
     name: pickName(used),
-    recipe: createRecipe(),
+    recipe: createRecipe(voice.seed),
+    voice,
     vibe: pickVibe(),
     inventory: createStarterInventory(),
     companion: {
@@ -1032,6 +1037,7 @@ function buildLiveNpcs() {
       id: npc.id,
       name: npc.name,
       recipe: npc.recipe,
+      voice: npc.voice,
       vibe: npc.vibe,
       inventory: npc.inventory || createStarterInventory(),
       companion: npc.companion,
@@ -1174,6 +1180,7 @@ function applyState(state) {
         id: npc.id || makeId('npc'),
         name: npc.name,
         recipe: npc.recipe,
+        voice: npc.voice,
         vibe: npc.vibe || '',
         inventory: normalizeInventory(npc.inventory || createStarterInventory()),
         equipped: Array.isArray(npc.equipped) ? npc.equipped : [],
@@ -1500,8 +1507,10 @@ function toggleWander() {
 function rerollCardCharacter() {
   const cardCharacter = panels?.cardCharacter;
   if (!cardCharacter || cardCharacter.isPlayer || cardCharacter.isCompanion) return;
-  const recipe = createRecipe();
+  const voice = castVoice();
+  const recipe = createRecipe(voice.seed);
   cardCharacter.recipe = recipe;
+  cardCharacter.voice = voice;
   cardCharacter.vibe = pickVibe();
   game.updateNpcRecipe(cardCharacter.id, recipe);
   bindAnimatedAvatar($('npc-avatar'), recipe, 0);

@@ -62,7 +62,7 @@ test('serializeSave handles empty or uninitialized game', () => {
   assert.equal(serializeSave({}, null, new Set()), null);
 });
 
-test('serializeSave writes v2 with normalised instances and empty gear', () => {
+test('serializeSave writes v3 with normalised instances and empty gear', () => {
   const fakeGame = baseGame({
     player: {
       name: 'Tester',
@@ -88,7 +88,7 @@ test('serializeSave writes v2 with normalised instances and empty gear', () => {
 
   const save = serializeSave(fakeGame, {}, new Set(['npc-1']));
   assert.equal(save.version, SAVE_VERSION);
-  assert.equal(save.version, 2);
+  assert.equal(save.version, 3);
   assert.equal(save.worldSeed, 'test-seed');
   assert.equal(save.playerName, 'Tester');
   assert.equal(save.player.x, 10);
@@ -107,7 +107,7 @@ test('serializeSave writes v2 with normalised instances and empty gear', () => {
   });
 });
 
-test('v1 saves migrate to v2 instances, equipped defaults, and behavior block', () => {
+test('v1 saves migrate to v3 instances, equipped defaults, and behavior block', () => {
   const v1 = {
     version: 1,
     worldSeed: 'legacy-seed',
@@ -142,7 +142,7 @@ test('v1 saves migrate to v2 instances, equipped defaults, and behavior block', 
   };
 
   const migrated = migrateSave(v1);
-  assert.equal(migrated.version, 2);
+  assert.equal(migrated.version, 3);
   assert.equal(migrated.playerName, 'Old Timer');
   const migratedUids = migrated.player.inventory.map(item => item.uid);
   assert.deepEqual(migratedUids.slice(0, 3), ['ball-0', 'ball-1', 'mystery-trinket-2']);
@@ -232,7 +232,7 @@ test('equipped gear round-trips for player, NPC, companion, and stabled companio
   assert.ok(save.player.inventory[0].uid);
 
   const loaded = migrateSave(JSON.parse(JSON.stringify(save)));
-  assert.equal(loaded.version, 2);
+  assert.equal(loaded.version, 3);
   assert.deepEqual(loaded.player.equipped, save.player.equipped);
   assert.deepEqual(loaded.npcs[0].equipped, save.npcs[0].equipped);
   assert.deepEqual(loaded.companions[0].equipped, save.companions[0].equipped);
@@ -292,13 +292,13 @@ test('behavior block accepts a runtime-like blackboard and cooldown store', () =
 });
 
 test('future save versions are rejected gracefully', () => {
-  assert.equal(migrateSave({ version: 3, playerRecipe: { seed: 'x' } }), null);
+  assert.equal(migrateSave({ version: 4, playerRecipe: { seed: 'x' } }), null);
   assert.equal(migrateSave({ version: 0 }), null);
   assert.equal(migrateSave(null), null);
 
   withLocalStorage(store => {
     store.setItem(STORAGE_KEY, JSON.stringify({
-      version: 3,
+      version: 4,
       playerRecipe: { seed: 'future' },
       terrain: encodeTerrain(grassTerrain())
     }));
@@ -349,7 +349,7 @@ test('NPC coins and reserve companions round-trip with gear', () => {
   });
 
   const save = serializeSave(game, {}, new Set(['npc-1']));
-  assert.equal(save.version, 2);
+  assert.equal(save.version, 3);
   assert.equal(save.npcs[0].coins, 23);
   assert.equal(save.npcs[0].stabledCompanions.length, 1);
   assert.equal(save.npcs[0].stabledCompanions[0].id, 'npc-reserve-1');
@@ -415,7 +415,7 @@ test('v2 saves without NPC coins or reserve load with defaults', () => {
   });
 });
 
-test('loadSave migrates a stored v1 save to v2', () => {
+test('loadSave migrates a stored v1 save to v3', () => {
   withLocalStorage(store => {
     store.setItem(STORAGE_KEY, JSON.stringify({
       version: 1,
@@ -433,7 +433,7 @@ test('loadSave migrates a stored v1 save to v2', () => {
       friends: []
     }));
     const loaded = loadSave();
-    assert.equal(loaded.version, 2);
+    assert.equal(loaded.version, 3);
     assert.equal(loaded.player.inventory[0].uid, 'ball-0');
     assert.deepEqual(loaded.player.equipped, []);
     assert.ok(loaded.behavior);
