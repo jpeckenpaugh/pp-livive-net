@@ -18,6 +18,7 @@ import {
 import { PLAYER_NAMES, COMPANION_NAMES, pickName, pickVibe } from './names.js';
 import { serializeSave, saveState, loadSave, clearSave, recordGameResult } from './storage.js';
 import { castVoice } from './voice/casting.js';
+import { VoiceEngine } from './voice/engine.js';
 import { DialogueManager } from './dialogue.js';
 import { createItemInstance, createStarterInventory, normalizeInventory } from './inventory.js';
 import { SetupWizard } from './ui/wizard.js';
@@ -72,6 +73,13 @@ let lastFrameAt = 0;
 let npcWatchPrompt = null;
 let delegated = { host: false, runtime: false, bubbles: false };
 const sounds = new SoundBoard();
+let voice = null;
+
+/** Voice engine is built on the first gesture, never at module load. */
+function ensureVoice() {
+  if (!voice) voice = new VoiceEngine();
+  return voice;
+}
 
 function makeId(prefix) {
   const value = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2, 10);
@@ -1627,11 +1635,17 @@ function bindEvents() {
 
   window.addEventListener('pagehide', saveNow);
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') saveNow();
+    if (document.visibilityState === 'hidden') {
+      saveNow();
+      voice?.suspend();
+    }
   });
 
   // Browsers only allow audio after a user gesture; unlock once, quietly.
-  const unlockAudio = () => sounds.unlock();
+  const unlockAudio = () => {
+    sounds.unlock();
+    ensureVoice().unlock();
+  };
   window.addEventListener('pointerdown', unlockAudio, { once: true });
   window.addEventListener('keydown', unlockAudio, { once: true });
 
@@ -1720,6 +1734,7 @@ window.playPark = {
   get miniGameHost() { return host; },
   get hostState() { return host?.getState?.() || null; },
   get bubbles() { return bubbles; },
+  get voice() { return ensureVoice(); },
   get behaviorRuntime() { return behaviorRuntime; },
   get npcGameAdapter() { return npcGameAdapter; },
   get fetchGame() { return host?.activeGameId === 'fetch' ? host.session?.game?.legacy || null : null; },
