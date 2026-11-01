@@ -479,11 +479,21 @@ mute toggle stops them without touching sound effects.
 
 ### Phase 5 — Mini-games and bubbles (~0.5 day)
 
+**Converged decisions (2026-11-01)**
+
+- A draw is spoken by the non-player seat. Win and loss speak from `handleGameEnd`, which already fires exactly once per settled result.
+- NPC-vs-NPC results stay silent for a spectator; spectator prompts stay silent by construction.
+- The abandon prompt speaks only when the opponent record has a `voice` (fetch's opponent is the player, so it is silent), and once per session.
+- A `'complete'` outcome has no alias and stays silent.
+- Ambient `social.chat` speaks through an `onSay` callback on `bridgeBehaviorEvents`; no `SpeechBubbles` hook, so emotes stay silent. A `main.js` guard keyed on actor + bubble `seq` prevents a re-show from replaying.
+- Ambient chatter only speaks within a radius, and only when the actor has a voice. Chat aimed at the player always speaks.
+- New policy keys: `chatRadiusTiles` (6), `chatCooldownMs` (8000 per actor), `chatGlobalCooldownMs` (5000).
+
 | Task | Acceptance |
 | --- | --- |
 | Settlement hooks | win/loss/draw/abandon speak once per result, not per re-render |
-| Speech bubbles | `social.chat` bubbles speak; one voice per actor, debounced |
-| NPC-vs-NPC games | spectator prompts stay silent unless the prompt is addressed to the player |
+| Speech bubbles | `social.chat` bubbles speak within radius; one voice per actor, debounced |
+| NPC-vs-NPC games | spectator prompts and results stay silent |
 
 **Exit:** a full Tic-Tac-Toe match against a Spanish-speaking NPC speaks greet → invite →
 win/loss → close.
