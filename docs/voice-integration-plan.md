@@ -74,9 +74,8 @@ Play Park's dialogue events, which is why the integration is mostly wiring rathe
 translation.
 
 Non-English phonemization differs by language: es/pt/hi/fr/it use the eSpeak NG fallback,
-ja/zh use `misaki` G2P dictionaries. The bake notes that Kokoro is weakest on very short
-utterances, which is exactly the shape of these lines — so new lines get auditioned in
-`make serve` before a build is treated as final.
+ja/zh use `misaki` G2P dictionaries. The bake is the place to catch any line that reads
+badly; that is an upstream check, not a gate on this integration.
 
 ---
 
@@ -101,6 +100,10 @@ The project invariant is "no runtime API calls" and "works offline". We vendor:
 Start with **2 per language** for cast variety; the slice is a config value in the vendor
 script, so dropping to 1 per language is a one-line change if the repo size is contested.
 We take all 26 phrases either way so a new dialogue hook never needs a re-vendor.
+
+Selection is the first female and first male in registry order per language, with French
+taking its single voice. All 54 Kokoro voices are quality-acceptable for this project, so
+selection is not grade-based.
 
 ### V2 — Language is authored, not hashed
 
@@ -270,6 +273,10 @@ module that touches `AudioContext`, `fetch`, or IndexedDB.
   "schema": 1,
   "corpusBuild": "3e81bd1f069b",
   "inputsVersion": 4,
+  "wasm": {
+    "js": { "path": "vendor/rasp/rasp.js", "bytes": 16960, "sha256": "15e03e…" },
+    "bin": { "path": "vendor/rasp/rasp_bg.wasm", "bytes": 632123, "sha256": "c7e6cb…" }
+  },
   "voices": {
     "ef_dora": {
       "language": "es", "locale": "es-ES", "gender": "female",
@@ -392,9 +399,9 @@ sign-off.
 
 | Task | Acceptance |
 | --- | --- |
-| `scripts/vendor_voice_bank.mjs` | Reads the published `registry.json`, verifies `sha256`/`bytes`, copies the selected voices' 26 phrases into `vendor/rasp/`, decodes each clip once to record its frame count (`samples`), copies the wasm, writes `data/voice_bank.json` including `phrases` and `hooks`; idempotent; `--check` exits non-zero on drift |
-| `scripts/build_voice_pools.mjs` | Loads the vendored wasm in Node, enumerates 100 seeds per banked voice, writes `data/voice_pools.json`; deterministic across runs |
-| Voice slice | 2 voices per language where available, all 26 phrases; recorded in the script config |
+| `scripts/vendor_voice_bank.mjs` | Reads the published `registry.json`, writes a pruned snapshot to `vendor/rasp/registry.json`, verifies `sha256`/`bytes`, copies the selected voices' 26 phrases into `vendor/rasp/`, decodes each clip once to record its frame count (`samples`), copies the wasm, writes `data/voice_bank.json` including `wasm`, `phrases`, and `hooks`; idempotent; `--check` verifies the tree and both generated JSONs against the local snapshot with no network |
+| `scripts/build_voice_pools.mjs` | Loads the vendored wasm in Node, enumerates 100 seeds per banked voice, writes `data/voice_pools.json`; seeds use `makeSeed()` shape; knobs rounded to the bake's quantisation grid; per-archetype soft cap; deterministic across runs |
+| Voice slice | First female + first male per language in registry order, French's single voice, all 26 phrases; recorded in the script config |
 | `npm run voice:vendor`, `npm run voice:pools` | Wired in `package.json`; documented in `AGENTS.md` |
 | Attribution | Kokoro-82M (Apache-2.0), dgen, and RASP (MIT) added to `README.md` |
 
@@ -519,7 +526,7 @@ and its listening rounds. We test the seam.
 | 2 | RASP schema bump re-voices the cast | High | Store the resolved spec; pools pinned to schema + corpus build |
 | 3 | Pool generation depends on `describe()` output | Medium | Pools are committed and `--check`-able; a bump fails the check instead of silently re-rolling |
 | 4 | First-play latency feels like a desync | Medium | Prefetch on approach; never block the dialogue; accept ≤ 400 ms first encounter |
-| 5 | Some voices are rough on short lines | Medium | Audition in `make serve`; curate 2 per language so one can be swapped |
+| 5 | A voice someone dislikes is locked in | Low | Swapping it is a config change plus `npm run voice:vendor`; the stored spec protects existing NPCs |
 | 6 | iOS autoplay blocks the first line | Medium | Create the context on first gesture; retry on next interaction; never surface an error |
 | 7 | A new line needs a bake + re-vendor | Low | Documented in §7; `--check` catches a stale bank. Content work, not an architecture limit |
 | 8 | Foreign cue + English text confuses players | Low | Optional locale chip; a one-line hint in the wizard; toggle |
