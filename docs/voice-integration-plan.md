@@ -119,6 +119,7 @@ The save stores the resolved voice on each NPC:
 ```json
 "voice": {
   "schema": 1,
+  "seed": "clover-4pxbyrw",
   "lang": "es",
   "voiceId": "ef_dora",
   "pitchSt": 1.75,
@@ -410,9 +411,20 @@ corpus build id.
 
 ### Phase 2 — Casting and save v3 (~1 day)
 
+**Converged decisions (2026-11-01)**
+
+- One `castVoice({ id, rand, policy, pools })` helper in `src/voice/casting.js`, called by both NPC factories and by `migrateNpcRecord`. `game.js` stays a passthrough. `storage.js` may import the pure casting module and the two JSON policy files.
+- "New look" re-casts language and voice, and the new pool seed becomes the avatar seed: a reroll is a new identity.
+- The save carries `voice.seed` inside the `voice` block so the spec is self-contained and phrase rotation is stable regardless of `recipe.seed`.
+- A malformed or unknown `voice` block is silently re-cast from `npc.id`; the NPC is never dropped and never left voiceless.
+- The player and companions omit `voice` entirely.
+- Language weights stay as planned and are normalised at draw time; an empty pool for a configured language fails a test.
+- Migration draws a language by policy weight, then an entry from that language, both from `hash(npc.id)` — a migrated park feels like a fresh one.
+- `prefetchRadiusTiles` / `prefetchEvents` land in `data/voice.json` now and are validated against hooks, even though they are unused until Phase 4.
+
 | Task | Acceptance |
 | --- | --- |
-| `src/voice/casting.js` | `drawLanguage(policy, rand)`, `drawSpec(pool, lang, rand)`, `hookPhrase(bank, seed, hook, attempt)` — pure, DOM-free |
+| `src/voice/casting.js` | `castVoice`, `drawLanguage`, `drawSpec`, `hookPhrase` — pure, DOM-free |
 | `src/voice/bank.js` | Manifest lookup, clip resolution, `assertComplete()` |
 | NPC creation | New NPCs draw a language and a spec; the pool seed is also used for `createRecipe(seed)` |
 | Migration | v2 saves gain `voice` on each NPC; deterministic from `npc.id`; v1 still migrates |
