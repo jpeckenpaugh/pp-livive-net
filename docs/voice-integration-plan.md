@@ -360,6 +360,12 @@ Estimates assume one developer, existing test discipline, no upstream changes.
 
 ### Phase 0 — Integration spike (~0.5 day)
 
+**Result (2026-11-01): PASS.** Human-confirmed in Chrome, Safari, and iOS Safari. Wasm
+init 1.6–1.8 ms; render 12–18 ms; cached 5–8 ms; first sample at 32.8 ms from fetch, well
+inside the 400 ms budget. A 48 kHz buffer in a 44.1 kHz context keeps its duration; the
+mislabeled control runs 8.9% long, so the failure mode is detectable. Spike deleted after
+sign-off.
+
 **Converged parameters (PM + human, 2026-11-01)**
 
 - Wasm and clips are downloaded once into `spike/`, sha256 recorded in the report, nothing committed; `spike/` is gitignored.
