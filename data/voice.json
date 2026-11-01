@@ -28,5 +28,8 @@
     "game.start": "game.start"
   },
   "prefetchRadiusTiles": 3,
-  "prefetchEvents": ["dialogue.friend", "dialogue.stranger", "bubble.chat"]
+  "prefetchEvents": ["dialogue.friend", "dialogue.stranger", "bubble.chat"],
+  "chatRadiusTiles": 6,
+  "chatCooldownMs": 8000,
+  "chatGlobalCooldownMs": 5000
 }

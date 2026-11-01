@@ -800,6 +800,8 @@ export const socialActions = Object.freeze(createSocialActions());
  * @param {(message:string)=>void} [options.onToast]
  * @param {boolean} [options.notifyGames=true]
  * @param {(emote:string, detail:object)=>string} [options.emoteFor]
+ * @param {(payload:object)=>void} [options.onSay] after a `say` bubble is shown;
+ *   receives `{ actorId, key, text, bubble, detail }`. Speaks are skipped.
  */
 export function bridgeBehaviorEvents(runtime, bubbles, {
   host = null,
@@ -807,7 +809,8 @@ export function bridgeBehaviorEvents(runtime, bubbles, {
   notifyGames = true,
   onGameStart = null,
   onGameEnd = null,
-  emoteFor = null
+  emoteFor = null,
+  onSay = null
 } = {}) {
   let lastGame = null;
 
@@ -821,14 +824,23 @@ export function bridgeBehaviorEvents(runtime, bubbles, {
       const actorId = detail.actorId;
       const text = detail.text;
       if (actorId == null || text == null) return null;
-      return showBubble(bubbles, {
+      const key = detail.key ?? null;
+      const bubble = showBubble(bubbles, {
         actorId,
         text,
-        key: detail.key ?? null,
+        key,
         durationMs: detail.bubbleMs ?? detail.durationMs ?? DEFAULT_BUBBLE_MS,
         x: detail.x,
         y: detail.y
       });
+      if (bubble && typeof onSay === 'function') {
+        try {
+          onSay({ actorId, key, text, bubble, detail });
+        } catch {
+          // Voice wiring never breaks the bubble or the runtime.
+        }
+      }
+      return bubble;
     }
 
     if (type === 'emote') {
@@ -878,6 +890,62 @@ export function bridgeBehaviorEvents(runtime, bubbles, {
 
   const detach = attachListener(runtime, handle);
   return { handle, detach };
+}
+
+/**
+ * Per-actor and global rate limit for ambient chat voices. Pure and DOM-free:
+ * callers inject a monotonic `nowMs`, and a `true` result consumes the slot.
+ *
+ * @param {object} [options]
+ * @param {number} [options.cooldownMs=8000] one line per actor per window
+ * @param {number} [options.globalCooldownMs=5000] one line for the whole park
+ */
+export function createChatGate({ cooldownMs = 8000, globalCooldownMs = 5000 } = {}) {
+  const actorCooldown = Math.max(0, Number(cooldownMs) || 0);
+  const globalCooldown = Math.max(0, Number(globalCooldownMs) || 0);
+  const lastByActor = new Map();
+  let lastGlobalAt = Number.NEGATIVE_INFINITY;
+
+  return {
+    /** True when this actor may speak now; a true result consumes the slot. */
+    allow(actorId, nowMs) {
+      if (actorId == null) return false;
+      const now = Number(nowMs);
+      if (!Number.isFinite(now)) return false;
+      if (now - lastGlobalAt < globalCooldown) return false;
+      const id = String(actorId);
+      const last = lastByActor.get(id);
+      if (last != null && now - last < actorCooldown) return false;
+      lastByActor.set(id, now);
+      lastGlobalAt = now;
+      return true;
+    },
+    reset() {
+      lastByActor.clear();
+      lastGlobalAt = Number.NEGATIVE_INFINITY;
+    },
+    get actors() {
+      return lastByActor.size;
+    }
+  };
+}
+
+/**
+ * The opponent seat for a settled game: the first seat whose character is not
+ * the player. Returns null when no player is seated, so an NPC-vs-NPC board
+ * stays silent. `player` may be a character record or an id.
+ */
+export function pickNonPlayerSeat(seats, player = null) {
+  const list = Array.isArray(seats) ? seats : [];
+  const playerId = player && typeof player === 'object' ? player.id : player;
+  const seated = list.filter(entry => entry?.character);
+  const isPlayerSeat = entry => {
+    const character = entry.character;
+    if (character.isPlayer === true) return true;
+    return playerId != null && character.id === playerId;
+  };
+  if (!seated.some(isPlayerSeat)) return null;
+  return seated.find(entry => !isPlayerSeat(entry))?.character || null;
 }
 
 function present(bubbles, ctx, text, durationMs, key) {

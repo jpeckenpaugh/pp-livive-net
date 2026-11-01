@@ -252,6 +252,13 @@ test('voice.json resolves against the vendored bank and pools', () => {
   assert.equal(typeof voicePolicy.enabled, 'boolean');
   assert.ok(voicePolicy.volume >= 0 && voicePolicy.volume <= 1);
   assert.ok(Number(voicePolicy.prefetchRadiusTiles) > 0);
+  assert.ok(Number(voicePolicy.chatRadiusTiles) > 0, 'chatRadiusTiles is required');
+  assert.ok(Number(voicePolicy.chatCooldownMs) > 0, 'chatCooldownMs is required');
+  assert.ok(Number(voicePolicy.chatGlobalCooldownMs) > 0, 'chatGlobalCooldownMs is required');
+  assert.ok(
+    Number(voicePolicy.chatGlobalCooldownMs) <= Number(voicePolicy.chatCooldownMs),
+    'the park window should not outlast a single voice window'
+  );
 
   const languageIds = new Set(voicePolicy.languages.map(language => language.id));
   assert.equal(languageIds.size, voicePolicy.languages.length, 'duplicate voice language ids');

@@ -31,8 +31,10 @@ import { BehaviorRuntime } from './behavior/runtime.js';
 import { CooldownStore } from './behavior/cooldowns.js';
 import {
   bridgeBehaviorEvents,
+  createChatGate,
   createNpcGameAdapter,
-  createSocialActions
+  createSocialActions,
+  pickNonPlayerSeat
 } from './behavior/actions/social.js';
 import { EFFECT_CATALOG } from './effects.js';
 import engineConfig from '../data/engine_config.json' with { type: 'json' };
@@ -76,6 +78,13 @@ const sounds = new SoundBoard();
 let voice = null;
 let audioUnlocked = false;
 const prefetchedVoices = new Set();
+/** Sessions whose settlement line has already spoken (one line per result). */
+const spokenSettlements = new WeakSet();
+/** Sessions whose abandon prompt has already spoken (one line per session). */
+const spokenAbandonSessions = new WeakSet();
+/** Last bubble `seq` spoken per actor, so a re-show cannot replay the line. */
+const spokenChatSeqs = new Map();
+let chatGate = null;
 
 /** Voice engine is built on the first gesture, never at module load. */
 function ensureVoice() {
@@ -106,6 +115,8 @@ function onDialogueBeat(npc, event) {
   if (!npc || !event) return;
   const engine = ensureVoice();
   engine.speak(npc, event).catch(() => {});
+  // A friend's menu is the only place the invite cue can be chosen from.
+  if (event === 'dialogue.friend') prefetchVoiceBeat(npc, 'minigame.invite');
   if (event !== 'dialogue.stranger') return;
   prefetchVoiceBeat(npc, 'dialogue.accepted');
   prefetchVoiceBeat(npc, 'dialogue.declined');
@@ -123,6 +134,92 @@ function prefetchNearbyGreetings() {
     prefetchedVoices.add(npc.id);
     prefetchVoiceBeat(npc, greetingEventFor(npc));
   }
+}
+
+/** Speak one cue from a character that actually carries a voice. */
+function speakVoiceLine(character, event) {
+  if (!character?.voice || !event) return false;
+  const engine = ensureVoice();
+  if (!engine.enabled) return false;
+  engine.speak(character, event).catch(() => {});
+  return true;
+}
+
+/** Ambient chat limiter, built from the voice policy on first use. */
+function ensureChatGate() {
+  if (!chatGate) {
+    chatGate = createChatGate({
+      cooldownMs: Number(voice?.policy?.chatCooldownMs) || 8000,
+      globalCooldownMs: Number(voice?.policy?.chatGlobalCooldownMs) || 5000
+    });
+  }
+  return chatGate;
+}
+
+/**
+ * Ambient `social.chat`: speak the bubble just shown, once per actor + bubble
+ * seq, inside the chat radius, and within the per-actor and global cooldowns.
+ * Chat addressed to the player skips the radius but keeps the rate limits.
+ */
+function onAmbientSay({ actorId, bubble, detail } = {}) {
+  const actor = resolveCharacter(actorId);
+  if (!actor?.voice || !voice?.enabled || !audioUnlocked) return false;
+
+  const seq = Number(bubble?.seq);
+  if (Number.isFinite(seq)) {
+    const seen = spokenChatSeqs.get(String(actorId));
+    if (seen === seq) return false;
+    spokenChatSeqs.set(String(actorId), seq);
+  }
+
+  const player = game?.player || null;
+  const targetId = detail?.targetId ?? detail?.target?.id ?? null;
+  const addressedToPlayer = Boolean(player && targetId != null && targetId === player.id);
+  if (!addressedToPlayer) {
+    const radius = Number(voice.policy?.chatRadiusTiles) || 6;
+    if (!player) return false;
+    const distance = Math.abs(Number(actor.x) - Number(player.x))
+      + Math.abs(Number(actor.y) - Number(player.y));
+    if (!Number.isFinite(distance) || distance > radius) return false;
+  }
+
+  if (!ensureChatGate().allow(actorId, npcGameNow())) return false;
+  voice.speak(actor, 'bubble.chat').catch(() => {});
+  return true;
+}
+
+/**
+ * Win, loss, and draw speak once per settled session. Draw already resolves to
+ * the non-player seat, so the same speaker rule covers all three; an NPC-only
+ * board has no speaker and stays silent.
+ */
+function speakSettlementResult(speaker, outcome, session) {
+  const event = outcome === 'win'
+    ? 'minigame.win'
+    : outcome === 'loss'
+      ? 'minigame.loss'
+      : outcome === 'draw'
+        ? 'minigame.draw'
+        : null;
+  if (!event || !speaker?.voice) return false;
+  if (session && typeof session === 'object') {
+    if (spokenSettlements.has(session)) return false;
+    spokenSettlements.add(session);
+  }
+  return speakVoiceLine(speaker, event);
+}
+
+/**
+ * The abandon prompt speaks once per session, and only when the opponent
+ * record has a voice — fetch's opponent is the player, so it stays silent.
+ */
+function speakAbandonPrompt(opponent) {
+  if (!opponent?.voice) return false;
+  const session = host?.session || null;
+  if (!session || typeof session !== 'object') return false;
+  if (spokenAbandonSessions.has(session)) return false;
+  spokenAbandonSessions.add(session);
+  return speakVoiceLine(opponent, 'minigame.abandon');
 }
 
 function makeId(prefix) {
@@ -326,6 +423,9 @@ function onPlayGame(gameId, opponent) {
     showToast(result.message || `${meta.title} could not open here.`);
     return;
   }
+  // The opponent owns the invite line. `dialogue.close()` has already stopped
+  // their greeting, so this starts cleanly; speech never blocks the board.
+  speakVoiceLine(friend, 'minigame.invite');
   refreshMiniGameFlags();
   panels?.updateDebugUI?.();
 }
@@ -393,6 +493,7 @@ function showAbandonPrompt(meta, opponent, onConfirm, onCancel) {
     }
   }));
   dialogue.openCustomBeat(opponent && opponent.name ? opponent : { name: 'Game' }, prompt.text, choices);
+  speakAbandonPrompt(opponent);
 }
 
 function handleGameEnd(payload) {
@@ -401,6 +502,7 @@ function handleGameEnd(payload) {
   const opponent = opponentSeat?.character
     || (settlement?.opponentId ? resolveCharacter(settlement.opponentId) : null)
     || { name: settlement?.opponentName || 'Your friend' };
+  const speaker = pickNonPlayerSeat(session?.seats, game?.player);
 
   let text = beat?.text || `${meta?.title || 'Game'} finished.`;
   const notices = Array.isArray(settlement?.notifications) ? settlement.notifications : [];
@@ -426,6 +528,7 @@ function handleGameEnd(payload) {
   }));
 
   dialogue.openCustomBeat(opponent, text, choices);
+  speakSettlementResult(speaker, outcome, session);
   panels?.updateDebugUI?.();
 }
 
@@ -488,6 +591,8 @@ function openWizard({ fresh = false } = {}) {
   refreshMiniGameFlags();
   bubbles?.clear();
   prefetchedVoices.clear();
+  spokenChatSeqs.clear();
+  chatGate?.reset();
 
   if (dialogue?.isOpen()) dialogue.close();
   panels?.closeAllPanels();
@@ -685,7 +790,8 @@ function ensureBehaviorRuntime() {
     host,
     onToast: showToast,
     notifyGames: false,
-    onGameStart: (detail, session) => promptNpcGameWatch(detail, session)
+    onGameStart: (detail, session) => promptNpcGameWatch(detail, session),
+    onSay: onAmbientSay
   });
 
   game.setBehaviorRuntime?.(behaviorRuntime);
@@ -1218,6 +1324,8 @@ function applyState(state) {
   refreshMiniGameFlags();
   bubbles?.clear();
   prefetchedVoices.clear();
+  spokenChatSeqs.clear();
+  chatGate?.reset();
 
   const worldData = generateWorld(state.worldSeed);
   const terrain = decodeTerrain(state.terrain) || worldData.grid;

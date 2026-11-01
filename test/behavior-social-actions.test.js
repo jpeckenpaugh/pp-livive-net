@@ -6,6 +6,8 @@ import {
   createSocialActions,
   createNpcGameAdapter,
   bridgeBehaviorEvents,
+  createChatGate,
+  pickNonPlayerSeat,
   NPC_GAME_OPTIONS,
   NPC_GAME_IDS
 } from '../src/behavior/actions/social.js';
@@ -696,4 +698,85 @@ test('awaitNpcGame game.end carries winner, loser, and outcome', () => {
   actions.awaitNpcGame(ctx);
   assert.equal(events.filter(event => event.type === 'game.end').length, 1);
   assert.equal(results.length, 1);
+});
+
+test('chat gate limits one line per actor and one line for the whole park', () => {
+  const gate = createChatGate({ cooldownMs: 8000, globalCooldownMs: 5000 });
+
+  assert.equal(gate.allow('npc-a', 0), true, 'the first voice speaks');
+  assert.equal(gate.allow('npc-b', 1000), false, 'the global window holds off a second voice');
+  assert.equal(gate.allow('npc-a', 6000), false, 'the actor window still holds the same voice');
+  assert.equal(gate.allow('npc-b', 6000), true, 'a new actor speaks once the park window opens');
+  assert.equal(gate.allow('npc-a', 8000), false, 'the park window now holds the first actor');
+  assert.equal(gate.allow('npc-a', 11000), true, 'both windows are clear');
+  assert.equal(gate.actors, 2);
+
+  gate.reset();
+  assert.equal(gate.allow('npc-a', 11001), true, 'reset clears both windows');
+
+  assert.equal(gate.allow(null, 20000), false, 'an actor id is required');
+  assert.equal(gate.allow('npc-a', Number.NaN), false, 'a finite clock is required');
+
+  const open = createChatGate({ cooldownMs: 0, globalCooldownMs: 0 });
+  assert.equal(open.allow('npc-a', 0), true);
+  assert.equal(open.allow('npc-b', 0), true, 'zero windows never block');
+});
+
+test('pickNonPlayerSeat resolves the opponent and stays silent without a player', () => {
+  const player = { id: 'player', isPlayer: true };
+  const npc = { id: 'npc-a', name: 'A' };
+  const other = { id: 'npc-b', name: 'B' };
+  const seats = [
+    { character: player, controller: 'human', role: 'player' },
+    { character: npc, controller: 'ai', role: 'opponent' }
+  ];
+
+  assert.equal(pickNonPlayerSeat(seats, player), npc);
+  assert.equal(pickNonPlayerSeat(seats, 'player'), npc, 'a player id works too');
+  assert.equal(pickNonPlayerSeat([...seats].reverse(), player), npc, 'seat order does not matter');
+
+  // Draws reuse the same rule, so the seat opposite the player speaks.
+  assert.equal(pickNonPlayerSeat(seats, player), npc);
+
+  assert.equal(pickNonPlayerSeat([{ character: npc }, { character: other }], player), null,
+    'an NPC-vs-NPC board has no player seat and stays silent');
+  assert.equal(pickNonPlayerSeat([], player), null);
+  assert.equal(pickNonPlayerSeat(null, player), null);
+});
+
+test('bridge onSay fires once per say bubble and never for emotes or pre-rendered speech', () => {
+  const bubbles = new SpeechBubbles();
+  const runtime = { onEvent: null };
+  const spoken = [];
+  const bridge = bridgeBehaviorEvents(runtime, bubbles, {
+    onSay: payload => spoken.push(payload)
+  });
+
+  runtime.onEvent({ type: 'say', detail: { actorId: 'npc-a', text: 'hi!', key: 'greet' } });
+  assert.equal(spoken.length, 1);
+  assert.equal(spoken[0].actorId, 'npc-a');
+  assert.equal(spoken[0].key, 'greet');
+  assert.equal(spoken[0].text, 'hi!');
+  assert.equal(spoken[0].bubble.actorId, 'npc-a');
+  assert.ok(Number.isFinite(spoken[0].bubble.seq), 'the shown bubble carries its seq');
+
+  runtime.onEvent({ type: 'say', detail: { actorId: 'npc-a', text: 'skipped', bubble: false } });
+  runtime.onEvent({ type: 'emote', detail: { actorId: 'npc-b', emote: 'wave' } });
+  assert.equal(spoken.length, 1, 'pre-rendered speech and emotes stay silent');
+
+  bridge.handle({ type: 'say', detail: { actorId: 'npc-c', text: 'yo' } });
+  assert.equal(spoken.length, 2, 'direct handle calls speak too');
+  bridge.detach();
+});
+
+test('a throwing onSay never breaks the bubble', () => {
+  const bubbles = new SpeechBubbles();
+  const bridge = bridgeBehaviorEvents(null, bubbles, {
+    onSay: () => {
+      throw new Error('voice exploded');
+    }
+  });
+
+  bridge.handle({ type: 'say', detail: { actorId: 'npc-a', text: 'still here' } });
+  assert.equal(bubbles.activeFor('npc-a').text, 'still here');
 });
