@@ -457,14 +457,25 @@ corpus build id.
 
 ### Phase 4 — Dialogue hooks (~1 day)
 
+**Converged decisions (2026-11-01)**
+
+- `onBeat(npc, event)` fires at the five beat call sites, immediately after `setBeat`, never from inside `setBeat`.
+- Companion bumps emit no beat event in v1; the `companion` alias stays for later. Spectator prompts stay silent.
+- Prefetch rides the existing frame loop: Manhattan distance ≤ `prefetchRadiusTiles`, gated by a `prefetched` Set, `!dialogue.isOpen()`, voice enabled, and the audio-unlocked flag. Opening a dialogue also warms `accepted` / `declined`.
+- The voice toggle is pulled forward from Phase 6: a `#voice-toggle` sibling of `#sound-toggle`, persisted on `playpark.voice.v1`, labelled "Voices", using existing pill styles.
+- `onDialogueEnded` calls `stopActor(npc.id)` so a line never outlives the panel.
+- No new DOM test for `dialogue.js`; the change is wiring. `npm test` stays green and the browser check covers it.
+
 | Task | Acceptance |
 | --- | --- |
-| `DialogueManager` emits a beat event | `onBeat(npc, event)` fires for open/accept/decline/companion |
-| Wire `main.js` | `openDialogue`, `acceptFriendship`, `declineFriendship`, companion branch |
+| `DialogueManager` emits a beat event | `onBeat(npc, event)` fires for stranger open, friend open, accept, decline |
+| Wire `main.js` | Speak from the dialogue callbacks; `stopActor` on close |
 | Prefetch | Approaching within 3 tiles pre-renders the greeting; opening a dialogue pre-renders its beats |
+| Mute toggle | Present beside 🔊, persisted, does not affect SFX |
 | Failure isolation | Disabling voice leaves dialogue timing and focus unchanged |
 
-**Exit:** the five social beats all speak, in the NPC's language, with English text intact.
+**Exit:** the four social beats speak, in the NPC's language, with English text intact; the
+mute toggle stops them without touching sound effects.
 
 ### Phase 5 — Mini-games and bubbles (~0.5 day)
 
