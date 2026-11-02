@@ -228,6 +228,15 @@ failed save. Cover with pure transaction tests before UI.
 
 **Estimate:** 2–3 dev days.
 
+**Wave 5 transaction decisions (autopilot, 2026-11-01)**
+
+- **Values:** every catalog item gains an integer `value` in coins; effects 20–60, boards and the ball 10–40.
+- **Tradeability:** boards (`action: "unfurl"`) and the ball are untradeable in v1; non-equipped effects are tradeable; companions are not inventory entries and are excluded by construction.
+- **Quantity:** implicit, one entry per item. Offers carry `qty`, but Wave 5 validates and accepts only `qty === 1`.
+- **Offers:** a new `data/trades.json` of named templates (`{ id, give, get }`, each side `{ coins }` or `{ itemId, qty }`), validated by a pure `validateOffer`; affordability is checked at apply time, with no per-NPC tables.
+- **Equipped protection:** reject with `reason: "untradeable"` and an `equipped` detail; no silent unequip; match both `uid` and legacy `itemId`.
+- **Coins** stay a separate scalar balance on each character; offers name coins separately from items; negative or non-integer amounts are rejected.
+
 ---
 
 ## 7. Development and deployment cycle
