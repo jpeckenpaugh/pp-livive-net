@@ -2,6 +2,7 @@
   "timings": {
     "playerStep": 0.18,
     "npcStep": 0.28,
+    "npcWanderStep": 0.55,
     "companionStep": 0.22
   },
   "dimensions": {

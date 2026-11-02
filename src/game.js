@@ -31,6 +31,7 @@ export {
 
 export const PLAYER_STEP = engineConfig.timings.playerStep;
 export const NPC_STEP = engineConfig.timings.npcStep;
+export const NPC_WANDER_STEP = engineConfig.timings.npcWanderStep ?? NPC_STEP * 2;
 export const COMPANION_STEP = engineConfig.timings.companionStep;
 
 // Starting wallet for a brand-new character. Existing saves keep their balance;
@@ -1072,7 +1073,7 @@ export class Game {
         npc.y = npc.toY;
         npc.moving = false;
         npc.elapsed = 0;
-        npc.wait = 0.5 + Math.random() * 1.6;
+        npc.wait = 1.4 + Math.random() * 2.2;
       }
       return;
     }
@@ -1155,14 +1156,14 @@ export class Game {
     }
 
     if (!options.length) {
-      npc.wait = 0.7;
+      npc.wait = 1.5;
       return;
     }
 
     const forward = options.filter(option => option.same);
     const pool = forward.length && Math.random() < 0.55 ? forward : options;
     const move = pool[Math.floor(Math.random() * pool.length)];
-    this.tryStep(npc, move.dx, move.dy, NPC_STEP);
+    this.tryStep(npc, move.dx, move.dy, NPC_WANDER_STEP);
   }
 
   getMiniGameBlockedTiles() {

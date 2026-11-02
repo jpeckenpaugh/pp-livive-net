@@ -105,14 +105,15 @@
       "states": {
         "idle": {
           "action": "wait",
-          "durationMs": [500, 1600],
+          "durationMs": [1400, 3600],
           "next": "step"
         },
         "step": {
           "action": "wanderStep",
-          "durationMs": 1200,
+          "durationMs": 1100,
           "params": {
-            "stepIntervalMs": 320,
+            "stepIntervalMs": 600,
+            "stepDurationMs": 550,
             "preferForward": true
           },
           "next": "idle"
