@@ -332,6 +332,17 @@ test('render draws the race board only on the ground layer', () => {
   const { instance } = openGame();
   instance.positions = [12, 9];
   instance.lastRoll = 4;
+  instance.diceAnim = {
+    seat: 0,
+    value: 4,
+    elapsed: 100,
+    duration: 620,
+    holdMs: 520,
+    startX: 9,
+    startY: 12,
+    endX: 14,
+    endY: 14
+  };
 
   const calls = [];
   const ctx = {
@@ -344,6 +355,11 @@ test('render draws the race board only on the ground layer', () => {
     moveTo: (...args) => calls.push(['moveTo', ...args]),
     lineTo: (...args) => calls.push(['lineTo', ...args]),
     arc: (...args) => calls.push(['arc', ...args]),
+    ellipse: (...args) => calls.push(['ellipse', ...args]),
+    rect: (...args) => calls.push(['rect', ...args]),
+    roundRect: (...args) => calls.push(['roundRect', ...args]),
+    translate: (...args) => calls.push(['translate', ...args]),
+    rotate: (...args) => calls.push(['rotate', ...args]),
     fill: () => calls.push('fill'),
     stroke: () => calls.push('stroke'),
     fillText: (...args) => calls.push(['fillText', ...args]),
@@ -357,11 +373,33 @@ test('render draws the race board only on the ground layer', () => {
     && String(call[1]).includes('your turn')));
   assert.ok(calls.some(call => Array.isArray(call) && call[0] === 'fillText'
     && String(call[1]) === '100'));
+  assert.ok(calls.some(call => Array.isArray(call) && call[0] === 'roundRect'));
+  assert.ok(calls.some(call => Array.isArray(call) && call[0] === 'rotate'));
+  assert.ok(calls.some(call => Array.isArray(call) && call[0] === 'ellipse'));
 
   const before = calls.length;
   assert.equal(instance.render(ctx, 'object', { tileSize: 48 }), false);
   assert.equal(instance.render(ctx, 'overlay', { tileSize: 48 }), false);
   assert.equal(calls.length, before);
+});
+
+test('the dice animation clears after its flight and hold', () => {
+  const { instance } = openGame();
+  instance.diceAnim = {
+    seat: 0,
+    value: 3,
+    elapsed: 0,
+    duration: 620,
+    holdMs: 520,
+    startX: 9,
+    startY: 12,
+    endX: 14,
+    endY: 14
+  };
+  instance.update(700);
+  assert.ok(instance.diceAnim);
+  instance.update(500);
+  assert.equal(instance.diceAnim, null);
 });
 
 test('open finds a nearby clearing when no placement is supplied', () => {

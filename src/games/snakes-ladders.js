@@ -32,6 +32,15 @@ export const SNAKES_LADDERS_SIZE = 10;
 export const SNAKES_LADDERS_SQUARES = 100;
 export const SNAKES_LADDERS_DICE = 6;
 export const SNAKES_LADDERS_START = 0;
+
+const DICE_PIPS = Object.freeze({
+  1: [[0.5, 0.5]],
+  2: [[0.3, 0.3], [0.7, 0.7]],
+  3: [[0.28, 0.28], [0.5, 0.5], [0.72, 0.72]],
+  4: [[0.3, 0.3], [0.7, 0.3], [0.3, 0.7], [0.7, 0.7]],
+  5: [[0.3, 0.3], [0.7, 0.3], [0.5, 0.5], [0.3, 0.7], [0.7, 0.7]],
+  6: [[0.3, 0.25], [0.7, 0.25], [0.3, 0.5], [0.7, 0.5], [0.3, 0.75], [0.7, 0.75]]
+});
 export const SNAKES_LADDERS_DATA = boardData;
 
 const DEFAULT_BOARD = Object.freeze({
@@ -83,6 +92,10 @@ const FAILURE_MESSAGE = 'Need open ground with room to stand around to lay out S
 
 function isPositiveInteger(value) {
   return Number.isInteger(value) && value > 0;
+}
+
+function clamp01(value) {
+  return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
 }
 
 function clampRoll(value, sides) {
@@ -296,10 +309,11 @@ export class SnakesLaddersGame extends MiniGameBase {
   }
 
   update(dtMs) {
+    const dt = Number.isFinite(dtMs) ? Math.max(0, dtMs) : 0;
+    this._advanceDiceVisual(dt);
     if (!this.active || this.phase !== PHASES.PLAYING || this.finished) {
       return emptyStepResult();
     }
-    const dt = Number.isFinite(dtMs) ? Math.max(0, dtMs) : 0;
     this._checkAbandon();
 
     if (this.motion) return this._advanceMotion(dt);
@@ -359,6 +373,29 @@ export class SnakesLaddersGame extends MiniGameBase {
     this.lastRoll = value;
     this.lastRollSeat = seat;
     this.rollCount += 1;
+
+    // Visual only: the die leaves the roller's tile, arcs over the board, and
+    // settles near the centre. It never gate-keeps the turn.
+    const seatCharacter = this._characterForSeat(seat);
+    if (this.placement) {
+      const origin = originOf(this.placement);
+      const startTile = seatCharacter
+        ? { x: seatCharacter.x, y: seatCharacter.y }
+        : (this.squarePosition(0) || { x: origin.x - 1, y: origin.y + this.data.size - 1 });
+      const offsetX = ((this.rollCount * 7 + value * 3) % 5) - 2;
+      const offsetY = ((this.rollCount * 5 + value * 2) % 5) - 2;
+      this.diceAnim = {
+        seat,
+        value,
+        elapsed: 0,
+        duration: 620,
+        holdMs: 520,
+        startX: startTile.x,
+        startY: startTile.y,
+        endX: origin.x + (this.data.size - 1) / 2 + offsetX * 0.5,
+        endY: origin.y + (this.data.size - 1) / 2 + offsetY * 0.5
+      };
+    }
 
     const events = [{
       type: 'roll',
@@ -522,6 +559,8 @@ export class SnakesLaddersGame extends MiniGameBase {
       this._drawToken(ctx, seat, position, tile);
     });
 
+    this._drawDice(ctx, tile);
+
     // Turn / dice banner above the frame.
     const bannerHeight = Math.max(18, tile * 0.6);
     const bannerY = boardY - pad - bannerHeight - tile * 0.06;
@@ -540,6 +579,7 @@ export class SnakesLaddersGame extends MiniGameBase {
   close({ reason = 'closed' } = {}) {
     this.active = false;
     this.motion = null;
+    this.diceAnim = null;
     this.abandonPromptActive = false;
     this.returningToBoard = false;
     return super.close({ reason });
@@ -556,6 +596,7 @@ export class SnakesLaddersGame extends MiniGameBase {
     this.lastRoll = null;
     this.lastRollSeat = null;
     this.motion = null;
+    this.diceAnim = null;
     this.lastTransition = null;
     this.aiWaitMs = 0;
     this.winnerSeat = null;
@@ -564,6 +605,14 @@ export class SnakesLaddersGame extends MiniGameBase {
     this.finishEvent = null;
     this.abandonPromptActive = false;
     this.returningToBoard = false;
+  }
+
+  _advanceDiceVisual(dt) {
+    if (!this.diceAnim) return;
+    this.diceAnim.elapsed += dt;
+    if (this.diceAnim.elapsed >= this.diceAnim.duration + this.diceAnim.holdMs) {
+      this.diceAnim = null;
+    }
   }
 
   _advanceMotion(dt) {
@@ -823,6 +872,64 @@ export class SnakesLaddersGame extends MiniGameBase {
     ctx.arc(ax - tile * 0.05, ay - tile * 0.04, tile * 0.025, 0, Math.PI * 2);
     ctx.arc(ax + tile * 0.05, ay - tile * 0.04, tile * 0.025, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
+  }
+
+  _drawDice(ctx, tile) {
+    const dice = this.diceAnim;
+    if (!dice) return;
+
+    const t = clamp01(dice.elapsed / dice.duration);
+    const eased = t * t * (3 - 2 * t);
+    const landed = dice.elapsed >= dice.duration;
+    const holdT = landed ? clamp01((dice.elapsed - dice.duration) / dice.holdMs) : 0;
+    const alpha = landed ? (holdT > 0.75 ? 1 - (holdT - 0.75) / 0.25 : 1) : 1;
+    if (alpha <= 0) return;
+
+    const startX = (dice.startX + 0.5) * tile;
+    const startY = (dice.startY + 0.5) * tile;
+    const endX = (dice.endX + 0.5) * tile;
+    const endY = (dice.endY + 0.5) * tile;
+    const arc = Math.sin(Math.PI * t) * Math.min(150, tile * 3);
+    const cx = startX + (endX - startX) * eased;
+    const cy = startY + (endY - startY) * eased - arc;
+    const size = Math.max(12, tile * 0.62) * (landed ? 1 : 1 + 0.18 * Math.sin(Math.PI * t));
+    const spin = landed ? 0 : (1 - eased) * Math.PI * 3 + (dice.seat === 0 ? 0 : Math.PI);
+
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, alpha);
+
+    // The landing shadow sits at the target and fills in as the die arrives.
+    ctx.beginPath();
+    ctx.ellipse(endX, endY + tile * 0.22, size * 0.4, size * 0.17, 0, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(15, 22, 16, ${landed ? 0.32 : 0.08 + eased * 0.24})`;
+    ctx.fill();
+
+    ctx.translate(cx, cy);
+    ctx.rotate(spin);
+
+    const half = size / 2;
+    ctx.fillStyle = '#f7f1df';
+    ctx.strokeStyle = '#3d3324';
+    ctx.lineWidth = Math.max(1, tile * 0.035);
+    ctx.beginPath();
+    if (typeof ctx.roundRect === 'function') {
+      ctx.roundRect(-half, -half, size, size, size * 0.18);
+    } else {
+      ctx.rect(-half, -half, size, size);
+    }
+    ctx.fill();
+    ctx.stroke();
+
+    const pips = DICE_PIPS[dice.value] || DICE_PIPS[1];
+    const radius = Math.max(1.2, size * 0.075);
+    ctx.fillStyle = '#2f2a20';
+    for (const [px, py] of pips) {
+      ctx.beginPath();
+      ctx.arc(-half + px * size, -half + py * size, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     ctx.restore();
   }
 
