@@ -15,6 +15,7 @@
       <div class="topbar-actions" id="topbar-actions">
         <button id="inventory-toggle" class="pill" type="button" aria-expanded="false" aria-controls="inventory-panel" aria-label="Backpack" title="Backpack"><span class="icon">🎒</span><span class="label">Backpack</span></button>
         <button id="companion-toggle" class="pill" type="button" aria-expanded="false" aria-controls="companion-panel" aria-label="Companions" title="Companions"><span class="icon">🐾</span><span class="label">Companions</span></button>
+        <button id="goals-toggle" class="pill" type="button" aria-expanded="false" aria-controls="goals-panel" aria-label="Goals" title="Goals"><span class="icon">🎯</span><span class="label">Goals</span><span id="goals-count" class="friend-count">0/8</span></button>
         <button id="friends-toggle" class="pill friends-pill" type="button" aria-expanded="false" aria-controls="friends-panel" aria-label="Friends" title="Friends"><span class="icon">👥</span><span class="label">Friends</span><span id="friends-count" class="friend-count">0/0</span></button>
         <button id="stats-toggle" class="pill" type="button" aria-expanded="false" aria-controls="stats-panel" aria-label="Stats" title="Stats"><span class="icon">🏆</span><span class="label">Stats</span></button>
         <button id="sound-toggle" class="pill" type="button" aria-pressed="true" aria-label="Toggle sound effects" title="Sound effects"><span class="icon">🔊</span><span class="label">Sound</span></button>
@@ -142,6 +143,15 @@
       </div>
       <p id="companion-summary" class="panel-note">Your faithful follower in the park.</p>
       <div id="companion-details" class="friend-list" role="list"></div>
+    </aside>
+
+    <aside id="goals-panel" class="friends-panel" hidden aria-label="Park Passport goals">
+      <div class="panel-heading">
+        <strong>Park Passport</strong>
+        <button id="goals-close" class="icon-button" type="button" aria-label="Close goals">×</button>
+      </div>
+      <p id="goals-summary" class="panel-note">A few first stamps for your park passport.</p>
+      <div id="goals-list" class="friend-list" role="list"></div>
     </aside>
 
     <aside id="stats-panel" class="friends-panel" hidden aria-label="Game Stats and Records">

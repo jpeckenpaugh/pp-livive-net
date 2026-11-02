@@ -145,6 +145,7 @@
     "items": [
       { "id": "backpack", "label": "🎒 Backpack", "className": "primary" },
       { "id": "companions", "label": "🐾 Companions", "className": "pill" },
+      { "id": "goals", "label": "🎯 Goals", "className": "pill" },
       { "id": "jungle-gym", "label": "🌿 Jungle gym", "className": "pill" },
       { "id": "friends", "label": "👥 Friends", "className": "pill" },
       { "id": "stats", "label": "🏆 Stats", "className": "pill" },

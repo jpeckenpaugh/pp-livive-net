@@ -1,6 +1,7 @@
 import { decodeTerrain, encodeTerrain } from './world.js';
 import { normalizeInventory, createItemInstance } from './inventory.js';
 import { normalizeForage } from './forage.js';
+import { normalizeGoalProgress } from './goals.js';
 import { voiceForRecord } from './voice/casting.js';
 
 export const STORAGE_KEY = 'playpark.save.v1';
@@ -265,7 +266,13 @@ function serializeReserveCompanions(companions) {
  */
 export function serializeSave(game, draft, friends, behaviorState = null, options = {}) {
   if (!game?.player || !draft) return null;
-  const { locations = null, currentLocation = null, companions = null, activities = null } = options;
+  const {
+    locations = null,
+    currentLocation = null,
+    companions = null,
+    activities = null,
+    goals = null
+  } = options;
   const liveLocations = isObject(locations) && Object.keys(locations).length
     ? locations
     : {
@@ -323,7 +330,8 @@ export function serializeSave(game, draft, friends, behaviorState = null, option
     friends: [...friends],
     wander: game.wander,
     behavior: normalizeBehaviorBlock(behaviorState),
-    activities: normalizeActivities(activities)
+    activities: normalizeActivities(activities),
+    goals: normalizeGoalProgress(goals)
   };
 }
 
@@ -535,6 +543,7 @@ function migrateV4(state) {
   next.friends = Array.isArray(state.friends) ? state.friends.filter(id => typeof id === 'string') : [];
   next.behavior = normalizeBehaviorBlock(state.behavior);
   next.activities = normalizeActivities(state.activities);
+  next.goals = normalizeGoalProgress(state.goals);
   return next;
 }
 
@@ -573,7 +582,8 @@ export function migrateSave(state) {
     friends: Array.isArray(state.friends) ? state.friends.filter(id => typeof id === 'string') : [],
     wander: state.wander !== false,
     behavior: normalizeBehaviorBlock(state.behavior),
-    activities: normalizeActivities(state.activities)
+    activities: normalizeActivities(state.activities),
+    goals: normalizeGoalProgress(state.goals)
   };
   if (sharedPlayer) next.player = sharedPlayer;
   if (state.savedAt) next.savedAt = state.savedAt;

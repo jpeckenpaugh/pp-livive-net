@@ -1005,6 +1005,68 @@ body.activity-open #furnish-hud {
   text-align: center;
 }
 
+/* --- Park Passport goals --- */
+
+.goal-row {
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+}
+
+.goal-row.is-done {
+  border-color: rgba(182, 227, 124, 0.22);
+  background: rgba(25, 39, 29, 0.44);
+}
+
+.goal-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-top: 1px;
+  border: 1px solid rgba(163, 210, 139, 0.24);
+  border-radius: 999px;
+  background: rgba(9, 15, 11, 0.45);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.goal-row.is-done .goal-check {
+  border-color: var(--accent-strong);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+.goal-row .goal-hint {
+  margin-top: 2px;
+  overflow: visible;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.goal-row.is-done .goal-hint {
+  color: rgba(182, 227, 124, 0.72);
+}
+
+.goal-reward {
+  align-self: center;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: rgba(182, 227, 124, 0.12);
+  color: var(--accent-strong);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.goal-row.is-done .goal-reward {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+}
+
 .dialogue {
   position: fixed;
   z-index: 90;

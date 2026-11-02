@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "goals": [
+    {
+      "id": "say-hello",
+      "title": "say hello",
+      "hint": "bump into a neighbour and start a chat.",
+      "event": "social.greet",
+      "count": 1,
+      "reward": 10
+    },
+    {
+      "id": "make-a-friend",
+      "title": "make a friend",
+      "hint": "say yes when a neighbour asks.",
+      "event": "social.friend",
+      "count": 1,
+      "reward": 20
+    },
+    {
+      "id": "play-a-board-game",
+      "title": "play a board game",
+      "hint": "unfurl a board with a friend.",
+      "event": "games.board",
+      "count": 1,
+      "reward": 15
+    },
+    {
+      "id": "visit-home",
+      "title": "visit home",
+      "hint": "step through the door to your place.",
+      "event": "travel.home",
+      "count": 1,
+      "reward": 15
+    },
+    {
+      "id": "furnish-the-place",
+      "title": "furnish the place",
+      "hint": "place or move a piece of furniture.",
+      "event": "home.furnish",
+      "count": 1,
+      "reward": 15
+    },
+    {
+      "id": "finish-a-race",
+      "title": "finish a race",
+      "hint": "run any course at the jungle gym.",
+      "event": "activity.finish",
+      "count": 1,
+      "reward": 20
+    },
+    {
+      "id": "buy-from-the-shop",
+      "title": "buy from the shop",
+      "hint": "pick up something at the corner shop.",
+      "event": "shop.buy",
+      "count": 1,
+      "reward": 15
+    },
+    {
+      "id": "upgrade-or-trade",
+      "title": "upgrade or trade",
+      "hint": "upgrade a home piece or finish a trade.",
+      "events": ["home.upgrade", "trade.completed"],
+      "count": 1,
+      "reward": 25
+    }
+  ]
+}

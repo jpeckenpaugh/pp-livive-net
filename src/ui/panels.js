@@ -11,10 +11,12 @@ import {
   pickTradeOffer,
   tradeDealKey
 } from '../trade.js';
+import { goalSummary } from '../goals.js';
+import goalsData from '../../data/goals.json' with { type: 'json' };
 
 const $ = id => document.getElementById(id);
 
-export const TABS = ['backpack', 'companions', 'friends', 'stats', 'debug'];
+export const TABS = ['backpack', 'companions', 'goals', 'friends', 'stats', 'debug'];
 
 const EFFECT_FALLBACK_ICON = '✨';
 
@@ -399,6 +401,7 @@ function chipLabel(entry) {
 const TAB_CONFIGS = {
   backpack: { toggleId: 'inventory-toggle', panelId: 'inventory-panel', listId: 'inventory-list' },
   companions: { toggleId: 'companion-toggle', panelId: 'companion-panel', listId: 'companion-details' },
+  goals: { toggleId: 'goals-toggle', panelId: 'goals-panel', listId: 'goals-list' },
   friends: { toggleId: 'friends-toggle', panelId: 'friends-panel', listId: 'friend-list' },
   stats: { toggleId: 'stats-toggle', panelId: 'stats-panel', listId: 'stats-list' },
   debug: { toggleId: 'debug-toggle', panelId: 'debug-panel', listId: 'debug-actions' }
@@ -408,6 +411,7 @@ export class PanelsUI {
   constructor({
     getGame,
     getFriends,
+    getGoals,
     onThrowBall,
     onEatItem,
     onUnfurlTTT,
@@ -452,6 +456,7 @@ export class PanelsUI {
   }) {
     this.getGame = getGame;
     this.getFriends = getFriends;
+    this.getGoals = getGoals;
     this.onThrowBall = onThrowBall;
     this.onEatItem = onEatItem;
     this.onUnfurlTTT = onUnfurlTTT;
@@ -583,6 +588,7 @@ export class PanelsUI {
 
     if (tabName === 'backpack') this.renderInventory();
     else if (tabName === 'companions') this.renderCompanion();
+    else if (tabName === 'goals') this.renderGoals();
     else if (tabName === 'friends') { this.updateFriendsUI(); this.renderFriendList(); }
     else if (tabName === 'stats') this.renderStats();
     else if (tabName === 'debug') this.updateDebugUI();
@@ -619,6 +625,10 @@ export class PanelsUI {
   closeCompanionPanel() { this.closeMenu(); }
   openCompanionPanel() { this.setActiveTab('companions'); }
   toggleCompanionPanel() { this.activeTab === 'companions' ? this.closeMenu() : this.setActiveTab('companions'); }
+
+  closeGoalsPanel() { this.closeMenu(); }
+  openGoalsPanel() { this.setActiveTab('goals'); }
+  toggleGoalsPanel() { this.activeTab === 'goals' ? this.closeMenu() : this.setActiveTab('goals'); }
 
   closeStatsPanel() { this.closeMenu(); }
   openStatsPanel() { this.setActiveTab('stats'); }
@@ -1934,6 +1944,80 @@ export class PanelsUI {
     list.append(fragment);
   }
 
+  /**
+   * Park Passport: every goal in data order, stamped or open, with its hint and
+   * coin reward. Read-only — goals complete from gameplay events only.
+   */
+  renderGoals() {
+    const list = $('goals-list');
+    if (!list) return;
+    list.replaceChildren();
+
+    const summary = goalSummary(this.getGoals?.() || null, goalsData.goals);
+    const summaryEl = $('goals-summary');
+    if (summaryEl) {
+      summaryEl.textContent = summary.total && summary.completed === summary.total
+        ? 'Every stamp collected. Nice wandering.'
+        : `${summary.completed} of ${summary.total} stamped · next: ${summary.next?.title || 'pick any goal'}`;
+    }
+
+    if (!summary.items.length) {
+      const empty = document.createElement('p');
+      empty.className = 'friend-empty';
+      empty.textContent = 'No passport goals loaded.';
+      list.append(empty);
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    for (const item of summary.items) {
+      const row = document.createElement('div');
+      row.className = item.done ? 'friend-row goal-row is-done' : 'friend-row goal-row';
+      row.setAttribute('role', 'listitem');
+      row.setAttribute(
+        'aria-label',
+        `${item.title} · ${item.done ? 'stamped' : 'open'} · ${item.reward} coins`
+      );
+
+      const check = document.createElement('span');
+      check.className = 'goal-check';
+      check.setAttribute('aria-hidden', 'true');
+      check.textContent = item.done ? '✓' : '○';
+
+      const copy = document.createElement('div');
+      copy.className = 'friend-copy';
+      const name = document.createElement('strong');
+      name.textContent = item.title;
+      const hint = document.createElement('small');
+      hint.className = 'goal-hint';
+      hint.textContent = item.done ? 'stamped · nice one' : item.hint;
+      copy.append(name, hint);
+
+      const reward = document.createElement('span');
+      reward.className = 'goal-reward';
+      reward.textContent = `+${item.reward}🪙`;
+
+      row.append(check, copy, reward);
+      fragment.append(row);
+    }
+    list.append(fragment);
+  }
+
+  /** Keep the header badge and summary fresh; re-render only when visible. */
+  refreshGoals() {
+    const summary = goalSummary(this.getGoals?.() || null, goalsData.goals);
+    const count = $('goals-count');
+    if (count) count.textContent = `${summary.completed}/${summary.total}`;
+    const toggle = $('goals-toggle');
+    if (toggle) {
+      toggle.setAttribute(
+        'aria-label',
+        `Goals: ${summary.completed} of ${summary.total} complete`
+      );
+    }
+    if ($('goals-panel') && !$('goals-panel').hidden) this.renderGoals();
+  }
+
   renderStats() {
     const list = $('stats-list');
     if (!list) return;
@@ -2341,6 +2425,7 @@ export class PanelsUI {
     return Boolean(
       ($('inventory-panel') && !$('inventory-panel').hidden) ||
       ($('companion-panel') && !$('companion-panel').hidden) ||
+      ($('goals-panel') && !$('goals-panel').hidden) ||
       ($('stats-panel') && !$('stats-panel').hidden) ||
       ($('friends-panel') && !$('friends-panel').hidden) ||
       ($('debug-panel') && !$('debug-panel').hidden) ||
@@ -2467,6 +2552,9 @@ export class PanelsUI {
 
     $('companion-toggle')?.addEventListener('click', () => this.toggleCompanionPanel());
     $('companion-close')?.addEventListener('click', () => this.closeMenu());
+
+    $('goals-toggle')?.addEventListener('click', () => this.toggleGoalsPanel());
+    $('goals-close')?.addEventListener('click', () => this.closeMenu());
 
     $('stats-toggle')?.addEventListener('click', () => this.toggleStatsPanel());
     $('stats-close')?.addEventListener('click', () => this.closeMenu());

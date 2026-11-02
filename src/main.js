@@ -74,6 +74,7 @@ import { VoiceEngine } from './voice/engine.js';
 import { DialogueManager } from './dialogue.js';
 import { createItemInstance, createStarterInventory, normalizeInventory } from './inventory.js';
 import { applyTrade } from './trade.js';
+import { applyGoalEvent, normalizeGoalProgress } from './goals.js';
 import { SetupWizard } from './ui/wizard.js';
 import { PanelsUI } from './ui/panels.js';
 import { MiniGameHost } from './minigames/host.js';
@@ -102,6 +103,7 @@ import {
 import { EFFECT_CATALOG } from './effects.js';
 import engineConfig from '../data/engine_config.json' with { type: 'json' };
 import dialogueData from '../data/dialogues.json' with { type: 'json' };
+import goalsData from '../data/goals.json' with { type: 'json' };
 import behaviorData from '../data/behaviors.json' with { type: 'json' };
 import miniGamesData from '../data/minigames.json' with { type: 'json' };
 import { rollReward, applyReward } from './rewards.js';
@@ -180,6 +182,8 @@ let activityRecords = {};
 let homeItemCard = null;
 /** Home Furnish mode: the selected record and its uncommitted draft placement. */
 let furnish = null;
+/** Park Passport progress: completed goal ids mapped to a timestamp. */
+let goalProgress = normalizeGoalProgress(null);
 
 /** True while a session has taken over the whole canvas. */
 function isActivitySession() {
@@ -486,6 +490,31 @@ function showToast(message) {
   toastTimer = window.setTimeout(() => toast.classList.remove('show'), 2400);
 }
 
+/**
+ * Apply one Park Passport event. Completion pays each goal's coins exactly once,
+ * persists, refreshes the Goals panel, and plays the win cue. Unknown events are
+ * a no-op, so callers can fire freely from gameplay hooks.
+ */
+function completeGoalEvent(event) {
+  if (!entered || !game?.player) return [];
+  const result = applyGoalEvent(goalProgress, event, goalsData.goals, Date.now());
+  if (!result.changed) return [];
+  goalProgress = result.progress;
+
+  const coins = result.completed.reduce((total, goal) => total + (Number(goal.reward) || 0), 0);
+  if (coins > 0) {
+    game.player.coins = Math.max(0, Math.floor(Number(game.player.coins) || 0)) + coins;
+  }
+  saveNow();
+  panels?.refreshGoals?.();
+  const titles = result.completed.map(goal => goal.title || goal.id).join(' · ');
+  // Let the action's own toast finish first; the passport line is the follow-up.
+  const line = `🎯 ${titles} · +${coins}🪙`;
+  window.setTimeout(() => showToast(line), 1500);
+  sounds.play('win');
+  return result.completed;
+}
+
 /** Coarse pointers use the on-screen X button instead of a keyboard. */
 function usesTouchControls() {
   return Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
@@ -646,6 +675,7 @@ function updateForageGround(nowMs = Date.now()) {
 function onFriendshipChanged(npcId, isFriend) {
   if (isFriend) friends.add(npcId);
   else friends.delete(npcId);
+  if (isFriend) completeGoalEvent('social.friend');
   panels?.updateFriendsUI();
   saveNow();
 }
@@ -690,6 +720,7 @@ function openDialogue(npc) {
   behaviorRuntime?.setDialogue(true);
   const isFriend = friends.has(npc.id);
   dialogue.open(npc, isFriend, { games: tableGamesFor(npc) });
+  completeGoalEvent('social.greet');
 }
 
 /** Card actions take the bump path so pause, guards, and cleanup match. */
@@ -791,6 +822,7 @@ function onPlayGame(gameId, opponent) {
   // The opponent owns the invite line. `dialogue.close()` has already stopped
   // their greeting, so this starts cleanly; speech never blocks the board.
   speakVoiceLine(friend, 'minigame.invite');
+  completeGoalEvent('games.board');
   refreshMiniGameFlags();
   panels?.updateDebugUI?.();
 }
@@ -951,6 +983,7 @@ function settleActivityFinish(event, session) {
   }
   session.game.setBestMs?.(recorded.bestMs);
   saveNow();
+  completeGoalEvent('activity.finish');
   updateActivityHud(true);
   return {
     id: definition.id,
@@ -1187,7 +1220,8 @@ function openPlayerMenu() {
         else showToast('No companions following you right now.');
       } else if (item.id === 'jungle-gym') {
         openActivityChooser();
-      } else if (item.id === 'friends') panels?.toggleFriendsPanel();
+      } else if (item.id === 'goals') panels?.toggleGoalsPanel();
+      else if (item.id === 'friends') panels?.toggleFriendsPanel();
       else if (item.id === 'stats') panels?.toggleStatsPanel();
       else if (item.id === 'debug') openDebugMenu();
     }
@@ -1478,7 +1512,10 @@ function applyNpcTrade(character, offer) {
     return { ok: false, reason: 'invalid-offer' };
   }
   const result = applyTrade(player, character, offer);
-  if (result.ok) saveNow();
+  if (result.ok) {
+    completeGoalEvent('trade.completed');
+    saveNow();
+  }
   return result;
 }
 
@@ -2031,6 +2068,10 @@ function applyState(state) {
   }
   host?.clearTrace?.();
   activityRecords = normalizeActivities(state.activities);
+  goalProgress = normalizeGoalProgress(
+    state.goals,
+    new Set(goalsData.goals.map(goal => goal.id))
+  );
   refreshMiniGameFlags();
   bubbles?.clear();
   prefetchedVoices.clear();
@@ -2278,6 +2319,7 @@ function applyState(state) {
   entered = true;
   updateWanderButton();
   panels?.updateFriendsUI();
+  panels?.refreshGoals?.();
   updateMeta();
   updateLocationChrome();
 }
@@ -2348,7 +2390,8 @@ function saveNow() {
     locations: locationStates,
     currentLocation: currentLocationId,
     companions: rosterCompanions,
-    activities: activityRecords
+    activities: activityRecords,
+    goals: goalProgress
   });
   saveState(state);
 }
@@ -2507,10 +2550,12 @@ function travelTo(targetId) {
     companions: rosterCompanions,
     friends: [...friends],
     wander: game.wander,
-    behavior: behaviorSaveState()
+    behavior: behaviorSaveState(),
+    goals: goalProgress
   });
   game.setInteractive(true);
   saveNow();
+  if (targetId === 'home') completeGoalEvent('travel.home');
   sounds.play('ui-click');
   showToast(`You are at the ${locationLabel(targetId).toLowerCase()}.`);
   return true;
@@ -2849,6 +2894,7 @@ function placeFurnish() {
   endFurnish();
   sounds.play('place');
   saveNow();
+  completeGoalEvent('home.furnish');
   showToast(`Placed the ${label}.`);
   return true;
 }
@@ -2977,6 +3023,7 @@ function upgradeHomeItemCard() {
   applyHomeItems(result.items);
   sounds.play('place');
   saveNow();
+  completeGoalEvent('home.upgrade');
   syncHomeItemCard();
   const label = homeItem(record.itemId)?.label || record.itemId;
   showToast(`the ${label} is now ${result.tier.name}.`);
@@ -3143,6 +3190,7 @@ function buyShopItemNow(itemId) {
   persistHomeStorage();
   sounds.play('pickup');
   saveNow();
+  completeGoalEvent('shop.buy');
   renderShopPanel();
   say(`bought the ${result.entry.label}. it is waiting in furnish.`);
   return true;
@@ -3790,6 +3838,7 @@ function boot() {
   panels = new PanelsUI({
     getGame: () => game,
     getFriends: () => friends,
+    getGoals: () => goalProgress,
     onThrowBall,
     onEatItem: eatBagItem,
     onPlayGame,
