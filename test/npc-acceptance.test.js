@@ -450,7 +450,7 @@ test('NPC coins, active gear, and reserve buddies survive a save round-trip', ()
   assert.ok(restored);
   assert.equal(restored.version, SAVE_VERSION);
 
-  const restoredNpc = restored.npcs[0];
+  const restoredNpc = restored.locations.park.npcs[0];
   assert.equal(restoredNpc.id, 'npc-1');
   assert.equal(restoredNpc.coins, 7);
   assert.deepEqual(restoredNpc.inventory.map(item => item.uid), ['halo-npc']);

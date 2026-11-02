@@ -62,7 +62,7 @@ test('serializeSave handles empty or uninitialized game', () => {
   assert.equal(serializeSave({}, null, new Set()), null);
 });
 
-test('serializeSave writes v3 with normalised instances and empty gear', () => {
+test('serializeSave writes v4 with a park location and shared gear', () => {
   const fakeGame = baseGame({
     player: {
       name: 'Tester',
@@ -88,15 +88,22 @@ test('serializeSave writes v3 with normalised instances and empty gear', () => {
 
   const save = serializeSave(fakeGame, {}, new Set(['npc-1']));
   assert.equal(save.version, SAVE_VERSION);
-  assert.equal(save.version, 3);
-  assert.equal(save.worldSeed, 'test-seed');
+  assert.equal(save.version, 4);
+  assert.equal(save.currentLocation, 'park');
+  assert.deepEqual(Object.keys(save.locations), ['park']);
+  assert.equal(save.locations.park.seed, 'test-seed');
+  assert.equal(save.locations.park.player.x, 10);
+  assert.equal(save.locations.park.player.y, 12);
+  assert.equal('worldSeed' in save, false);
+  assert.equal('terrain' in save, false);
+  assert.equal('npcs' in save, false);
+  assert.equal('forage' in save, false);
   assert.equal(save.playerName, 'Tester');
-  assert.equal(save.player.x, 10);
-  assert.equal(save.player.y, 12);
   assert.equal(save.player.inventory[0].uid, 'ball-0');
   assert.deepEqual(save.player.equipped, []);
-  assert.deepEqual(save.npcs[0].equipped, []);
-  assert.equal(save.npcs[0].inventory[0].uid, 'board-1');
+  assert.equal('x' in save.player, false);
+  assert.deepEqual(save.locations.park.npcs[0].equipped, []);
+  assert.equal(save.locations.park.npcs[0].inventory[0].uid, 'board-1');
   assert.deepEqual(save.friends, ['npc-1']);
   assert.equal(save.wander, true);
   assert.deepEqual(save.behavior, {
@@ -142,8 +149,12 @@ test('v1 saves migrate to v3 instances, equipped defaults, and behavior block', 
   };
 
   const migrated = migrateSave(v1);
-  assert.equal(migrated.version, 3);
+  assert.equal(migrated.version, 4);
+  assert.equal(migrated.currentLocation, 'park');
   assert.equal(migrated.playerName, 'Old Timer');
+  assert.equal(migrated.locations.park.seed, 'legacy-seed');
+  assert.equal(migrated.locations.park.terrain, v1.terrain);
+  assert.deepEqual(migrated.locations.park.player, { x: 4, y: 5, direction: 2 });
   const migratedUids = migrated.player.inventory.map(item => item.uid);
   assert.deepEqual(migratedUids.slice(0, 3), ['ball-0', 'ball-1', 'mystery-trinket-2']);
   const migratedIds = migrated.player.inventory.map(item => item.id);
@@ -153,8 +164,8 @@ test('v1 saves migrate to v3 instances, equipped defaults, and behavior block', 
   assert.equal(migrated.player.inventory[0].name, 'Ball');
   assert.equal(migrated.player.inventory[0].color, 'red');
   assert.deepEqual(migrated.player.equipped, []);
-  assert.equal(migrated.npcs[0].inventory[0].uid, 'checkers-0');
-  assert.deepEqual(migrated.npcs[0].equipped, []);
+  assert.equal(migrated.locations.park.npcs[0].inventory[0].uid, 'checkers-0');
+  assert.deepEqual(migrated.locations.park.npcs[0].equipped, []);
   assert.deepEqual(migrated.player.stabledCompanions[0].inventory, []);
   assert.deepEqual(migrated.player.stabledCompanions[0].equipped, []);
   assert.deepEqual(migrated.friends, ['npc-1']);
@@ -226,15 +237,15 @@ test('equipped gear round-trips for player, NPC, companion, and stabled companio
   const save = serializeSave(game, {}, new Set(['npc-1']));
   assert.equal(save.player.equipped[0].uid, 'big-o-bracelet-0');
   assert.equal('since' in save.player.equipped[0], false);
-  assert.equal(save.npcs[0].equipped[0].uid, 'checkers-0');
+  assert.equal(save.locations.park.npcs[0].equipped[0].uid, 'checkers-0');
   assert.equal(save.companions[0].equipped[0].uid, 'lucky-clover-0');
   assert.equal(save.player.stabledCompanions[0].equipped[0].uid, 'buddy-cape-0');
   assert.ok(save.player.inventory[0].uid);
 
   const loaded = migrateSave(JSON.parse(JSON.stringify(save)));
-  assert.equal(loaded.version, 3);
+  assert.equal(loaded.version, 4);
   assert.deepEqual(loaded.player.equipped, save.player.equipped);
-  assert.deepEqual(loaded.npcs[0].equipped, save.npcs[0].equipped);
+  assert.deepEqual(loaded.locations.park.npcs[0].equipped, save.locations.park.npcs[0].equipped);
   assert.deepEqual(loaded.companions[0].equipped, save.companions[0].equipped);
   assert.deepEqual(loaded.player.stabledCompanions[0].equipped, save.player.stabledCompanions[0].equipped);
   assert.ok(loaded.companions[0].inventory[0].uid);
@@ -292,13 +303,13 @@ test('behavior block accepts a runtime-like blackboard and cooldown store', () =
 });
 
 test('future save versions are rejected gracefully', () => {
-  assert.equal(migrateSave({ version: 4, playerRecipe: { seed: 'x' } }), null);
+  assert.equal(migrateSave({ version: 5, playerRecipe: { seed: 'x' } }), null);
   assert.equal(migrateSave({ version: 0 }), null);
   assert.equal(migrateSave(null), null);
 
   withLocalStorage(store => {
     store.setItem(STORAGE_KEY, JSON.stringify({
-      version: 4,
+      version: 5,
       playerRecipe: { seed: 'future' },
       terrain: encodeTerrain(grassTerrain())
     }));
@@ -349,30 +360,30 @@ test('NPC coins and reserve companions round-trip with gear', () => {
   });
 
   const save = serializeSave(game, {}, new Set(['npc-1']));
-  assert.equal(save.version, 3);
-  assert.equal(save.npcs[0].coins, 23);
-  assert.equal(save.npcs[0].stabledCompanions.length, 1);
-  assert.equal(save.npcs[0].stabledCompanions[0].id, 'npc-reserve-1');
-  assert.equal(save.npcs[0].stabledCompanions[0].buddyId, 'npc-1');
-  assert.equal(save.npcs[0].stabledCompanions[0].coins, 4);
-  assert.equal(save.npcs[0].stabledCompanions[0].inventory[0].uid, 'lucky-clover-0');
-  assert.deepEqual(save.npcs[0].stabledCompanions[0].equipped, [
+  assert.equal(save.version, 4);
+  assert.equal(save.locations.park.npcs[0].coins, 23);
+  assert.equal(save.locations.park.npcs[0].stabledCompanions.length, 1);
+  assert.equal(save.locations.park.npcs[0].stabledCompanions[0].id, 'npc-reserve-1');
+  assert.equal(save.locations.park.npcs[0].stabledCompanions[0].buddyId, 'npc-1');
+  assert.equal(save.locations.park.npcs[0].stabledCompanions[0].coins, 4);
+  assert.equal(save.locations.park.npcs[0].stabledCompanions[0].inventory[0].uid, 'lucky-clover-0');
+  assert.deepEqual(save.locations.park.npcs[0].stabledCompanions[0].equipped, [
     { slot: 'charm', uid: 'lucky-clover-0' }
   ]);
   assert.equal(save.companions[0].buddyId, 'npc-1');
   assert.equal(save.companions[0].equipped[0].uid, 'buddy-cape-0');
 
   const loaded = migrateSave(JSON.parse(JSON.stringify(save)));
-  assert.equal(loaded.npcs[0].coins, 23);
-  assert.equal(loaded.npcs[0].stabledCompanions[0].buddyId, 'npc-1');
+  assert.equal(loaded.locations.park.npcs[0].coins, 23);
+  assert.equal(loaded.locations.park.npcs[0].stabledCompanions[0].buddyId, 'npc-1');
   assert.deepEqual(
-    loaded.npcs[0].stabledCompanions[0].equipped,
-    save.npcs[0].stabledCompanions[0].equipped
+    loaded.locations.park.npcs[0].stabledCompanions[0].equipped,
+    save.locations.park.npcs[0].stabledCompanions[0].equipped
   );
-  assert.equal(loaded.npcs[0].stabledCompanions[0].inventory[0].uid, 'lucky-clover-0');
+  assert.equal(loaded.locations.park.npcs[0].stabledCompanions[0].inventory[0].uid, 'lucky-clover-0');
   assert.equal(loaded.companions[0].buddyId, 'npc-1');
   assert.deepEqual(loaded.companions[0].equipped, save.companions[0].equipped);
-  assert.equal('path' in loaded.npcs[0].stabledCompanions[0], false);
+  assert.equal('path' in loaded.locations.park.npcs[0].stabledCompanions[0], false);
 });
 
 test('v2 saves without NPC coins or reserve load with defaults', () => {
@@ -402,20 +413,22 @@ test('v2 saves without NPC coins or reserve load with defaults', () => {
   };
 
   const migrated = migrateSave(legacyV2);
-  assert.equal(migrated.npcs[0].coins, 0);
-  assert.deepEqual(migrated.npcs[0].stabledCompanions, []);
-  assert.equal(migrated.npcs[0].inventory[0].uid, 'checkers-0');
+  assert.equal(migrated.version, 4);
+  assert.equal(migrated.locations.park.seed, 'legacy-v2');
+  assert.equal(migrated.locations.park.npcs[0].coins, 0);
+  assert.deepEqual(migrated.locations.park.npcs[0].stabledCompanions, []);
+  assert.equal(migrated.locations.park.npcs[0].inventory[0].uid, 'checkers-0');
 
   withLocalStorage(store => {
     store.setItem(STORAGE_KEY, JSON.stringify(legacyV2));
     const loaded = loadSave();
-    assert.equal(loaded.npcs[0].coins, 0);
-    assert.deepEqual(loaded.npcs[0].stabledCompanions, []);
+    assert.equal(loaded.locations.park.npcs[0].coins, 0);
+    assert.deepEqual(loaded.locations.park.npcs[0].stabledCompanions, []);
     assert.equal(loaded.companions[0].buddyId, 'npc-old');
   });
 });
 
-test('loadSave migrates a stored v1 save to v3', () => {
+test('loadSave migrates a stored v1 save to v4', () => {
   withLocalStorage(store => {
     store.setItem(STORAGE_KEY, JSON.stringify({
       version: 1,
@@ -433,7 +446,10 @@ test('loadSave migrates a stored v1 save to v3', () => {
       friends: []
     }));
     const loaded = loadSave();
-    assert.equal(loaded.version, 3);
+    assert.equal(loaded.version, 4);
+    assert.equal(loaded.locations.park.seed, 'stored');
+    assert.equal(loaded.locations.park.player.x, 3);
+    assert.equal(loaded.locations.park.player.y, 4);
     assert.equal(loaded.player.inventory[0].uid, 'ball-0');
     assert.deepEqual(loaded.player.equipped, []);
     assert.ok(loaded.behavior);
@@ -443,6 +459,8 @@ test('loadSave migrates a stored v1 save to v3', () => {
 test('migration grants newly added starter games to existing saves once', () => {
   const v2 = {
     version: 2,
+    worldSeed: 'starter-games',
+    terrain: encodeTerrain(grassTerrain()),
     player: { inventory: [{ id: 'ball', uid: 'ball-0' }], equipped: [] },
     npcs: [],
     companions: []
@@ -479,13 +497,13 @@ test('forage basket, apples, and mushroom clocks round-trip through a save', () 
     }
   });
   const save = serializeSave(game, {}, new Set());
-  assert.deepEqual(save.forage.apples, [{ id: 'apple:12,14', x: 12, y: 14 }]);
-  assert.deepEqual(save.forage.basket, { apple: 6, mushroom: 3 });
-  assert.deepEqual(save.forage.harvested, { 'scenery-4': 123456 });
-  assert.equal(save.forage.seeded, true);
+  assert.deepEqual(save.locations.park.forage.apples, [{ id: 'apple:12,14', x: 12, y: 14 }]);
+  assert.deepEqual(save.locations.park.forage.basket, { apple: 6, mushroom: 3 });
+  assert.deepEqual(save.locations.park.forage.harvested, { 'scenery-4': 123456 });
+  assert.equal(save.locations.park.forage.seeded, true);
 
   const migrated = migrateSave({ version: 2, player: { inventory: [], equipped: [] } });
-  assert.deepEqual(migrated.forage.basket, { apple: 0, mushroom: 0 });
-  assert.deepEqual(migrated.forage.apples, []);
-  assert.equal(migrated.forage.seeded, false);
+  assert.deepEqual(migrated.locations.park.forage.basket, { apple: 0, mushroom: 0 });
+  assert.deepEqual(migrated.locations.park.forage.apples, []);
+  assert.equal(migrated.locations.park.forage.seeded, false);
 });

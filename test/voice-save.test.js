@@ -82,13 +82,13 @@ function liveGame(save) {
   };
 }
 
-test('v2 saves migrate to v3 with a voice on every NPC', () => {
+test('v2 saves migrate to v4 with a voice on every NPC', () => {
   const migrated = migrateSave(v2Save());
 
   assert.equal(migrated.version, SAVE_VERSION);
-  assert.equal(migrated.version, 3);
-  assert.equal(migrated.npcs.length, 2);
-  for (const npc of migrated.npcs) {
+  assert.equal(migrated.version, 4);
+  assert.equal(migrated.locations.park.npcs.length, 2);
+  for (const npc of migrated.locations.park.npcs) {
     assert.ok(normalizeVoice(npc.voice), `${npc.id} should carry a valid voice`);
     assert.deepEqual(npc.voice, castVoice({ id: npc.id }));
   }
@@ -98,21 +98,21 @@ test('migration leaves recipes, friends, and companion records untouched by voic
   const source = v2Save();
   const migrated = migrateSave(JSON.parse(JSON.stringify(source)));
 
-  assert.deepEqual(migrated.npcs[0].recipe, source.npcs[0].recipe);
-  assert.deepEqual(migrated.npcs[1].recipe, source.npcs[1].recipe);
+  assert.deepEqual(migrated.locations.park.npcs[0].recipe, source.npcs[0].recipe);
+  assert.deepEqual(migrated.locations.park.npcs[1].recipe, source.npcs[1].recipe);
   assert.deepEqual(migrated.friends, source.friends);
   assert.equal('voice' in migrated.player, false);
   assert.equal('voice' in migrated.companions[0], false);
 });
 
-test('v1 saves also migrate to v3 with a voice on every NPC', () => {
+test('v1 saves also migrate to v4 with a voice on every NPC', () => {
   const v1 = v2Save({ version: 1 });
   delete v1.npcs[0].coins;
   delete v1.npcs[0].stabledCompanions;
 
   const migrated = migrateSave(v1);
-  assert.equal(migrated.version, 3);
-  for (const npc of migrated.npcs) {
+  assert.equal(migrated.version, 4);
+  for (const npc of migrated.locations.park.npcs) {
     assert.ok(normalizeVoice(npc.voice));
     assert.deepEqual(npc.voice, castVoice({ id: npc.id }));
   }
@@ -123,8 +123,8 @@ test('a later load never re-rolls an NPC voice', () => {
   const second = migrateSave(JSON.parse(JSON.stringify(first)));
   const third = migrateSave(JSON.parse(JSON.stringify(second)));
 
-  assert.deepEqual(second.npcs.map(npc => npc.voice), first.npcs.map(npc => npc.voice));
-  assert.deepEqual(third.npcs.map(npc => npc.voice), first.npcs.map(npc => npc.voice));
+  assert.deepEqual(second.locations.park.npcs.map(npc => npc.voice), first.locations.park.npcs.map(npc => npc.voice));
+  assert.deepEqual(third.locations.park.npcs.map(npc => npc.voice), first.locations.park.npcs.map(npc => npc.voice));
 });
 
 test('serializeSave preserves a stored voice exactly', () => {
@@ -139,11 +139,11 @@ test('serializeSave preserves a stored voice exactly', () => {
   };
   const save = serializeSave(liveGame(v2Save()), {}, new Set(), null);
 
-  save.npcs[0].voice = stored;
+  save.locations.park.npcs[0].voice = stored;
   const reloaded = migrateSave(JSON.parse(JSON.stringify(save)));
 
-  assert.deepEqual(reloaded.npcs[0].voice, stored);
-  assert.equal(reloaded.npcs[0].voice.seed, 'clover-4pxbyrw');
+  assert.deepEqual(reloaded.locations.park.npcs[0].voice, stored);
+  assert.equal(reloaded.locations.park.npcs[0].voice.seed, 'clover-4pxbyrw');
 });
 
 test('serializeSave gives a missing voice a stable cast from the NPC id', () => {
@@ -153,8 +153,8 @@ test('serializeSave gives a missing voice a stable cast from the NPC id', () => 
   const first = serializeSave(fake, {}, new Set(), null);
   const second = serializeSave(fake, {}, new Set(), null);
 
-  assert.deepEqual(first.npcs[0].voice, castVoice({ id: 'npc-1' }));
-  assert.deepEqual(second.npcs[0].voice, first.npcs[0].voice);
+  assert.deepEqual(first.locations.park.npcs[0].voice, castVoice({ id: 'npc-1' }));
+  assert.deepEqual(second.locations.park.npcs[0].voice, first.locations.park.npcs[0].voice);
 });
 
 test('malformed voice blocks are silently re-cast from the NPC id', () => {
@@ -177,8 +177,12 @@ test('malformed voice blocks are silently re-cast from the NPC id', () => {
     const migrated = migrateSave(state);
 
     assert.ok(migrated, 'the NPC must never be dropped');
-    assert.equal(migrated.npcs.length, 2);
-    assert.deepEqual(migrated.npcs[0].voice, castVoice({ id: 'npc-1' }), `failed for ${JSON.stringify(voice)}`);
+    assert.equal(migrated.locations.park.npcs.length, 2);
+    assert.deepEqual(
+      migrated.locations.park.npcs[0].voice,
+      castVoice({ id: 'npc-1' }),
+      `failed for ${JSON.stringify(voice)}`
+    );
   }
 });
 
@@ -194,5 +198,5 @@ test('a valid block for a different language is kept, not re-rolled', () => {
     tiltDbPerOct: -0.25
   };
   const migrated = migrateSave(state);
-  assert.deepEqual(migrated.npcs[1].voice, state.npcs[1].voice);
+  assert.deepEqual(migrated.locations.park.npcs[1].voice, state.npcs[1].voice);
 });

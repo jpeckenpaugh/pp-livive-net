@@ -78,36 +78,37 @@ function emptyBehaviorBlock() {
 
 function hydrateGame(save) {
   return {
-    worldSeed: save.worldSeed,
-    terrain: decodeTerrain(save.terrain),
+    worldSeed: save.locations.park.seed,
+    terrain: decodeTerrain(save.locations.park.terrain),
     wander: save.wander,
     player: {
       name: save.playerName,
       recipe: save.playerRecipe,
-      x: save.player.x,
-      y: save.player.y,
-      direction: save.player.direction,
+      x: save.locations.park.player.x,
+      y: save.locations.park.player.y,
+      direction: save.locations.park.player.direction,
       inventory: save.player.inventory,
       equipped: save.player.equipped,
       coins: save.player.coins,
       stabledCompanions: save.player.stabledCompanions
     },
-    npcs: save.npcs,
+    npcs: save.locations.park.npcs,
     companions: save.companions
   };
 }
 
-test('v1 fixture migrates to v3 with item instances, equipped arrays, and an empty behavior block', () => {
+test('v1 fixture migrates to v4 with item instances, equipped arrays, and an empty behavior block', () => {
   const fixture = makeV1Fixture();
   const migrated = migrateSave(fixture);
 
   assert.ok(migrated);
   assert.equal(migrated.version, SAVE_VERSION);
-  assert.equal(migrated.version, 3);
-  assert.equal(migrated.worldSeed, fixture.worldSeed);
+  assert.equal(migrated.version, 4);
+  assert.equal(migrated.locations.park.seed, fixture.worldSeed);
+  assert.equal(migrated.locations.park.terrain, fixture.terrain);
   assert.equal(migrated.playerName, fixture.playerName);
   assert.deepEqual(migrated.playerRecipe, fixture.playerRecipe);
-  assert.ok(decodeTerrain(fixture.terrain), 'fixture terrain should stay valid');
+  assert.ok(decodeTerrain(migrated.locations.park.terrain), 'fixture terrain should stay valid');
 
   // Legacy item objects become instances with deterministic uids, retaining
   // their custom fields and leaving the inventory order intact.
@@ -122,8 +123,8 @@ test('v1 fixture migrates to v3 with item instances, equipped arrays, and an emp
   assert.deepEqual(migrated.player.equipped, []);
   assert.equal(migrated.player.coins, 17);
 
-  assert.deepEqual(migrated.npcs[0].inventory.map(item => item.uid), ['checkers-0']);
-  assert.deepEqual(migrated.npcs[0].equipped, []);
+  assert.deepEqual(migrated.locations.park.npcs[0].inventory.map(item => item.uid), ['checkers-0']);
+  assert.deepEqual(migrated.locations.park.npcs[0].equipped, []);
   assert.deepEqual(migrated.companions[0].inventory.map(item => item.uid), ['lucky-clover-0']);
   assert.deepEqual(migrated.companions[0].equipped, []);
 
@@ -135,15 +136,15 @@ test('v1 fixture migrates to v3 with item instances, equipped arrays, and an emp
   assert.deepEqual(migrated.behavior, emptyBehaviorBlock());
 });
 
-test('migrated v1 save serializes back to v3 and survives a JSON round-trip', () => {
+test('migrated v1 save serializes back to v4 and survives a JSON round-trip', () => {
   const migrated = migrateSave(makeV1Fixture());
   const game = hydrateGame(migrated);
   const saved = serializeSave(game, {}, new Set(migrated.friends), migrated.behavior);
 
   assert.ok(saved);
-  assert.equal(saved.version, 3);
+  assert.equal(saved.version, 4);
   assert.equal(saved.playerName, 'Fixture Pal');
-  assert.equal(saved.terrain, migrated.terrain);
+  assert.equal(saved.locations.park.terrain, migrated.locations.park.terrain);
   const savedUids = saved.player.inventory.map(item => item.uid);
   assert.deepEqual(savedUids.slice(0, 2), ['ball-0', 'chamo-clip-1']);
   const savedIds = saved.player.inventory.map(item => item.id);
@@ -152,7 +153,7 @@ test('migrated v1 save serializes back to v3 and survives a JSON round-trip', ()
   }
   assert.equal(saved.player.inventory[0].color, '#ffffff');
   assert.deepEqual(saved.player.equipped, []);
-  assert.deepEqual(saved.npcs[0].equipped, []);
+  assert.deepEqual(saved.locations.park.npcs[0].equipped, []);
   assert.deepEqual(saved.companions[0].equipped, []);
   assert.deepEqual(saved.player.stabledCompanions[0].equipped, []);
   assert.deepEqual(saved.behavior, emptyBehaviorBlock());
@@ -163,12 +164,15 @@ test('migrated v1 save serializes back to v3 and survives a JSON round-trip', ()
   const normalized = JSON.parse(JSON.stringify(saved));
   const roundTripped = migrateSave(JSON.parse(JSON.stringify(saved)));
   assert.ok(roundTripped);
-  assert.equal(roundTripped.version, 3);
+  assert.equal(roundTripped.version, 4);
   assert.deepEqual(roundTripped.player.inventory, normalized.player.inventory);
   assert.deepEqual(roundTripped.player.equipped, normalized.player.equipped);
-  assert.deepEqual(roundTripped.npcs, normalized.npcs);
+  assert.deepEqual(roundTripped.locations.park.npcs, normalized.locations.park.npcs);
   assert.deepEqual(roundTripped.companions, normalized.companions);
   assert.deepEqual(roundTripped.player.stabledCompanions, normalized.player.stabledCompanions);
   assert.deepEqual(roundTripped.behavior, normalized.behavior);
-  assert.deepEqual(decodeTerrain(roundTripped.terrain), decodeTerrain(normalized.terrain));
+  assert.deepEqual(
+    decodeTerrain(roundTripped.locations.park.terrain),
+    decodeTerrain(normalized.locations.park.terrain)
+  );
 });

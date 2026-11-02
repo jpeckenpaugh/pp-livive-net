@@ -16,7 +16,7 @@ import {
   findPath
 } from './world.js';
 import { PLAYER_NAMES, COMPANION_NAMES, pickName, pickVibe } from './names.js';
-import { serializeSave, saveState, loadSave, clearSave, recordGameResult } from './storage.js';
+import { serializeSave, saveState, loadSave, clearSave, recordGameResult, activeLocation } from './storage.js';
 import { castVoice } from './voice/casting.js';
 import { VoiceEngine } from './voice/engine.js';
 import { DialogueManager } from './dialogue.js';
@@ -1561,21 +1561,23 @@ function applyState(state) {
   spokenChatSeqs.clear();
   chatGate?.reset();
 
-  const worldData = generateWorld(state.worldSeed);
-  const terrain = decodeTerrain(state.terrain) || worldData.grid;
+  const locationState = activeLocation(state) || {};
+  const sharedPlayer = state.player && typeof state.player === 'object' ? state.player : {};
+  const worldData = generateWorld(locationState.seed);
+  const terrain = decodeTerrain(locationState.terrain) || worldData.grid;
   const scenery = worldData.scenery || [];
   const rawPlayer = {
     id: 'player',
     name: state.playerName || 'You',
     recipe: state.playerRecipe,
-    x: Number.isFinite(Number(state.player?.x)) ? Math.round(Number(state.player.x)) : 32,
-    y: Number.isFinite(Number(state.player?.y)) ? Math.round(Number(state.player.y)) : 32,
-    direction: state.player?.direction ?? 0,
-    inventory: normalizeInventory(state.player?.inventory || createStarterInventory()),
-    equipped: Array.isArray(state.player?.equipped) ? state.player.equipped : [],
-    effectGhosts: Array.isArray(state.player?.effectGhosts) ? state.player.effectGhosts : [],
-    coins: Number.isFinite(state.player?.coins) ? state.player.coins : 0,
-    stabledCompanions: Array.isArray(state.player?.stabledCompanions) ? state.player.stabledCompanions : []
+    x: Number.isFinite(Number(locationState.player?.x)) ? Math.round(Number(locationState.player.x)) : 32,
+    y: Number.isFinite(Number(locationState.player?.y)) ? Math.round(Number(locationState.player.y)) : 32,
+    direction: locationState.player?.direction ?? 0,
+    inventory: normalizeInventory(sharedPlayer.inventory || createStarterInventory()),
+    equipped: Array.isArray(sharedPlayer.equipped) ? sharedPlayer.equipped : [],
+    effectGhosts: Array.isArray(sharedPlayer.effectGhosts) ? sharedPlayer.effectGhosts : [],
+    coins: Number.isFinite(sharedPlayer.coins) ? sharedPlayer.coins : 0,
+    stabledCompanions: Array.isArray(sharedPlayer.stabledCompanions) ? sharedPlayer.stabledCompanions : []
   };
   if (!isWalkable(terrain[rawPlayer.y]?.[rawPlayer.x])) {
     const spot = findOpenTile(terrain, { x: 32, y: 32 });
@@ -1583,7 +1585,7 @@ function applyState(state) {
     rawPlayer.y = spot.y;
   }
 
-  const npcs = (Array.isArray(state.npcs) ? state.npcs : [])
+  const npcs = (Array.isArray(locationState.npcs) ? locationState.npcs : [])
     .filter(npc => npc && npc.recipe && npc.name)
     .map(npc => {
       const hasPosition = Number.isFinite(Number(npc.x)) && Number.isFinite(Number(npc.y));
@@ -1647,7 +1649,7 @@ function applyState(state) {
   }
 
   ensureGame();
-  const forage = createForageState(state.forage);
+  const forage = createForageState(locationState.forage);
   if (!forage.seeded) {
     seedApples(forage, {
       grid: terrain,
@@ -1659,7 +1661,7 @@ function applyState(state) {
   }
   game.setWorld({
     terrain,
-    worldSeed: state.worldSeed,
+    worldSeed: locationState.seed,
     player: rawPlayer,
     npcs,
     companions,
@@ -1675,7 +1677,7 @@ function applyState(state) {
       .filter(id => npcs.some(npc => npc.id === id))
   );
   draft = {
-    worldSeed: state.worldSeed,
+    worldSeed: locationState.seed,
     world: { grid: terrain, spawn: { x: rawPlayer.x, y: rawPlayer.y }, component: [] },
     playerName: rawPlayer.name,
     playerRecipe: rawPlayer.recipe,

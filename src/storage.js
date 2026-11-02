@@ -5,7 +5,7 @@ import { voiceForRecord } from './voice/casting.js';
 
 export const STORAGE_KEY = 'playpark.save.v1';
 export const STATS_KEY = 'playpark.stats.v1';
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 // New parks receive these in data/items.json. Grant them once to pre-v2 saves
 // so existing testers can see the headline effects without using Debug.
@@ -52,6 +52,43 @@ function stripTransient(record) {
   const copy = { ...record };
   for (const key of TRANSIENT_CHARACTER_KEYS) delete copy[key];
   return copy;
+}
+
+/**
+ * Return the world slice for the location a save is currently in.
+ *
+ * v4 keeps terrain, seed, player position, NPCs, and forage under
+ * `locations[currentLocation]`. v1–v3 saves — and the wizard's hand-built
+ * draft that `enterPark` passes straight to `applyState` — still carry those
+ * fields at the top level, so they are mapped here as the legacy fallback.
+ * Shared state (gear, coins, friends, companions, behaviour) is not included.
+ */
+export function activeLocation(state) {
+  if (!isObject(state)) return null;
+  const locations = isObject(state.locations) ? state.locations : null;
+  if (locations) {
+    const current = typeof state.currentLocation === 'string'
+      && isObject(locations[state.currentLocation])
+      ? state.currentLocation
+      : 'park';
+    const record = isObject(locations[current]) ? locations[current] : null;
+    if (record) {
+      return {
+        seed: record.seed,
+        terrain: record.terrain,
+        player: record.player,
+        npcs: record.npcs,
+        forage: record.forage
+      };
+    }
+  }
+  return {
+    seed: state.worldSeed ?? state.seed,
+    terrain: state.terrain,
+    player: state.player,
+    npcs: state.npcs,
+    forage: state.forage
+  };
 }
 
 /**
@@ -190,9 +227,14 @@ function serializeReserveCompanions(companions) {
 }
 
 /**
- * Build a v2 save. `behaviorState` is optional and may be a plain object or a
- * BehaviorRuntime; live FSM entries, paths, staging, and host sessions are
- * never persisted.
+ * Build a v4 save. World state lives under `locations.park`; shared state
+ * (gear, coins, friends, companion roster, behaviour) stays top level.
+ * `behaviorState` is optional and may be a plain object or a BehaviorRuntime;
+ * live FSM entries, paths, staging, and host sessions are never persisted.
+ *
+ * This wave only knows about the Park. Any other location a live game might
+ * carry is deliberately not written yet; Wave 1 extends this without dropping
+ * them, and a test asserts the current single-key output.
  */
 export function serializeSave(game, draft, friends, behaviorState = null) {
   if (!game?.terrain || !game.player || !draft) return null;
@@ -202,32 +244,40 @@ export function serializeSave(game, draft, friends, behaviorState = null) {
   return {
     version: SAVE_VERSION,
     savedAt: new Date().toISOString(),
-    worldSeed: game.worldSeed,
-    terrain: encodeTerrain(game.terrain),
+    currentLocation: 'park',
+    locations: {
+      park: {
+        seed: normalizeSeed(game.worldSeed),
+        terrain: encodeTerrain(game.terrain),
+        player: {
+          x: game.player.x,
+          y: game.player.y,
+          direction: game.player.direction
+        },
+        npcs: game.npcs.map(npc => ({
+          id: npc.id,
+          name: npc.name,
+          recipe: npc.recipe,
+          voice: voiceForRecord(npc),
+          ...(npc.vibe ? { vibe: npc.vibe } : {}),
+          x: npc.x,
+          y: npc.y,
+          direction: npc.direction,
+          ...serializeCharacterGear(npc),
+          coins: Number.isFinite(npc.coins) ? npc.coins : 0,
+          stabledCompanions: serializeReserveCompanions(npc.stabledCompanions)
+        })),
+        forage: normalizeForage(game.forage)
+      }
+    },
     playerName: game.player.name,
     playerRecipe: game.player.recipe,
     player: {
-      x: game.player.x,
-      y: game.player.y,
-      direction: game.player.direction,
       inventory: playerGear.inventory,
       coins: Number.isFinite(game.player.coins) ? game.player.coins : 0,
       equipped: playerGear.equipped,
       stabledCompanions
     },
-    npcs: game.npcs.map(npc => ({
-      id: npc.id,
-      name: npc.name,
-      recipe: npc.recipe,
-      voice: voiceForRecord(npc),
-      vibe: npc.vibe,
-      x: npc.x,
-      y: npc.y,
-      direction: npc.direction,
-      ...serializeCharacterGear(npc),
-      coins: Number.isFinite(npc.coins) ? npc.coins : 0,
-      stabledCompanions: serializeReserveCompanions(npc.stabledCompanions)
-    })),
     companions: (game.companions || []).map(comp => ({
       id: comp.id,
       name: comp.name,
@@ -240,7 +290,6 @@ export function serializeSave(game, draft, friends, behaviorState = null) {
     })),
     friends: [...friends],
     wander: game.wander,
-    forage: normalizeForage(game.forage),
     behavior: normalizeBehaviorBlock(behaviorState)
   };
 }
@@ -261,7 +310,7 @@ function migrateCharacterRecord(record) {
  * id, so a saved NPC is voiced exactly once and never re-rolled later.
  */
 function migrateNpcRecord(record) {
-  const next = migrateCharacterRecord(record);
+  const next = migrateCharacterRecord(stripTransient(record));
   if (!isObject(next)) return next;
   next.coins = Number.isFinite(next.coins) ? next.coins : 0;
   next.voice = voiceForRecord(next);
@@ -274,51 +323,153 @@ function migrateNpcRecord(record) {
 }
 
 /**
- * Upgrade a v1 or v2 save (or clean a v3 save) to the current schema. Returns
- * null for malformed input and for future versions so callers can fall back to
- * a fresh park without risking data corruption.
+ * Normalise the shared player record: gear, coins, and stabled companions.
+ * Position belongs to a location and is handled by the caller. Also grants
+ * starter effects/games that a save predates, idempotently.
+ */
+function migrateSharedPlayer(source, version) {
+  if (!isObject(source)) return null;
+  const player = migrateCharacterRecord(source);
+  player.stabledCompanions = Array.isArray(source.stabledCompanions)
+    ? source.stabledCompanions
+      .filter(isObject)
+      .map(comp => migrateCharacterRecord(stripTransient(comp)))
+    : [];
+  if (version === 1) {
+    const owned = new Set(player.inventory.map(item => item.id));
+    for (const id of V1_STARTER_EFFECTS) {
+      if (owned.has(id)) continue;
+      const item = createItemInstance(id);
+      if (item) player.inventory.push(item);
+    }
+  }
+  const ownedGames = new Set(player.inventory.map(item => item.id));
+  for (const id of EXTRA_STARTER_ITEMS) {
+    if (ownedGames.has(id)) continue;
+    const item = createItemInstance(id);
+    if (item) player.inventory.push(item);
+  }
+  return {
+    inventory: player.inventory,
+    coins: Number.isFinite(player.coins) ? player.coins : 0,
+    equipped: player.equipped,
+    stabledCompanions: player.stabledCompanions
+  };
+}
+
+function migratePlayerPosition(source) {
+  if (!isObject(source)) return undefined;
+  return {
+    x: source.x,
+    y: source.y,
+    direction: source.direction
+  };
+}
+
+function locationSeed(record) {
+  return record?.seed ?? record?.worldSeed;
+}
+
+/** Seeds are strings in v4; legacy saves may hold a numeric seed. */
+function hasSeed(record) {
+  const seed = locationSeed(record);
+  return (typeof seed === 'string' && seed.length > 0)
+    || (typeof seed === 'number' && Number.isFinite(seed));
+}
+
+function normalizeSeed(value) {
+  if (typeof value === 'string' && value) return value;
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return 'park';
+}
+
+/**
+ * v4 is already in the current shape: validate it strictly and re-run the
+ * idempotent record normalisers (voice, gear, forage, behaviour). A missing or
+ * malformed `locations.park` returns null so `loadSave` falls back to a fresh
+ * park instead of half-reading a corrupt world.
+ */
+function migrateV4(state) {
+  const locations = state.locations;
+  if (!isObject(locations)) return null;
+  const park = locations.park;
+  if (!isObject(park)) return null;
+  if (!hasSeed(park)) return null;
+  if (!decodeTerrain(park.terrain)) return null;
+
+  const sharedPlayer = migrateSharedPlayer(state.player, SAVE_VERSION);
+  const next = { ...state, version: SAVE_VERSION };
+  // Never mirror world fields at the top level.
+  delete next.worldSeed;
+  delete next.terrain;
+  delete next.npcs;
+  delete next.forage;
+
+  const current = typeof state.currentLocation === 'string'
+    && isObject(locations[state.currentLocation])
+    ? state.currentLocation
+    : 'park';
+
+  next.currentLocation = current;
+  next.locations = {
+    ...locations,
+    park: {
+      seed: normalizeSeed(locationSeed(park)),
+      terrain: park.terrain,
+      player: migratePlayerPosition(park.player),
+      npcs: Array.isArray(park.npcs)
+        ? park.npcs.filter(isObject).map(migrateNpcRecord)
+        : [],
+      forage: normalizeForage(park.forage)
+    }
+  };
+  if (sharedPlayer) next.player = sharedPlayer;
+  next.companions = Array.isArray(state.companions)
+    ? state.companions.filter(isObject).map(comp => migrateCharacterRecord(stripTransient(comp)))
+    : [];
+  next.friends = Array.isArray(state.friends) ? state.friends.filter(id => typeof id === 'string') : [];
+  next.behavior = normalizeBehaviorBlock(state.behavior);
+  return next;
+}
+
+/**
+ * Upgrade a v1–v3 save to v4 by wrapping the existing world as
+ * `locations.park`, or validate a v4 save in place. Returns null for malformed
+ * input, a malformed v4 location map, and future versions so callers can fall
+ * back to a fresh park without risking data corruption.
  */
 export function migrateSave(state) {
   if (!isObject(state)) return null;
   const version = Number(state.version);
   if (!Number.isInteger(version) || version < 1 || version > SAVE_VERSION) return null;
+  if (version === SAVE_VERSION) return migrateV4(state);
 
-  const next = { ...state, version: SAVE_VERSION };
-
-  if (isObject(state.player)) {
-    const player = migrateCharacterRecord(state.player);
-    player.stabledCompanions = Array.isArray(state.player.stabledCompanions)
-      ? state.player.stabledCompanions
-        .filter(isObject)
-        .map(comp => migrateCharacterRecord(stripTransient(comp)))
-      : [];
-    if (version === 1) {
-      const owned = new Set(player.inventory.map(item => item.id));
-      for (const id of V1_STARTER_EFFECTS) {
-        if (owned.has(id)) continue;
-        const item = createItemInstance(id);
-        if (item) player.inventory.push(item);
+  const sharedPlayer = migrateSharedPlayer(state.player, version);
+  const next = {
+    version: SAVE_VERSION,
+    currentLocation: 'park',
+    locations: {
+      park: {
+        seed: normalizeSeed(locationSeed(state)),
+        terrain: state.terrain,
+        player: migratePlayerPosition(state.player),
+        npcs: Array.isArray(state.npcs)
+          ? state.npcs.filter(isObject).map(migrateNpcRecord)
+          : [],
+        forage: normalizeForage(state.forage)
       }
-    }
-    const ownedGames = new Set(player.inventory.map(item => item.id));
-    for (const id of EXTRA_STARTER_ITEMS) {
-      if (ownedGames.has(id)) continue;
-      const item = createItemInstance(id);
-      if (item) player.inventory.push(item);
-    }
-    next.player = player;
-  }
-
-  next.npcs = Array.isArray(state.npcs)
-    ? state.npcs.filter(isObject).map(migrateNpcRecord)
-    : [];
-  next.companions = Array.isArray(state.companions)
-    ? state.companions.filter(isObject).map(comp => migrateCharacterRecord(stripTransient(comp)))
-    : [];
-  next.friends = Array.isArray(state.friends) ? state.friends.filter(id => typeof id === 'string') : [];
-  next.forage = normalizeForage(state.forage);
-  next.behavior = normalizeBehaviorBlock(state.behavior);
-
+    },
+    playerName: state.playerName,
+    playerRecipe: state.playerRecipe,
+    companions: Array.isArray(state.companions)
+      ? state.companions.filter(isObject).map(comp => migrateCharacterRecord(stripTransient(comp)))
+      : [],
+    friends: Array.isArray(state.friends) ? state.friends.filter(id => typeof id === 'string') : [],
+    wander: state.wander !== false,
+    behavior: normalizeBehaviorBlock(state.behavior)
+  };
+  if (sharedPlayer) next.player = sharedPlayer;
+  if (state.savedAt) next.savedAt = state.savedAt;
   return next;
 }
 
@@ -338,7 +489,9 @@ export function loadSave() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const state = migrateSave(JSON.parse(raw));
-    if (!state || !state.playerRecipe || !decodeTerrain(state.terrain)) return null;
+    if (!state || !state.playerRecipe) return null;
+    const location = activeLocation(state);
+    if (!location || !decodeTerrain(location.terrain)) return null;
     return state;
   } catch {
     return null;
