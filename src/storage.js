@@ -218,6 +218,26 @@ function serializeCharacterGear(record) {
   };
 }
 
+/**
+ * Best times and clear counts per full-view activity course. Saves always carry
+ * the block; a v4 file written before courses existed migrates to `{}` so the
+ * chooser can read it without a special case. Malformed rows are dropped rather
+ * than repaired, which keeps a reload deterministic.
+ */
+export function normalizeActivities(source) {
+  if (!isObject(source)) return {};
+  const result = {};
+  for (const [id, record] of Object.entries(source)) {
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id) || !isObject(record)) continue;
+    const clears = Math.max(0, Math.floor(Number(record.clears) || 0));
+    const best = Number(record.bestMs);
+    const bestMs = Number.isFinite(best) && best > 0 ? Math.round(best) : null;
+    if (clears === 0 && bestMs === null) continue;
+    result[id] = { bestMs, clears };
+  }
+  return result;
+}
+
 /** Persist reserve companions with their gear, dropping live frame state. */
 function serializeReserveCompanions(companions) {
   if (!Array.isArray(companions)) return [];
@@ -245,7 +265,7 @@ function serializeReserveCompanions(companions) {
  */
 export function serializeSave(game, draft, friends, behaviorState = null, options = {}) {
   if (!game?.player || !draft) return null;
-  const { locations = null, currentLocation = null, companions = null } = options;
+  const { locations = null, currentLocation = null, companions = null, activities = null } = options;
   const liveLocations = isObject(locations) && Object.keys(locations).length
     ? locations
     : {
@@ -302,7 +322,8 @@ export function serializeSave(game, draft, friends, behaviorState = null, option
     })),
     friends: [...friends],
     wander: game.wander,
-    behavior: normalizeBehaviorBlock(behaviorState)
+    behavior: normalizeBehaviorBlock(behaviorState),
+    activities: normalizeActivities(activities)
   };
 }
 
@@ -513,6 +534,7 @@ function migrateV4(state) {
     : [];
   next.friends = Array.isArray(state.friends) ? state.friends.filter(id => typeof id === 'string') : [];
   next.behavior = normalizeBehaviorBlock(state.behavior);
+  next.activities = normalizeActivities(state.activities);
   return next;
 }
 
@@ -550,7 +572,8 @@ export function migrateSave(state) {
       : [],
     friends: Array.isArray(state.friends) ? state.friends.filter(id => typeof id === 'string') : [],
     wander: state.wander !== false,
-    behavior: normalizeBehaviorBlock(state.behavior)
+    behavior: normalizeBehaviorBlock(state.behavior),
+    activities: normalizeActivities(state.activities)
   };
   if (sharedPlayer) next.player = sharedPlayer;
   if (state.savedAt) next.savedAt = state.savedAt;

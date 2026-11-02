@@ -36,6 +36,7 @@ import {
   saveState,
   loadSave,
   clearSave,
+  normalizeActivities,
   recordGameResult,
   activeLocation
 } from './storage.js';
@@ -78,7 +79,15 @@ import { PanelsUI } from './ui/panels.js';
 import { MiniGameHost } from './minigames/host.js';
 import { formatGameStrip, turnNameFor } from './minigames/strip.js';
 import { registerContractGames } from './games/contract-adapters.js';
-import { createJungleGym, isActivityEnabled } from './activities/jungle-gym.js';
+import {
+  activityDefinition,
+  activityList,
+  bestMsFor,
+  createActivity,
+  formatActivityTime,
+  recordActivityAttempt,
+  rewardForActivity
+} from './activities/platformer.js';
 import { buildAbandonPrompt, dialogueForMeta } from './minigames/settlement.js';
 import { SpeechBubbles } from './ui/speech.js';
 import { BehaviorRuntime } from './behavior/runtime.js';
@@ -165,6 +174,8 @@ let stripFlash = null;
 const activityHolds = new Set();
 /** Throttle for the activity HUD text, so we do not touch the DOM every frame. */
 let activityHudAt = 0;
+/** Best time and clear count per activity course, mirrored into the save. */
+let activityRecords = {};
 /** Open Home item card: the record uid plus the item id for its verb and icon. */
 let homeItemCard = null;
 /** Home Furnish mode: the selected record and its uncommitted draft placement. */
@@ -242,11 +253,13 @@ function updateActivityHud(force = false) {
   const name = $('activity-name');
   const time = $('activity-time');
   const par = $('activity-par');
+  const best = $('activity-best');
   const ghost = $('activity-ghost');
   const delta = $('activity-delta');
-  if (name) name.textContent = snapshot.title || 'Jungle gym';
+  if (name) name.textContent = snapshot.title || 'Course';
   if (time) time.textContent = snapshot.time.toFixed(2);
   if (par) par.textContent = snapshot.par.toFixed(2);
+  if (best) best.textContent = formatActivityTime(snapshot.bestMs) || '—';
   if (ghost) ghost.textContent = snapshot.ghostName ? `vs ${snapshot.ghostName}` : 'solo run';
   if (delta) {
     const behind = snapshot.delta > 0;
@@ -790,18 +803,68 @@ function activityRival(opponent = null) {
 }
 
 /**
- * Start a full-view activity session. The Park freezes on the next frame (the
- * shell syncs suspend from the session's render mode), and the activity owns
- * the canvas, the clock, and input until it settles or the player leaves.
+ * The course board: one beat listing every enabled course with its par and the
+ * player's best. The Park pauses under it; leaving resumes where they stood.
+ */
+function openActivityChooser(opponent = null) {
+  if (!host || !game?.player) return false;
+  const courses = activityList().filter(definition => host.getMeta(definition.id));
+  if (!courses.length) {
+    showToast('No courses are open right now.');
+    return false;
+  }
+  if (courses.length === 1) return startActivity(courses[0].id, opponent);
+  if (host.isOpen() && !npcOwnsSession()) {
+    showToast(`${host.session.meta.title || 'A game'} is already open. Pack it up first.`);
+    return false;
+  }
+
+  panels?.closeAllPanels();
+  bubbles?.clear();
+  game.paused = true;
+  game.interactive = false;
+  game.heldKeys = [];
+  if (game.player.path) game.player.path = [];
+  behaviorRuntime?.setDialogue(true);
+  sounds.play('ui-click');
+
+  const choices = courses.map(definition => {
+    const best = bestMsFor(activityRecords, definition.id);
+    const bestLabel = best ? `best ${formatActivityTime(best)}s` : 'no time yet';
+    return {
+      label: `${definition.title} · par ${Number(definition.par).toFixed(2)}s · ${bestLabel}`,
+      className: definition.id === 'jungle-gym' ? 'primary' : 'pill',
+      onClick: () => {
+        dialogue.close();
+        startActivity(definition.id, opponent);
+      }
+    };
+  });
+  choices.push({
+    label: 'Not now',
+    className: 'pill quiet',
+    onClick: () => dialogue.close()
+  });
+
+  showDialogueBeat({ name: 'Course board' }, 'pick a course:', choices);
+  return true;
+}
+
+/**
+ * Start a full-view activity session for one course. The Park freezes on the
+ * next frame (the shell syncs suspend from the session's render mode), and the
+ * activity owns the canvas, the clock, and input until it settles or the
+ * player leaves.
  */
 function startActivity(activityId, opponent = null) {
   if (!host || !game?.player) return false;
   const meta = host.getMeta(activityId);
-  if (!meta) {
+  const definition = activityDefinition(activityId);
+  if (!meta || !definition) {
     showToast('That activity is not unpacked yet.');
     return false;
   }
-  if (!isActivityEnabled(meta.activityId || activityId)) {
+  if (!definition.enabled) {
     showToast('That activity is closed for now.');
     return false;
   }
@@ -827,7 +890,10 @@ function startActivity(activityId, opponent = null) {
   const result = host.start(activityId, {
     seats,
     controllers: seats.map(seat => seat.controller),
-    options: { opponent: rival }
+    options: {
+      opponent: rival,
+      bestMs: bestMsFor(activityRecords, definition.id)
+    }
   });
   if (!result.ok) {
     showToast(result.message || `${meta.title} could not start here.`);
@@ -860,6 +926,39 @@ function packUpActivity() {
   refreshMiniGameFlags();
   showToast(`Left the ${String(title).toLowerCase()}.`);
   return true;
+}
+
+/**
+ * Apply one finished course run: count the clear, keep the fastest time, pay
+ * the course reward once, and refresh the HUD's best. Returns the note the end
+ * beat appends, or null when the event is not a course finish.
+ */
+function settleActivityFinish(event, session) {
+  if (!session || session.meta?.render?.mode !== 'fullview') return null;
+  const definition = activityDefinition(session.meta.activityId || session.meta.id);
+  if (!definition) return null;
+  const exactMs = Number(event?.timeMs);
+  const seconds = Number(event?.time);
+  const ms = Number.isFinite(exactMs) && exactMs > 0
+    ? Math.round(exactMs)
+    : (Number.isFinite(seconds) ? Math.max(1, Math.round(seconds * 1000)) : null);
+  const recorded = recordActivityAttempt(activityRecords, definition.id, ms);
+  if (!recorded.recorded) return null;
+  activityRecords = recorded.records;
+  const reward = rewardForActivity(definition, { outcome: event.outcome });
+  if (game?.player && reward.coins > 0) {
+    game.player.coins = Math.max(0, Math.floor(Number(game.player.coins) || 0)) + reward.coins;
+  }
+  session.game.setBestMs?.(recorded.bestMs);
+  saveNow();
+  updateActivityHud(true);
+  return {
+    id: definition.id,
+    title: definition.title,
+    coins: reward.coins,
+    bestMs: recorded.bestMs,
+    improves: recorded.improved
+  };
 }
 
 function facingTile(character, distance = 3) {
@@ -962,6 +1061,12 @@ function handleGameEnd(payload) {
     const hud = session.game?.getHud?.();
     if (hud) {
       text += `\n${hud.time.toFixed(2)}s · par ${hud.par.toFixed(2)}s · ${hud.outcome === 'win' ? 'under par' : 'over par'}`;
+    }
+    const course = payload.event?.activityResult;
+    if (course) {
+      const bestLabel = formatActivityTime(course.bestMs);
+      text += `\n+${course.coins}🪙 · ${course.improves ? 'new best' : 'best'} ${bestLabel}s`;
+      showToast(`+${course.coins} coins · ${course.improves ? 'new best time!' : `best ${bestLabel}s`}`);
     }
   }
   const notices = Array.isArray(settlement?.notifications) ? settlement.notifications : [];
@@ -1067,9 +1172,9 @@ function openPlayerMenu() {
   if (!game?.player) return;
   const player = game.player;
 
-  const items = dialogueData.playerMenu.items.filter(item => (
-    item.id !== 'jungle-gym' || isActivityEnabled('jungle-gym')
-  ));
+  const items = dialogueData.playerMenu.items
+    .filter(item => item.id !== 'jungle-gym' || activityList().length > 0)
+    .map(item => (item.id === 'jungle-gym' ? { ...item, label: '🌿 Courses' } : item));
   const choices = items.map(item => ({
     label: item.label,
     className: item.className,
@@ -1081,7 +1186,7 @@ function openPlayerMenu() {
         if (playerComp) panels?.showCard(playerComp);
         else showToast('No companions following you right now.');
       } else if (item.id === 'jungle-gym') {
-        startActivity('jungle-gym');
+        openActivityChooser();
       } else if (item.id === 'friends') panels?.toggleFriendsPanel();
       else if (item.id === 'stats') panels?.toggleStatsPanel();
       else if (item.id === 'debug') openDebugMenu();
@@ -1232,6 +1337,7 @@ function hostHooks() {
       } else if (event.type === 'finish') {
         stripReject = null;
         stripTargetKey = '';
+        event.activityResult = settleActivityFinish(event, host?.session);
         if (event.winnerSeat === null || event.winnerSeat === undefined) sounds.play('draw');
         else sounds.play(Number(event.winnerSeat) === 0 ? 'win' : 'loss');
       } else if (event.type === 'abandon') {
@@ -1595,13 +1701,21 @@ function ensureGame() {
     bubbles = new SpeechBubbles({ getActor: resolveCharacter });
     host = new MiniGameHost({ game, hooks: hostHooks() });
     registerContractGames(host, miniGamesData.miniGames);
-    // The jungle gym is door-driven, not item-driven, and only registers while
-    // its data flag is on, so a half-built activity is never reachable.
-    if (isActivityEnabled('jungle-gym') && miniGamesData.miniGames['jungle-gym']) {
-      host.register({
-        meta: miniGamesData.miniGames['jungle-gym'],
-        create: context => createJungleGym(context)
-      });
+    // Every enabled course registers from data/activities.json against the
+    // shared full-view metadata shape. Disabled courses never reach the host.
+    const activityBaseMeta = miniGamesData.miniGames['jungle-gym'];
+    if (activityBaseMeta?.render?.mode === 'fullview') {
+      for (const definition of activityList()) {
+        host.register({
+          meta: {
+            ...activityBaseMeta,
+            id: definition.id,
+            title: definition.title,
+            activityId: definition.id
+          },
+          create: createActivity
+        });
+      }
     }
 
     delegated = {
@@ -1916,6 +2030,7 @@ function applyState(state) {
     else host.close({ reason: 'load', settle: false, record: false, reward: false });
   }
   host?.clearTrace?.();
+  activityRecords = normalizeActivities(state.activities);
   refreshMiniGameFlags();
   bubbles?.clear();
   prefetchedVoices.clear();
@@ -2232,7 +2347,8 @@ function saveNow() {
   const state = serializeSave(game, draft, friends, behaviorSaveState(), {
     locations: locationStates,
     currentLocation: currentLocationId,
-    companions: rosterCompanions
+    companions: rosterCompanions,
+    activities: activityRecords
   });
   saveState(state);
 }
@@ -2296,13 +2412,9 @@ function doorNearPlayer() {
 function openTravelPrompt(door) {
   if (!door || !game?.player || !dialogue) return;
   closeHomeItemCard();
-  // Activity entrances start a session instead of swapping worlds.
+  // Activity entrances open the course board instead of swapping worlds.
   if (door.kind === 'activity') {
-    if (!isActivityEnabled(door.activityId)) {
-      showToast('That activity is closed for now.');
-      return;
-    }
-    startActivity(door.activityId);
+    openActivityChooser();
     return;
   }
   if (!isLocationEnabled(door.to)) return;
