@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  formatTraceEntry,
   npcCardActions,
   npcCardSummary,
   npcEconomySummary,
@@ -245,4 +246,39 @@ test('npcCardActions ignores malformed board entries and unknown input', () => {
 test('npcCardActions leaves player and companion cards untouched', () => {
   assert.equal(npcCardActions({ id: 'player', isPlayer: true }, { isFriend: true }), null);
   assert.equal(npcCardActions({ id: 'comp-1', isCompanion: true }), null);
+});
+
+test('debug trace lines name the game, phase, turn, action, and verdict', () => {
+  const rejected = formatTraceEntry({
+    seq: 12,
+    gameId: 'tic-tac-toe',
+    phase: 'playing',
+    turnSeat: 0,
+    action: 'action',
+    accepted: false,
+    reason: 'occupied'
+  });
+  assert.match(rejected, /^#12 · tic-tac-toe · playing · p0 · action rejected · occupied$/);
+
+  const accepted = formatTraceEntry({
+    seq: 13,
+    gameId: 'checkers',
+    phase: 'playing',
+    turnSeat: 1,
+    action: 'action',
+    accepted: true,
+    reason: null
+  });
+  assert.match(accepted, /p1 · action ok$/);
+
+  const informational = formatTraceEntry({
+    seq: 14,
+    gameId: null,
+    phase: null,
+    turnSeat: null,
+    action: 'turn',
+    accepted: null,
+    reason: null
+  });
+  assert.equal(informational, '#14 · no game · — · no turn · turn event');
 });

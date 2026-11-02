@@ -5,9 +5,10 @@ import { recordGameResult } from '../storage.js';
 export const CHECKERS_BOARD_SIZE = 8;
 
 export class CheckersMiniGame {
-  constructor({ game, onToast, onGameEnd, onAbandonPrompt, recordResult } = {}) {
+  constructor({ game, onToast, onReject, onGameEnd, onAbandonPrompt, recordResult } = {}) {
     this.game = game;
     this.onToast = onToast || (() => {});
+    this.onReject = onReject || (() => {});
     this.onGameEnd = onGameEnd || (() => {});
     this.onAbandonPrompt = onAbandonPrompt || (() => {});
     // Injectable so contract adapters can leave stats/rewards to the host.
@@ -371,6 +372,33 @@ export class CheckersMiniGame {
     return null;
   }
 
+  /**
+   * Target ring: an own piece is valid when it has a legal move; a destination
+   * is valid when the selected piece can legally reach it.
+   */
+  describeTarget(tile) {
+    const board = this.activeBoard;
+    if (!board || board.status !== 'playing' || !tile) return null;
+    const target = { x: tile.x, y: tile.y };
+    const cell = this.cellAtTile(tile.x, tile.y);
+    if (!cell) return { tile: target, valid: false };
+
+    const moves = this.getLegalMoves(board.turn, board.pieces, board.multiJumpFrom);
+    const piece = board.pieces[cell.index];
+    if (piece && piece.side === board.turn) {
+      return { tile: target, valid: moves.some(move => move.from.index === cell.index) };
+    }
+    if (this.selectedCell) {
+      return {
+        tile: target,
+        valid: moves.some(move => (
+          move.from.index === this.selectedCell.index && move.to.index === cell.index
+        ))
+      };
+    }
+    return { tile: target, valid: false };
+  }
+
   // --- Checkers Rules & Move Computation ---
 
   getLegalMoves(side, pieces = this.activeBoard?.pieces, forcedFromIndex = null) {
@@ -528,14 +556,14 @@ export class CheckersMiniGame {
     const isPlayer = character === this.game.player;
 
     if (isPlayer && this.activeBoard.turn !== 'player') {
-      this.onToast(`It's ${this.activeBoard.opponent?.name || 'opponent'}'s turn.`);
+      this.onReject({ reason: 'not-turn' });
       return false;
     }
 
     const cell = this.cellAtTile(character.x, character.y);
     if (!cell) {
       if (isPlayer) {
-        this.onToast('Step onto a checkers board square and press Enter.');
+        this.onReject({ reason: 'off-square' });
       }
       return false;
     }
@@ -551,17 +579,13 @@ export class CheckersMiniGame {
     if (pieceAtCell && pieceAtCell.side === this.activeBoard.turn) {
       // Must obey multiJumpFrom if in middle of multi-jump
       if (this.activeBoard.multiJumpFrom !== null && this.activeBoard.multiJumpFrom !== cell.index) {
-        this.onToast('You must continue jumping with the active piece!');
+        if (isPlayer) this.onReject({ reason: 'illegal' });
         return false;
       }
 
       const movesForPiece = availableMoves.filter(m => m.from.index === cell.index);
       if (movesForPiece.length === 0) {
-        if (availableMoves.some(m => m.jumped)) {
-          this.onToast('A capture jump is available elsewhere!');
-        } else {
-          this.onToast('No legal moves for that piece.');
-        }
+        if (isPlayer) this.onReject({ reason: 'illegal' });
         return false;
       }
 
@@ -577,7 +601,7 @@ export class CheckersMiniGame {
       );
 
       if (!matchingMove) {
-        if (isPlayer) this.onToast('Illegal move! Checkers moves diagonally onto dark squares.');
+        if (isPlayer) this.onReject({ reason: 'illegal' });
         return false;
       }
 
@@ -609,7 +633,7 @@ export class CheckersMiniGame {
         if (isPlayer) {
           this.activeBoard.thinkingTimer = 0.5 + Math.random() * 0.5;
         } else {
-          this.onToast('Your turn! Select a piece to move.');
+          // The strip owns the turn cue.
         }
       } else {
         // Multi-jump continues
@@ -627,7 +651,7 @@ export class CheckersMiniGame {
     }
 
     if (isPlayer) {
-      this.onToast('Step onto one of your red pieces first to select it.');
+      this.onReject({ reason: 'illegal' });
     }
     return false;
   }

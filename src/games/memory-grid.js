@@ -241,20 +241,53 @@ export class MemoryGridGame extends MiniGameBase {
     const character = input.character || null;
     const seat = Number.isInteger(input.seat) ? input.seat : this._seatOf(character);
     if (seat !== 0 && seat !== 1) return emptyStepResult();
-    if (seat !== this.turnSeat) return emptyStepResult();
+    const fromHuman = seat === 0 && input.controller !== 'ai';
+    if (seat !== this.turnSeat) {
+      return fromHuman ? this._reject('not-turn') : emptyStepResult();
+    }
 
     const tile = input.tile && Number.isFinite(input.tile.x) && Number.isFinite(input.tile.y)
       ? input.tile
       : (character ? { x: character.x, y: character.y } : null);
-    if (!tile) return emptyStepResult();
+    if (!tile) return fromHuman ? this._reject('off-square') : emptyStepResult();
 
     const cell = this.cellAtTile(tile.x, tile.y);
-    if (!cell) return emptyStepResult();
+    if (!cell) return fromHuman ? this._reject('off-square') : emptyStepResult();
 
     const card = this.cards[cell.index];
-    if (!card || card.matched || this.faceUp.includes(cell.index)) return emptyStepResult();
+    if (!card || card.matched || this.faceUp.includes(cell.index)) {
+      return fromHuman ? this._reject('occupied') : emptyStepResult();
+    }
 
     return this._flip(seat, cell.index);
+  }
+
+  _reject(reason) {
+    return createStepResult({ handled: true, changed: false, events: [{ type: 'reject', reason }] });
+  }
+
+  /** Turn seat plus the data-driven instruction for the strip. */
+  describeStatus() {
+    if (!this.active) return null;
+    const instruction = this.meta?.strip?.instruction || null;
+    if (this.phase !== PHASES.PLAYING) return { turnSeat: null, instruction: null };
+    return {
+      turnSeat: Number.isInteger(this.turnSeat) ? this.turnSeat : null,
+      instruction
+    };
+  }
+
+  /** Target ring: a card is valid while it is face-down and unmatched. */
+  describeTarget(tile) {
+    if (!this.active || this.phase !== PHASES.PLAYING || !tile) return null;
+    const target = { x: tile.x, y: tile.y };
+    const cell = this.cellAtTile(tile.x, tile.y);
+    if (!cell) return { tile: target, valid: false };
+    const card = this.cards[cell.index];
+    return {
+      tile: target,
+      valid: Boolean(card) && !card.matched && !this.faceUp.includes(cell.index)
+    };
   }
 
   /** Map a world tile to { row, col, index } or null when off the board. */

@@ -328,3 +328,120 @@ test('hidden zones include the full board footprint for scenery culling', () => 
     zone.x === 10 && zone.y === 10 && zone.width === 3 && zone.height === 3
   )), 'board footprint should be hidden from scenery');
 });
+
+test('getState surfaces the game turn seat and instruction', () => {
+  const { host, player, npc } = setup();
+  host.start('tic-tac-toe', { player, opponent: npc, placement: { originX: 10, originY: 10 }, terrain });
+
+  assert.equal(host.getState().turnSeat, null);
+  assert.equal(host.getState().instruction, null);
+  assert.equal(host.getState().kind, 'board');
+
+  host.session.game.describeStatus = () => ({ turnSeat: 1, instruction: 'step onto a square' });
+  const state = host.getState();
+  assert.equal(state.turnSeat, 1);
+  assert.equal(state.instruction, 'step onto a square');
+
+  host.session.game.describeStatus = () => { throw new Error('boom'); };
+  assert.equal(host.getState().turnSeat, null);
+});
+
+test('reject events reach the reject hook, skip the toast hook, and land in the trace', () => {
+  const seen = { rejects: [], toasts: [] };
+  const { host, player, npc } = setup({
+    hooks: {
+      onToast: message => seen.toasts.push(message),
+      onReject: event => seen.rejects.push(event)
+    }
+  });
+  host.start('tic-tac-toe', { player, opponent: npc, placement: { originX: 10, originY: 10 }, terrain });
+  host.clearTrace();
+  host.session.game.handleInput = () => ({
+    handled: true,
+    changed: false,
+    events: [{ type: 'reject', reason: 'occupied' }]
+  });
+
+  host.handleAction(player);
+  assert.deepEqual(seen.rejects.map(event => event.reason), ['occupied']);
+  assert.deepEqual(seen.toasts, []);
+
+  const entry = host.getTrace().at(-1);
+  assert.equal(entry.action, 'action');
+  assert.equal(entry.accepted, false);
+  assert.equal(entry.reason, 'occupied');
+  assert.equal(entry.gameId, 'tic-tac-toe');
+});
+
+test('the trace keeps the newest 50 entries in order and clears on demand', () => {
+  const { host, player, npc } = setup();
+  host.start('tic-tac-toe', { player, opponent: npc, placement: { originX: 10, originY: 10 }, terrain });
+  host.clearTrace();
+
+  for (let i = 0; i < 60; i++) host._notify({ type: 'turn', seat: i % 2 }, host.session);
+  const trace = host.getTrace();
+  assert.equal(trace.length, 50);
+  assert.equal(trace[0].seq, 11);
+  assert.equal(trace.at(-1).seq, 60);
+  assert.equal(trace.at(-1).action, 'turn');
+  assert.ok(trace.every((entry, index) => index === 0 || entry.seq > trace[index - 1].seq));
+
+  // Mutating the copy must not touch the buffer.
+  trace[0].reason = 'tampered';
+  assert.equal(host.getTrace()[0].reason, null);
+
+  host.clearTrace();
+  assert.deepEqual(host.getTrace(), []);
+});
+
+test('start, accepted actions, settlement, and close are traced', () => {
+  const { host, player, npc } = setup();
+  host.start('tic-tac-toe', { player, opponent: npc, placement: { originX: 10, originY: 10 }, terrain });
+  assert.deepEqual(host.getTrace().map(entry => entry.action), ['open', 'start']);
+
+  host.handleAction(player);
+  assert.equal(host.getTrace().at(-1).action, 'action');
+  assert.equal(host.getTrace().at(-1).accepted, true);
+
+  host.settle({ winnerSeat: 0 });
+  assert.equal(host.getTrace().at(-1).action, 'settle');
+  assert.equal(host.getTrace().at(-1).reason, 'win');
+
+  host.close({ reason: 'packed-up' });
+  assert.equal(host.getTrace().at(-1).action, 'close');
+  assert.equal(host.getTrace().at(-1).reason, 'packed-up');
+});
+
+test('target hints come from the game and draw one overlay ring each', () => {
+  const { host, player, npc } = setup();
+  host.start('tic-tac-toe', { player, opponent: npc, placement: { originX: 10, originY: 10 }, terrain });
+  host.session.game.describeTarget = tile => ({
+    tile: { x: tile.x, y: tile.y },
+    valid: tile.x === 10
+  });
+
+  const hints = host.setTargetTiles([{ x: 10, y: 10 }, { x: 11, y: 10 }]);
+  assert.deepEqual(hints.map(hint => hint.valid), [true, false]);
+  assert.equal(hints[0].facing, false);
+  assert.equal(hints[1].facing, true);
+
+  const strokes = [];
+  const ctx = {
+    save() {},
+    restore() {},
+    fillRect() {},
+    setLineDash() {},
+    strokeRect(x, y, w, h) { strokes.push({ x, y, w, h }); },
+    strokeStyle: '',
+    fillStyle: '',
+    lineWidth: 0
+  };
+  const handled = host.renderLayer(ctx, 'overlay', { tileSize: 32 });
+  assert.equal(handled, true);
+  assert.equal(strokes.length, 2);
+
+  host.setTargetTiles([]);
+  assert.deepEqual(host.targetHints, []);
+  host.close({ reason: 'test' });
+  assert.deepEqual(host.setTargetTiles([{ x: 10, y: 10 }]), []);
+});

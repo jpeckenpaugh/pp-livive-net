@@ -71,6 +71,10 @@ class LegacyBoardAdapter extends MiniGameBase {
     this.legacy = new Legacy({
       game: this.game,
       onToast: message => this._emit({ type: 'toast', message }),
+      onReject: payload => this._emit({
+        type: 'reject',
+        reason: payload?.reason || 'illegal'
+      }),
       onGameEnd: winner => this._finishFromLegacy(winner),
       onAbandonPrompt: (onConfirm, onCancel) => this._handleAbandonPrompt(onConfirm, onCancel),
       // Stats/rewards belong to the host. The legacy game still calls this
@@ -227,6 +231,27 @@ class LegacyBoardAdapter extends MiniGameBase {
   isTileOnBoard(x, y) {
     if (!this.active) return false;
     return Boolean(this.legacy.isTileOnBoard?.(x, y));
+  }
+
+  /** Turn seat plus the data-driven instruction for the strip. */
+  describeStatus() {
+    if (!this.active) return null;
+    const board = this.legacy?.activeBoard;
+    if (!board) return null;
+    const copy = this.meta?.strip || {};
+    if (board.status !== 'playing') {
+      return { turnSeat: null, instruction: copy.ready || null };
+    }
+    const turnSeat = board.turn === 'opponent' ? 1 : 0;
+    return { turnSeat, instruction: copy.instruction || null };
+  }
+
+  /** Tile validity from the legacy rules; null when the game cannot say. */
+  describeTarget(tile) {
+    if (!this.active || !tile) return null;
+    const describe = this.legacy.describeTarget;
+    if (typeof describe !== 'function') return null;
+    return describe.call(this.legacy, tile) || null;
   }
 
   getFootprint() {

@@ -323,8 +323,8 @@ test('turn switching rejects out-of-turn and full-column actions', () => {
   const outOfTurn = instance.handleInput({ type: 'action', seat: 0, character: player });
   assert.equal(outOfTurn.handled, true);
   assert.equal(outOfTurn.changed, false);
-  assert.equal(outOfTurn.events[0].type, 'toast');
-  assert.match(outOfTurn.events[0].message, /turn/i);
+  assert.equal(outOfTurn.events[0].type, 'reject');
+  assert.equal(outOfTurn.events[0].reason, 'not-turn');
 
   // Fill column 1 and let seat 0 try it after regaining the turn.
   instance.turn = 0;
@@ -338,7 +338,8 @@ test('turn switching rejects out-of-turn and full-column actions', () => {
   });
   assert.equal(full.handled, true);
   assert.equal(full.changed, false);
-  assert.match(full.events[0].message, /full/i);
+  assert.equal(full.events[0].type, 'reject');
+  assert.equal(full.events[0].reason, 'occupied');
   assert.equal(instance.turn, 0);
   assert.equal(npc.inMiniGame, true);
 });

@@ -3,9 +3,10 @@ import { spectatorOffsets } from '../characters.js';
 import { recordGameResult } from '../storage.js';
 
 export class TicTacToeMiniGame {
-  constructor({ game, onToast, onGameEnd, onAbandonPrompt, recordResult } = {}) {
+  constructor({ game, onToast, onReject, onGameEnd, onAbandonPrompt, recordResult } = {}) {
     this.game = game;
     this.onToast = onToast || (() => {});
+    this.onReject = onReject || (() => {});
     this.onGameEnd = onGameEnd || (() => {});
     this.onAbandonPrompt = onAbandonPrompt || (() => {});
     // Injectable so contract adapters can leave stats/rewards to the host.
@@ -342,24 +343,34 @@ export class TicTacToeMiniGame {
     return null;
   }
 
+  /** Target ring: a square is valid when the board is playing and it is empty. */
+  describeTarget(tile) {
+    const board = this.activeBoard;
+    if (!board || board.status !== 'playing' || !tile) return null;
+    const target = { x: tile.x, y: tile.y };
+    const cell = this.cellAtTile(tile.x, tile.y);
+    if (!cell) return { tile: target, valid: false };
+    return { tile: target, valid: board.grid[cell.index] === null };
+  }
+
   handleAction(character) {
     if (!this.activeBoard || this.activeBoard.status !== 'playing') return false;
     const isPlayer = character === this.game.player;
     if (isPlayer && this.activeBoard.turn !== 'player') {
-      this.onToast(`It's ${this.activeBoard.opponent?.name || 'opponent'}'s turn.`);
+      this.onReject({ reason: 'not-turn' });
       return false;
     }
 
     const cell = this.cellAtTile(character.x, character.y);
     if (!cell) {
       if (isPlayer) {
-        this.onToast('Step onto an open square of the Tic-Tac-Toe board to play your turn.');
+        this.onReject({ reason: 'off-square' });
       }
       return false;
     }
 
     if (this.activeBoard.grid[cell.index] !== null) {
-      if (isPlayer) this.onToast('That square is already taken!');
+      if (isPlayer) this.onReject({ reason: 'occupied' });
       return false;
     }
 
@@ -393,13 +404,10 @@ export class TicTacToeMiniGame {
       });
 
       if (winner === 'draw') {
-        this.onToast("Tic-Tac-Toe ended in a draw! Good match.");
         this.game.triggerCheer(this.game.player?.id, 1.5);
         if (opponent) this.game.triggerCheer(opponent.id, 1.5);
       } else {
-        const winnerName = winner === 'X' ? 'You' : (opponent?.name || 'Opponent');
         const winnerId = winner === 'X' ? this.game.player?.id : opponent?.id;
-        this.onToast(`${winnerName} won the Tic-Tac-Toe game!`);
         this.game.triggerCheer(winnerId, 2.5);
       }
 
@@ -419,7 +427,6 @@ export class TicTacToeMiniGame {
       this.activeBoard.thinkingTimer = 0.2 + Math.random() * 0.6;
     } else {
       this.activeBoard.turn = 'player';
-      this.onToast("Your turn! Step onto a square and press Enter.");
     }
 
     return true;

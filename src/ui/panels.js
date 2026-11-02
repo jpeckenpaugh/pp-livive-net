@@ -11,6 +11,16 @@ export const TABS = ['backpack', 'companions', 'friends', 'stats', 'debug'];
 
 const EFFECT_FALLBACK_ICON = '✨';
 
+/** Compact one-line rendering of a host trace entry. Pure. */
+export function formatTraceEntry(entry = {}) {
+  const seat = Number.isInteger(entry.turnSeat) ? `p${entry.turnSeat}` : 'no turn';
+  const verdict = entry.accepted === true
+    ? 'ok'
+    : (entry.accepted === false ? 'rejected' : 'event');
+  const reason = entry.reason ? ` · ${entry.reason}` : '';
+  return `#${entry.seq ?? '?'} · ${entry.gameId || 'no game'} · ${entry.phase || '—'} · ${seat} · ${entry.action || 'event'} ${verdict}${reason}`;
+}
+
 function countLabel(count, singular, plural = `${singular}s`) {
   const value = Number.isFinite(count) ? count : 0;
   return `${value} ${value === 1 ? singular : plural}`;
@@ -304,6 +314,7 @@ export class PanelsUI {
     isGameOpen,
     getGameMetas,
     getHostState,
+    getHostTrace,
     getBehaviorSummary,
     onGrantEffects,
     onTriggerNpcGame,
@@ -339,6 +350,7 @@ export class PanelsUI {
     this.isGameOpen = isGameOpen;
     this.getGameMetas = getGameMetas;
     this.getHostState = getHostState;
+    this.getHostTrace = getHostTrace;
     this.getBehaviorSummary = getBehaviorSummary;
     this.onGrantEffects = onGrantEffects;
     this.onTriggerNpcGame = onTriggerNpcGame;
@@ -1588,6 +1600,34 @@ export class PanelsUI {
     });
 
     list.append(fragment);
+    this.renderDebugTrace();
+  }
+
+  /** Last 50 host events, newest first. Memory only; cleared on park load. */
+  renderDebugTrace() {
+    const list = $('debug-trace');
+    if (!list) return;
+    const trace = this.getHostTrace?.() || [];
+    list.replaceChildren();
+    list.hidden = trace.length === 0;
+    if (!trace.length) return;
+
+    const heading = document.createElement('strong');
+    heading.className = 'debug-trace-heading';
+    heading.textContent = `Game trace · last ${trace.length}`;
+    list.append(heading);
+
+    const rows = document.createElement('div');
+    rows.className = 'debug-trace-rows';
+    rows.setAttribute('role', 'list');
+    for (const entry of trace.slice(-10).reverse()) {
+      const row = document.createElement('div');
+      row.className = 'debug-trace-row';
+      row.setAttribute('role', 'listitem');
+      row.textContent = formatTraceEntry(entry);
+      rows.append(row);
+    }
+    list.append(rows);
   }
 
   // --- Character Inspection Card ---

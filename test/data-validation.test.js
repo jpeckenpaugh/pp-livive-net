@@ -7,6 +7,7 @@ import { SELECTOR_NAMES } from '../src/behavior/selectors.js';
 import { assertPredicate } from '../src/behavior/predicates.js';
 import { validateConfig } from '../src/behavior/config.js';
 import { validateMeta, INPUT_MODES, RENDER_LAYERS } from '../src/minigames/contract.js';
+import { REJECT_REASONS } from '../src/minigames/strip.js';
 import { EFFECT_MOTIONS, EFFECT_SLOTS } from '../src/effects.js';
 
 function readJson(name) {
@@ -275,5 +276,25 @@ test('voice.json resolves against the vendored bank and pools', () => {
   }
   for (const event of voicePolicy.prefetchEvents) {
     assert.ok(voicePolicy.events[event], `prefetch event ${event} is not aliased`);
+  }
+});
+
+test('board strip copy covers every rejection reason and instruction placeholder', () => {
+  const strip = minigames.strip;
+  assert.ok(strip, 'data/minigames.json needs a top-level strip block');
+  for (const reason of REJECT_REASONS) {
+    assert.equal(typeof strip.reasons[reason], 'string', `missing strip copy for ${reason}`);
+    assert.ok(strip.reasons[reason].trim().length > 0, `${reason} copy is empty`);
+  }
+  for (const outcome of ['win', 'loss', 'draw', 'abandoned']) {
+    assert.equal(typeof strip.outcome[outcome], 'string', `missing outcome copy for ${outcome}`);
+  }
+  assert.equal(typeof strip.keyHint, 'string');
+  assert.equal(typeof strip.touchHint, 'string');
+
+  for (const id of ['tic-tac-toe', 'checkers', 'chess', 'memory-grid', 'connect-four']) {
+    const instruction = minigames.miniGames[id].strip?.instruction;
+    assert.match(instruction, /\{key\}/, `${id} instruction needs the {key} placeholder`);
+    assert.equal(minigames.miniGames[id].kind, 'board', id);
   }
 });

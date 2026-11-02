@@ -371,3 +371,30 @@ test('NPC-mode board adapters leave the human in place and stage both seats on f
   const bystander = { id: 'npc-3', x: board.originX - 2, y: board.originY - 1, moving: false, path: [] };
   assert.equal(adapter.blocksStep(bystander, board.originX, board.originY), true);
 });
+
+test('board adapters describe the turn, instruction, and target from data and rules', () => {
+  for (const [id, factory] of BOARD_FACTORIES) {
+    const { adapter } = openBoard(factory, id);
+
+    // The board unfolds before play: no turn yet, but the strip still explains it.
+    assert.deepEqual(adapter.describeStatus(), {
+      turnSeat: null,
+      instruction: metas[id].strip.ready
+    }, id);
+
+    adapter.legacy.update(2);
+    adapter.legacy.update(2);
+    adapter.legacy.update(2);
+    adapter.legacy.update(2);
+    const status = adapter.describeStatus();
+    assert.equal(status.turnSeat, 0, `${id} should start on the player's turn`);
+    assert.equal(status.instruction, metas[id].strip.instruction, `${id} instruction comes from data`);
+
+    const inside = adapter.describeTarget({ x: 10, y: 10 });
+    assert.deepEqual(inside.tile, { x: 10, y: 10 }, id);
+    assert.equal(typeof inside.valid, 'boolean', id);
+
+    assert.equal(adapter.describeTarget({ x: 40, y: 40 }).valid, false, id);
+    assert.equal(adapter.describeTarget(null), null, id);
+  }
+});

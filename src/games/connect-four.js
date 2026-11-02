@@ -58,10 +58,6 @@ function tileOf(character) {
   return { x: character.x, y: character.y };
 }
 
-function toast(message) {
-  return createStepResult({ handled: true, changed: false, events: [{ type: 'toast', message }] });
-}
-
 export class ConnectFourGame extends MiniGameBase {
   constructor({ host = null, meta = null, game = null, options = {} } = {}) {
     super(meta || {});
@@ -304,27 +300,29 @@ export class ConnectFourGame extends MiniGameBase {
       ? input.seat
       : this.seatEntries.findIndex(entry => entry.character === input.character);
     if (seat < 0 || seat >= SEATS) return emptyStepResult();
+    const fromHuman = seat === 0 && input.controller !== 'ai';
 
     const character = input.character || this._characterForSeat(seat);
     const tile = input.tile || tileOf(character);
-    if (!tile) return toast('Step onto a tile in a column of the board to drop a disc.');
+    if (!tile) {
+      return fromHuman ? this._reject('off-square') : emptyStepResult();
+    }
 
     if (this.turn !== seat) {
-      const who = seat === 0 ? 'your' : `${this._seatName(1)}'s`;
-      return toast(`It's ${who} turn.`);
+      return fromHuman ? this._reject('not-turn') : emptyStepResult();
     }
 
     const cell = this.cellAtTile(tile.x, tile.y);
     if (!cell) {
-      return toast('Step onto a tile in a column of the board to drop a disc.');
+      return fromHuman ? this._reject('off-square') : emptyStepResult();
     }
 
     const drop = this.dropDisc(cell.column, seat);
     if (!drop.ok) {
       if (drop.reason === 'column-full') {
-        return toast('That column is full. Pick another column.');
+        return fromHuman ? this._reject('occupied') : emptyStepResult();
       }
-      return toast('That disc could not be dropped. Try another column.');
+      return fromHuman ? this._reject('illegal') : emptyStepResult();
     }
 
     this.lastMove = drop;
@@ -377,6 +375,31 @@ export class ConnectFourGame extends MiniGameBase {
     const row = y - this.placement.originY;
     if (column < 0 || column >= COLUMNS || row < 0 || row >= ROWS) return null;
     return { row, column, col: column, index: row * COLUMNS + column };
+  }
+
+  _reject(reason) {
+    return createStepResult({ handled: true, changed: false, events: [{ type: 'reject', reason }] });
+  }
+
+  /** Turn seat plus the data-driven instruction for the strip. */
+  describeStatus() {
+    if (!this.active) return null;
+    if (this.phase !== PHASES.PLAYING || this.finished) {
+      return { turnSeat: null, instruction: null };
+    }
+    return {
+      turnSeat: Number.isInteger(this.turn) ? this.turn : null,
+      instruction: this.meta?.strip?.instruction || null
+    };
+  }
+
+  /** Target ring: a column is valid while its top row is still empty. */
+  describeTarget(tile) {
+    if (!this.active || this.finished || this.phase !== PHASES.PLAYING || !tile) return null;
+    const target = { x: tile.x, y: tile.y };
+    const cell = this.cellAtTile(tile.x, tile.y);
+    if (!cell) return { tile: target, valid: false };
+    return { tile: target, valid: this.grid[0][cell.column] === null };
   }
 
   /** Drop a disc for a seat. Does not switch turns or settle a finish. */

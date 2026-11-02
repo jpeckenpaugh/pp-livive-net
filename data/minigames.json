@@ -21,6 +21,10 @@
         "mode": "tile",
         "actionLabel": "play"
       },
+      "strip": {
+        "instruction": "step onto an empty square and {key} to claim it",
+        "ready": "unfolding the board"
+      },
       "renderLayers": ["ground", "object", "overlay"],
       "timing": {
         "openMs": 1050,
@@ -49,6 +53,10 @@
       "input": {
         "mode": "tile",
         "actionLabel": "move"
+      },
+      "strip": {
+        "instruction": "step onto a red piece and {key} to pick it up",
+        "ready": "unfolding the checkerboard"
       },
       "renderLayers": ["ground", "object", "overlay"],
       "timing": {
@@ -79,6 +87,10 @@
         "mode": "tile",
         "actionLabel": "move"
       },
+      "strip": {
+        "instruction": "step onto a white piece and {key} to pick it up",
+        "ready": "unfolding the chess set"
+      },
       "renderLayers": ["ground", "object", "overlay"],
       "timing": {
         "openMs": 900,
@@ -108,6 +120,9 @@
         "mode": "tile",
         "actionLabel": "flip"
       },
+      "strip": {
+        "instruction": "step onto a card and {key} to flip it"
+      },
       "renderLayers": ["ground"],
       "timing": {
         "openMs": 700,
@@ -136,6 +151,9 @@
       "input": {
         "mode": "tile",
         "actionLabel": "drop"
+      },
+      "strip": {
+        "instruction": "step under a column and {key} to drop a disc"
       },
       "renderLayers": ["ground"],
       "timing": {
@@ -169,5 +187,31 @@
       "persist": false,
       "activity": "continuous"
     }
+  },
+  "strip": {
+    "turn": "your turn",
+    "theirTurn": "{name}'s turn",
+    "outcome": {
+      "win": "you won",
+      "loss": "you lost",
+      "draw": "a draw",
+      "abandoned": "abandoned",
+      "complete": "finished"
+    },
+    "phase": {
+      "opening": "opening the board",
+      "ready": "getting ready",
+      "playing": "in play",
+      "ending": "match over",
+      "closing": "packing up"
+    },
+    "reasons": {
+      "occupied": "that square is taken",
+      "not-turn": "not your turn",
+      "off-square": "step onto a square first",
+      "illegal": "that move is not allowed"
+    },
+    "keyHint": "press Enter",
+    "touchHint": "tap X"
   }
 }

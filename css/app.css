@@ -1261,6 +1261,15 @@ body.dialogue-open .topbar {
     display: none;
   }
 
+  #hint.game-strip {
+    display: block;
+    left: 10px;
+    right: 10px;
+    bottom: calc(196px + env(safe-area-inset-bottom, 0px));
+    max-width: none;
+    font-size: 11px;
+  }
+
   .minimap-wrap {
     width: 132px;
     right: 10px;
@@ -1353,6 +1362,15 @@ body.dialogue-open .topbar {
     left: 10px;
     right: 10px;
     width: auto;
+  }
+}
+
+@media (pointer: coarse) {
+  #hint.game-strip {
+    left: 10px;
+    right: 10px;
+    bottom: calc(196px + env(safe-area-inset-bottom, 0px));
+    max-width: none;
   }
 }
 
@@ -1636,6 +1654,62 @@ body.dialogue-open .topbar {
 .debug-row small {
   overflow: visible;
   white-space: normal;
+}
+
+/* --- Game strip (reuses #hint while a board is open) --- */
+
+#hint.game-strip {
+  max-width: min(540px, calc(100vw - 32px));
+  white-space: normal;
+  color: var(--text);
+  border-color: rgba(229, 244, 165, 0.42);
+  box-shadow: inset 3px 0 0 rgba(229, 244, 165, 0.7);
+  line-height: 1.35;
+}
+
+.debug-trace {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(9, 15, 11, 0.5);
+  font-size: 10px;
+  color: var(--muted);
+}
+
+#debug-panel:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+}
+
+#debug-panel #debug-actions {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+}
+
+#debug-panel #debug-trace {
+  flex: 0 0 auto;
+  max-height: 150px;
+  overflow: auto;
+}
+
+.debug-trace-heading {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text);
+  font-size: 11px;
+}
+
+.debug-trace-row {
+  padding: 2px 0;
+  border-top: 1px dashed rgba(255, 255, 255, 0.06);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.debug-trace-row:first-child {
+  border-top: 0;
 }
 
 /* --- NPC card buddies, bag, and owner line --- */

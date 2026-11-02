@@ -19,6 +19,7 @@ import {
 
 const HOOK_KEYS = [
   'onToast',
+  'onReject',
   'onCheer',
   'onGameEnd',
   'onEvent',
@@ -27,6 +28,8 @@ const HOOK_KEYS = [
   'applyReward',
   'dialogues'
 ];
+
+export const TRACE_LIMIT = 50;
 
 function freezeMeta(meta) {
   return Object.freeze({
@@ -81,6 +84,9 @@ export class MiniGameHost {
     }
     this.registry = new Map();
     this.session = null;
+    this.trace = [];
+    this.traceSeq = 0;
+    this.targetHints = [];
   }
 
   get activeGameId() {
@@ -137,6 +143,7 @@ export class MiniGameHost {
   } = {}) {
     if (this.session) {
       const title = this.session.meta?.title || this.session.meta?.id || 'a game';
+      this._trace({ action: 'start', accepted: false, reason: 'busy' });
       return {
         ok: false,
         reason: 'busy',
@@ -147,6 +154,7 @@ export class MiniGameHost {
 
     const entry = this.registry.get(gameId);
     if (!entry) {
+      this._trace({ gameId, action: 'start', accepted: false, reason: 'unknown-game' });
       return { ok: false, reason: 'unknown-game', message: `No mini-game registered as ${gameId}.` };
     }
 
@@ -158,6 +166,7 @@ export class MiniGameHost {
       .filter(Boolean);
 
     if (!resolvedSeats.length) {
+      this._trace({ gameId, action: 'start', accepted: false, reason: 'no-participants' });
       return { ok: false, reason: 'no-participants', message: 'A mini-game needs at least one seated character.' };
     }
 
@@ -165,6 +174,7 @@ export class MiniGameHost {
     if (entry.meta.board && placement && worldTerrain) {
       const check = validateFootprint({ terrain: worldTerrain, placement, board: entry.meta.board });
       if (!check.ok) {
+        this._trace({ gameId, action: 'start', accepted: false, reason: 'invalid-placement' });
         return {
           ok: false,
           reason: 'invalid-placement',
@@ -183,9 +193,11 @@ export class MiniGameHost {
         options
       });
     } catch (error) {
+      this._trace({ gameId, action: 'start', accepted: false, reason: 'create-failed' });
       return { ok: false, reason: 'create-failed', message: error?.message || 'Could not create game.' };
     }
     if (!game) {
+      this._trace({ gameId, action: 'start', accepted: false, reason: 'create-failed' });
       return { ok: false, reason: 'create-failed', message: 'Game factory returned nothing.' };
     }
 
@@ -193,9 +205,11 @@ export class MiniGameHost {
     try {
       openResult = game.open?.({ seats: resolvedSeats, placement, options }) ?? { ok: true };
     } catch (error) {
+      this._trace({ gameId, action: 'start', accepted: false, reason: 'open-failed' });
       return { ok: false, reason: 'open-failed', message: error?.message || 'Game failed to open.' };
     }
     if (openResult === false || openResult?.ok === false) {
+      this._trace({ gameId, action: 'start', accepted: false, reason: 'open-failed' });
       return {
         ok: false,
         reason: 'open-failed',
@@ -208,9 +222,11 @@ export class MiniGameHost {
       try {
         readyResult = game.ready();
       } catch (error) {
+        this._trace({ gameId, action: 'start', accepted: false, reason: 'open-failed' });
         return { ok: false, reason: 'open-failed', message: error?.message || 'Game failed to get ready.' };
       }
       if (readyResult?.ok === false) {
+        this._trace({ gameId, action: 'start', accepted: false, reason: 'open-failed' });
         return {
           ok: false,
           reason: 'open-failed',
@@ -238,6 +254,7 @@ export class MiniGameHost {
 
     this.session = session;
     this._notify({ type: 'open', gameId: entry.meta.id }, session);
+    this._trace({ action: 'start', accepted: true });
     return {
       ok: true,
       gameId: entry.meta.id,
@@ -274,7 +291,9 @@ export class MiniGameHost {
       session.closeError = error;
     }
     releaseSession({ participants: session.participants, companions: session.companions });
+    this._trace({ action: 'close', accepted: true, reason });
     this.session = null;
+    this.targetHints = [];
 
     return {
       ok: true,
@@ -318,6 +337,7 @@ export class MiniGameHost {
 
     session.settled = true;
     session.settlement = settlement;
+    this._trace({ action: 'settle', accepted: true, reason: settlement.outcome });
     return { ok: true, settlement };
   }
 
@@ -349,7 +369,16 @@ export class MiniGameHost {
       tile: { x: character.x, y: character.y }
     };
     const result = createStepResult(session.game.handleInput?.(input) ?? {});
+    const rejection = result.events.find(event => event?.type === 'reject') || null;
     this._processEvents(result.events, session);
+    // Rejections are already traced by _notify; record accepts here so a move
+    // that silently changes the board still leaves a trace line.
+    if (!rejection) {
+      this._trace({
+        action: 'action',
+        accepted: Boolean(result.changed || result.handled)
+      });
+    }
     return result;
   }
 
@@ -435,6 +464,7 @@ export class MiniGameHost {
   renderLayer(ctx, layer, view) {
     const session = this.session;
     if (!session) return false;
+    if (layer === 'overlay') this._renderTargets(ctx, view);
     if (!session.meta.renderLayers.includes(layer)) return false;
     session.game.render?.(ctx, layer, view);
     return true;
@@ -458,18 +488,141 @@ export class MiniGameHost {
 
   getState() {
     const session = this.session;
-    if (!session) return { active: false, gameId: null };
+    if (!session) {
+      return { active: false, gameId: null, kind: null, turnSeat: null, instruction: null };
+    }
+    const status = this._describeStatus();
     return {
       active: true,
       gameId: session.meta.id,
       title: session.meta.title,
+      kind: session.meta.kind || null,
       phase: session.game.phase || null,
       paused: session.paused,
       settled: session.settled,
       outcome: session.settlement?.outcome || null,
+      turnSeat: Number.isInteger(status?.turnSeat) ? status.turnSeat : null,
+      instruction: typeof status?.instruction === 'string' ? status.instruction : null,
       participants: session.participants.map(character => character.id || null),
       companions: session.companions.map(character => character.id || null)
     };
+  }
+
+  /**
+   * Ask the active game which tile the acting player is aiming at, and whether
+   * that tile is a legal target. Games without a target return null.
+   *
+   * @param {{ x: number, y: number }} tile
+   * @returns {{ tile: { x: number, y: number }, valid: boolean|null }|null}
+   */
+  describeTarget(tile) {
+    const session = this.session;
+    if (!session || !tile || !Number.isFinite(tile.x) || !Number.isFinite(tile.y)) return null;
+    const describe = session.game.describeTarget;
+    if (typeof describe !== 'function') return null;
+    let target = null;
+    try {
+      target = describe.call(session.game, { x: tile.x, y: tile.y });
+    } catch (error) {
+      return null;
+    }
+    if (!target || !target.tile || !Number.isFinite(target.tile.x) || !Number.isFinite(target.tile.y)) {
+      return null;
+    }
+    return {
+      tile: { x: target.tile.x, y: target.tile.y },
+      valid: typeof target.valid === 'boolean' ? target.valid : null
+    };
+  }
+
+  /**
+   * Store the tiles the renderer should outline this frame. Main supplies the
+   * tile under the player and the tile they face; the host resolves validity.
+   */
+  setTargetTiles(tiles = []) {
+    const session = this.session;
+    if (!session || !Array.isArray(tiles) || !tiles.length) {
+      this.targetHints = [];
+      return [];
+    }
+    const hints = [];
+    tiles.forEach((tile, index) => {
+      const described = this.describeTarget(tile);
+      if (described) hints.push({ ...described, facing: index > 0 });
+    });
+    this.targetHints = hints;
+    return hints;
+  }
+
+  /** Last 50 host events, oldest first. Memory only. */
+  getTrace() {
+    return this.trace.map(entry => ({ ...entry }));
+  }
+
+  clearTrace() {
+    this.trace = [];
+    this.traceSeq = 0;
+  }
+
+  _describeStatus() {
+    const session = this.session;
+    if (!session || typeof session.game.describeStatus !== 'function') return null;
+    try {
+      return session.game.describeStatus() || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  _turnSeat() {
+    const status = this._describeStatus();
+    return Number.isInteger(status?.turnSeat) ? status.turnSeat : null;
+  }
+
+  /** Append one capped trace entry. Never throws into gameplay. */
+  _trace({ gameId = null, phase = null, turnSeat = undefined, action = 'event', accepted = null, reason = null } = {}) {
+    try {
+      const session = this.session;
+      const entry = {
+        seq: this.traceSeq + 1,
+        at: Date.now(),
+        gameId: gameId ?? session?.meta?.id ?? null,
+        phase: phase ?? session?.game?.phase ?? null,
+        turnSeat: turnSeat === undefined ? this._turnSeat() : turnSeat,
+        action,
+        accepted,
+        reason: reason ?? null
+      };
+      this.traceSeq = entry.seq;
+      this.trace.push(entry);
+      if (this.trace.length > TRACE_LIMIT) this.trace.splice(0, this.trace.length - TRACE_LIMIT);
+    } catch (error) {
+      // Diagnostics must never break a game.
+    }
+  }
+
+  _renderTargets(ctx, view) {
+    if (!this.session || !this.targetHints.length) return;
+    const size = Number(view?.tileSize) || 32;
+    for (const hint of this.targetHints) {
+      if (!hint?.tile) continue;
+      const x = hint.tile.x * size;
+      const y = hint.tile.y * size;
+      const known = typeof hint.valid === 'boolean';
+      const stroke = hint.valid === true
+        ? 'rgba(229, 244, 165, 0.95)'
+        : (known ? 'rgba(232, 140, 120, 0.8)' : 'rgba(255, 255, 255, 0.32)');
+      ctx.save();
+      ctx.lineWidth = 2;
+      if (typeof ctx.setLineDash === 'function') ctx.setLineDash(hint.facing ? [4, 3] : []);
+      if (hint.valid === true) {
+        ctx.fillStyle = 'rgba(229, 244, 165, 0.14)';
+        ctx.fillRect(x + 3, y + 3, size - 6, size - 6);
+      }
+      ctx.strokeStyle = stroke;
+      ctx.strokeRect(x + 3, y + 3, size - 6, size - 6);
+      ctx.restore();
+    }
   }
 
   _footprint() {
@@ -515,6 +668,8 @@ export class MiniGameHost {
 
       if (event.type === 'toast' && event.message) {
         this.hooks.onToast?.(event.message);
+      } else if (event.type === 'reject') {
+        this.hooks.onReject?.(event);
       } else if (event.type === 'cheer') {
         this.hooks.onCheer?.(event.characterId, event.duration ?? 1.5);
       } else if (event.type === 'finish') {
@@ -558,6 +713,15 @@ export class MiniGameHost {
   }
 
   _notify(event, session) {
+    if (event.type === 'reject') {
+      this._trace({ action: 'action', accepted: false, reason: event.reason || 'illegal' });
+    } else {
+      this._trace({
+        action: event.type,
+        accepted: event.type === 'finish' ? true : null,
+        reason: event.reason || null
+      });
+    }
     this.hooks.onEvent?.(event, session);
     const named = this.hooks.events?.[event.type];
     if (typeof named === 'function') named(event, session);

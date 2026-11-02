@@ -245,8 +245,11 @@ test('input ignores the wrong seat, matched cards, face-up cards, and reveal tim
   assert.equal(flip(game, info, 1, 2).handled, false);
   assert.deepEqual(game.faceUp, []);
 
-  // A matched card cannot be flipped.
-  assert.equal(flip(game, info, 0, 3).handled, false);
+  // A matched card cannot be flipped; the player gets a typed rejection.
+  const matched = flip(game, info, 0, 3);
+  assert.equal(matched.handled, true);
+  assert.equal(matched.events[0].type, 'reject');
+  assert.equal(matched.events[0].reason, 'occupied');
   assert.deepEqual(game.faceUp, []);
 
   // First card flips.
@@ -254,7 +257,9 @@ test('input ignores the wrong seat, matched cards, face-up cards, and reveal tim
   assert.deepEqual(game.faceUp, [0]);
 
   // The same face-up card cannot be picked again.
-  assert.equal(flip(game, info, 0, 0).handled, false);
+  const again = flip(game, info, 0, 0);
+  assert.equal(again.handled, true);
+  assert.equal(again.events[0].reason, 'occupied');
   assert.deepEqual(game.faceUp, [0]);
 
   // Second card mismatches and starts the reveal beat.
@@ -290,7 +295,7 @@ test('a match scores a pair and keeps the turn', () => {
   assert.equal(game.cards[1].matched, true);
 
   // Matched cards stay put and cannot be selected again.
-  assert.equal(flip(game, info, 0, 0).handled, false);
+  assert.equal(flip(game, info, 0, 0).events[0].reason, 'occupied');
 });
 
 test('a mismatch holds both cards for ~3 seconds, then flips back and switches seats', () => {

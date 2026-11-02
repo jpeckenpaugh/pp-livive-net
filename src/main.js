@@ -24,6 +24,7 @@ import { createItemInstance, createStarterInventory, normalizeInventory } from '
 import { SetupWizard } from './ui/wizard.js';
 import { PanelsUI } from './ui/panels.js';
 import { MiniGameHost } from './minigames/host.js';
+import { formatGameStrip, turnNameFor } from './minigames/strip.js';
 import { registerContractGames } from './games/contract-adapters.js';
 import { buildAbandonPrompt, dialogueForMeta } from './minigames/settlement.js';
 import { SpeechBubbles } from './ui/speech.js';
@@ -87,6 +88,14 @@ const spokenChatSeqs = new Map();
 let chatGate = null;
 /** Debounce for persisting the voice volume while the slider is dragged. */
 let voiceVolumeTimer = 0;
+/** Original `#hint` copy, restored when no board is open. */
+let hintDefault = '';
+/** Last rejected action shown in the strip until the next accept or turn. */
+let stripReject = null;
+/** Cache key for the target ring so chess/checkers do not regenerate moves per frame. */
+let stripTargetKey = '';
+/** Brief "abandoned" line after a board closes, since abandon has no end beat. */
+let stripFlash = null;
 
 /** Voice engine is built on the first gesture, never at module load. */
 function ensureVoice() {
@@ -255,6 +264,95 @@ function showToast(message) {
   toast.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => toast.classList.remove('show'), 2400);
+}
+
+/** Coarse pointers use the on-screen X button instead of a keyboard. */
+function usesTouchControls() {
+  return Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
+}
+
+/**
+ * Persistent board strip. Reuses `#hint` while a board session is active and
+ * restores the original hint afterwards. Runs every frame; DOM writes only
+ * when the composed line changes.
+ */
+function refreshGameStrip() {
+  const hint = $('hint');
+  if (!hint) return;
+  const state = host?.getState?.() || null;
+  const boardOpen = Boolean(state?.active && state.kind !== 'activity');
+
+  if (!boardOpen) {
+    stripReject = null;
+    stripTargetKey = '';
+    if (host?.targetHints?.length) host.setTargetTiles?.([]);
+    if (stripFlash && Date.now() < stripFlash.until) {
+      hint.classList.add('game-strip');
+      if (hint.textContent !== stripFlash.text) hint.textContent = stripFlash.text;
+      return;
+    }
+    stripFlash = null;
+    hint.classList.remove('game-strip');
+    if (hintDefault && hint.textContent !== hintDefault) hint.textContent = hintDefault;
+    return;
+  }
+
+  stripFlash = null;
+  const copy = miniGamesData.strip || {};
+  // A rejection is only meaningful for the turn it happened on. Legacy boards
+  // emit no turn event, so the poll clears stale feedback here.
+  if (stripReject && stripReject.turnSeat !== state.turnSeat) stripReject = null;
+  const keyLabel = usesTouchControls()
+    ? (copy.touchHint || 'tap X')
+    : (copy.keyHint || 'press Enter');
+  const text = formatGameStrip({
+    state,
+    copy,
+    turnName: turnNameFor(host?.session?.seats, 1),
+    keyLabel,
+    reject: stripReject
+  });
+
+  hint.classList.add('game-strip');
+  if (text && hint.textContent !== text) hint.textContent = text;
+  updateGameTargets(state);
+}
+
+/** Brief strip line for an abandoned board: abandon has no end dialogue. */
+function flashAbandonedStrip(title) {
+  const copy = miniGamesData.strip || {};
+  stripFlash = {
+    text: formatGameStrip({
+      state: { active: true, title: title || 'Game', settled: true, outcome: 'abandoned' },
+      copy
+    }),
+    until: Date.now() + 3000
+  };
+}
+
+/** Outline the tile under the player and the one they face, when on a board. */
+function updateGameTargets(state) {
+  const player = game?.player;
+  const session = host?.session;
+  const waiting = Number.isInteger(state?.turnSeat) && state.turnSeat !== 0;
+  if (!session || !player || state?.settled || waiting) {
+    if (host?.targetHints?.length) host.setTargetTiles([]);
+    stripTargetKey = '';
+    return;
+  }
+  if (!host.isTileOnBoard?.(player.x, player.y)) {
+    stripTargetKey = '';
+    host.setTargetTiles([]);
+    return;
+  }
+  const key = `${player.x},${player.y},${player.direction}`;
+  if (key === stripTargetKey) return;
+  stripTargetKey = key;
+  const facing = facingTile(player, 1);
+  host.setTargetTiles([
+    { x: player.x, y: player.y },
+    { x: facing.x, y: facing.y }
+  ]);
 }
 
 function friendNpcs() {
@@ -501,6 +599,7 @@ function showAbandonPrompt(meta, opponent, onConfirm, onCancel) {
       dialogue.close();
       if (choice.action === 'abandon') {
         if (host?.isOpen()) {
+          flashAbandonedStrip(host.session.meta.title || meta.title);
           host.close({ reason: 'abandoned', outcome: 'abandoned', record: false, reward: false });
           refreshMiniGameFlags();
         } else {
@@ -675,10 +774,20 @@ function openDebugMenu() {
 function handleActionKey(character) {
   if (host?.isOpen()) {
     const result = host.handleAction(character);
-    if (result?.changed) sounds.play('place');
-    if (result?.handled || result?.changed) return;
+    if (result?.changed) {
+      sounds.play('place');
+      stripReject = null;
+    }
+    stripTargetKey = '';
+    if (result?.handled || result?.changed) {
+      refreshGameStrip();
+      return;
+    }
     const seated = Boolean(character && host.session?.seats?.some(seat => seat.character === character));
-    if (seated) return;
+    if (seated) {
+      refreshGameStrip();
+      return;
+    }
   }
   if (dialogue?.isOpen() || (Date.now() - (dialogue?.justClosedAt || 0) < 300)) {
     return;
@@ -699,6 +808,16 @@ function handleActionKey(character) {
 function hostHooks() {
   return {
     onToast: showToast,
+    onReject: event => {
+      const current = host?.getState?.();
+      stripReject = {
+        reason: event?.reason || 'illegal',
+        turnSeat: Number.isInteger(current?.turnSeat) ? current.turnSeat : null
+      };
+      stripTargetKey = '';
+      refreshGameStrip();
+      if ($('debug-panel') && !$('debug-panel').hidden) panels?.updateDebugUI?.();
+    },
     onCheer: (characterId, duration) => game?.triggerCheer(characterId || 'player', duration),
     onGameEnd: handleGameEnd,
     recordGameResult,
@@ -717,18 +836,27 @@ function hostHooks() {
     onEvent: event => {
       if (!event) return;
       if (event.type === 'open') {
+        stripReject = null;
+        stripTargetKey = '';
         refreshMiniGameFlags();
         sounds.play('game-open');
       } else if (event.type === 'turn') {
+        stripReject = null;
+        stripTargetKey = '';
         sounds.play('turn');
       } else if (event.type === 'cheer') {
         sounds.play('cheer');
       } else if (event.type === 'finish') {
+        stripReject = null;
+        stripTargetKey = '';
         if (event.winnerSeat === null || event.winnerSeat === undefined) sounds.play('draw');
         else sounds.play(Number(event.winnerSeat) === 0 ? 'win' : 'loss');
       } else if (event.type === 'abandon') {
+        stripReject = null;
         sounds.play('ui-click');
       }
+      refreshGameStrip();
+      if ($('debug-panel') && !$('debug-panel').hidden) panels?.updateDebugUI?.();
     }
   };
 }
@@ -1086,6 +1214,7 @@ function ensureGame() {
       npcGameAdapter?.activeToken?.();
 
       completeContinuousActivity();
+      refreshGameStrip();
       updateForageGround();
       prefetchNearbyGreetings();
       if (host && !host.isOpen()) refreshMiniGameFlags();
@@ -1367,6 +1496,7 @@ function applyState(state) {
     if (npcOwnsSession()) packUpNpcSession('load');
     else host.close({ reason: 'load', settle: false, record: false, reward: false });
   }
+  host?.clearTrace?.();
   refreshMiniGameFlags();
   bubbles?.clear();
   prefetchedVoices.clear();
@@ -1920,6 +2050,7 @@ function bindEvents() {
 
 function boot() {
   ensureGame();
+  hintDefault = $('hint')?.textContent || '';
 
   panels = new PanelsUI({
     getGame: () => game,
@@ -1932,6 +2063,7 @@ function boot() {
     isGameOpen: gameId => Boolean(host?.isOpen() && host.activeGameId === gameId),
     getGameMetas: () => (host ? [...host.registry.values()].map(entry => entry.meta) : []),
     getHostState: () => host?.getState?.() || null,
+    getHostTrace: () => host?.getTrace?.() || [],
     getBehaviorSummary: () => behaviorRuntime?.snapshot?.() || null,
     onGrantEffects: grantAllEffects,
     onGrantNpcEffect,

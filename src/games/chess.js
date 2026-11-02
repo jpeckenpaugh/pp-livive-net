@@ -92,9 +92,10 @@ const PST_TABLES = {
 };
 
 export class ChessMiniGame {
-  constructor({ game, onToast, onGameEnd, onAbandonPrompt, recordResult } = {}) {
+  constructor({ game, onToast, onReject, onGameEnd, onAbandonPrompt, recordResult } = {}) {
     this.game = game;
     this.onToast = onToast || (() => {});
+    this.onReject = onReject || (() => {});
     this.onGameEnd = onGameEnd || (() => {});
     this.onAbandonPrompt = onAbandonPrompt || (() => {});
     // Injectable so contract adapters can leave stats/rewards to the host.
@@ -432,6 +433,29 @@ export class ChessMiniGame {
     return { row, col, square: row * 8 + col };
   }
 
+  /**
+   * Target ring: an own piece is valid when it has a legal move; a destination
+   * is valid when the selected square can legally reach it.
+   */
+  describeTarget(tile) {
+    const board = this.activeBoard;
+    if (!board || board.status !== 'playing' || !tile) return null;
+    const target = { x: tile.x, y: tile.y };
+    const cell = this.cellAtTile(tile.x, tile.y);
+    if (!cell) return { tile: target, valid: false };
+
+    const engine = board.engine;
+    const piece = engine.board[cell.square];
+    if (piece && piece.color === WHITE) {
+      return { tile: target, valid: engine.moves({ square: cell.square }).length > 0 };
+    }
+    if (this.selectedSquare !== null) {
+      const moves = engine.moves({ square: this.selectedSquare });
+      return { tile: target, valid: moves.some(move => move.to === cell.square) };
+    }
+    return { tile: target, valid: false };
+  }
+
   evaluateBoard(engine) {
     let score = 0;
     for (let i = 0; i < 64; i++) {
@@ -575,14 +599,14 @@ export class ChessMiniGame {
     const isPlayer = character === this.game.player;
 
     if (isPlayer && this.activeBoard.turn !== 'player') {
-      this.onToast(`It's ${this.activeBoard.opponent?.name || 'opponent'}'s turn.`);
+      this.onReject({ reason: 'not-turn' });
       return false;
     }
 
     const cell = this.cellAtTile(character.x, character.y);
     if (!cell) {
       if (isPlayer) {
-        this.onToast('Step onto a chess square and press Enter.');
+        this.onReject({ reason: 'off-square' });
       }
       return false;
     }
@@ -595,7 +619,7 @@ export class ChessMiniGame {
     if (pieceAtCell && pieceAtCell.color === currentColor) {
       const legalMoves = engine.moves({ square: cell.square });
       if (legalMoves.length === 0) {
-        this.onToast('No legal moves for that piece.');
+        if (isPlayer) this.onReject({ reason: 'illegal' });
         return false;
       }
 
@@ -614,7 +638,7 @@ export class ChessMiniGame {
       const matchingMoves = legalMoves.filter(m => m.to === cell.square);
 
       if (matchingMoves.length === 0) {
-        if (isPlayer) this.onToast('Illegal move! Check legal highlighted destinations.');
+        if (isPlayer) this.onReject({ reason: 'illegal' });
         return false;
       }
 
@@ -646,7 +670,7 @@ export class ChessMiniGame {
         this.activeBoard.thinkingTimer = 0.6 + Math.random() * 0.4;
       } else {
         this.activeBoard.turn = 'player';
-        this.onToast('Your turn! Select a piece to move.');
+        // The strip owns the turn cue.
         setTimeout(() => {
           if (this.activeBoard) this.walkOpponentToSideline();
         }, 300);
@@ -654,6 +678,7 @@ export class ChessMiniGame {
       return true;
     }
 
+    if (isPlayer) this.onReject({ reason: 'illegal' });
     return false;
   }
 
