@@ -223,18 +223,20 @@ export function frameDelta(now, last, max = 0.05) {
 }
 
 export class Game {
-  constructor({ canvas, minimap, onSelect, onToast, onDialogue, onActionKey, isMenuOpen } = {}) {
+  constructor({ canvas, minimap, onSelect, onToast, onDialogue, onActionKey, onDoor, isMenuOpen } = {}) {
     this.canvas = canvas;
     this.renderer = new WorldRenderer({ canvas, minimap });
     this.onSelect = onSelect || (() => {});
     this.onToast = onToast || (() => {});
     this.onDialogue = onDialogue || (() => {});
     this.onActionKey = onActionKey || (() => {});
+    this.onDoor = onDoor || (() => {});
     this.isMenuOpen = isMenuOpen || (() => false);
 
     this.terrain = null;
     this.worldSeed = null;
     this.scenery = [];
+    this.doors = [];
     this.forage = null;
     this.player = null;
     this.npcs = [];
@@ -441,6 +443,7 @@ export class Game {
     this.terrain = terrain;
     this.worldSeed = worldSeed;
     this.scenery = scenery;
+    this.doors = [];
     this.forage = forage;
     this.player = player ? this.makeCharacter(player, true) : null;
     this.npcs = (npcs || []).map(npc => this.makeCharacter(npc, false));
@@ -472,6 +475,7 @@ export class Game {
     this.terrain = terrain;
     this.worldSeed = worldSeed;
     this.scenery = [];
+    this.doors = [];
     this.forage = null;
     this.player = null;
     this.npcs = [];
@@ -593,6 +597,17 @@ export class Game {
     const bumpComp = occupantAtTile(this.companions, nx, ny);
     if (bumpComp && canCollide(this.player, bumpComp)) {
       this.openDialogueWith(bumpComp);
+      return false;
+    }
+
+    // A travel door answers a bump the same way a neighbour does: the player
+    // stops and the app decides whether to ask before swapping worlds.
+    const door = this.doors.find(candidate => candidate.x === nx && candidate.y === ny);
+    if (door) {
+      this.heldKeys = [];
+      this.player.path = [];
+      this.destination = null;
+      this.onDoor(door);
       return false;
     }
 

@@ -608,6 +608,23 @@ body.dialogue-open #hud .topbar #voice-hint * {
   white-space: nowrap;
 }
 
+.friend-row.travel-row {
+  border-color: rgba(229, 244, 165, 0.34);
+  background: rgba(46, 66, 40, 0.72);
+}
+
+.friend-row.travel-row .travel-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: radial-gradient(circle at 50% 70%, rgba(240, 212, 138, 0.24), transparent 68%);
+  font-size: 24px;
+  line-height: 1;
+}
+
 .friend-empty {
   padding: 24px 12px;
   border: 1px dashed var(--line);

@@ -227,49 +227,58 @@ function serializeReserveCompanions(companions) {
 }
 
 /**
- * Build a v4 save. World state lives under `locations.park`; shared state
- * (gear, coins, friends, companion roster, behaviour) stays top level.
- * `behaviorState` is optional and may be a plain object or a BehaviorRuntime;
- * live FSM entries, paths, staging, and host sessions are never persisted.
+ * Build a v4 save. World state lives under `locations` keyed by location id;
+ * shared state (gear, coins, friends, companion roster, behaviour) stays top
+ * level. `behaviorState` is optional and may be a plain object or a
+ * BehaviorRuntime; live FSM entries, paths, staging, and host sessions are
+ * never persisted.
  *
- * This wave only knows about the Park. Any other location a live game might
- * carry is deliberately not written yet; Wave 1 extends this without dropping
- * them, and a test asserts the current single-key output.
+ * `options.locations` is the full captured location map (as produced by
+ * `captureLocationRecord`). When it is omitted — the wizard path and older
+ * callers — the live game is written as `locations.park`, exactly as v4 did.
+ * `options.companions` overrides the shared roster so companions that are not
+ * present in the current location (for example NPC buddies while at Home) are
+ * not dropped from the save.
  */
-export function serializeSave(game, draft, friends, behaviorState = null) {
-  if (!game?.terrain || !game.player || !draft) return null;
+export function serializeSave(game, draft, friends, behaviorState = null, options = {}) {
+  if (!game?.player || !draft) return null;
+  const { locations = null, currentLocation = null, companions = null } = options;
+  const liveLocations = isObject(locations) && Object.keys(locations).length
+    ? locations
+    : {
+        park: {
+          seed: game.worldSeed,
+          terrain: game.terrain,
+          player: {
+            x: game.player.x,
+            y: game.player.y,
+            direction: game.player.direction
+          },
+          npcs: game.npcs,
+          forage: game.forage
+        }
+      };
+
+  const nextLocations = {};
+  for (const [id, record] of Object.entries(liveLocations)) {
+    if (!isObject(record)) continue;
+    nextLocations[id] = captureLocationRecord(record, record);
+  }
+  if (!Object.keys(nextLocations).length) return null;
+
+  const current = typeof currentLocation === 'string' && isObject(nextLocations[currentLocation])
+    ? currentLocation
+    : (nextLocations.park ? 'park' : Object.keys(nextLocations)[0]);
+
   const playerGear = serializeCharacterGear(game.player);
   const stabledCompanions = serializeReserveCompanions(game.player.stabledCompanions);
+  const roster = Array.isArray(companions) ? companions : (game.companions || []);
 
   return {
     version: SAVE_VERSION,
     savedAt: new Date().toISOString(),
-    currentLocation: 'park',
-    locations: {
-      park: {
-        seed: normalizeSeed(game.worldSeed),
-        terrain: encodeTerrain(game.terrain),
-        player: {
-          x: game.player.x,
-          y: game.player.y,
-          direction: game.player.direction
-        },
-        npcs: game.npcs.map(npc => ({
-          id: npc.id,
-          name: npc.name,
-          recipe: npc.recipe,
-          voice: voiceForRecord(npc),
-          ...(npc.vibe ? { vibe: npc.vibe } : {}),
-          x: npc.x,
-          y: npc.y,
-          direction: npc.direction,
-          ...serializeCharacterGear(npc),
-          coins: Number.isFinite(npc.coins) ? npc.coins : 0,
-          stabledCompanions: serializeReserveCompanions(npc.stabledCompanions)
-        })),
-        forage: normalizeForage(game.forage)
-      }
-    },
+    currentLocation: current,
+    locations: nextLocations,
     playerName: game.player.name,
     playerRecipe: game.player.recipe,
     player: {
@@ -278,7 +287,7 @@ export function serializeSave(game, draft, friends, behaviorState = null) {
       equipped: playerGear.equipped,
       stabledCompanions
     },
-    companions: (game.companions || []).map(comp => ({
+    companions: roster.map(comp => ({
       id: comp.id,
       name: comp.name,
       buddyId: comp.buddyId,
@@ -291,6 +300,53 @@ export function serializeSave(game, draft, friends, behaviorState = null) {
     friends: [...friends],
     wander: game.wander,
     behavior: normalizeBehaviorBlock(behaviorState)
+  };
+}
+
+/** Serialise one NPC record, dropping live frame state and reusing a stored voice. */
+export function serializeNpcRecord(npc) {
+  return {
+    id: npc.id,
+    name: npc.name,
+    recipe: npc.recipe,
+    voice: voiceForRecord(npc),
+    ...(npc.vibe ? { vibe: npc.vibe } : {}),
+    x: npc.x,
+    y: npc.y,
+    direction: npc.direction,
+    ...serializeCharacterGear(npc),
+    coins: Number.isFinite(npc.coins) ? npc.coins : 0,
+    stabledCompanions: serializeReserveCompanions(npc.stabledCompanions)
+  };
+}
+
+/**
+ * Capture one location into its persistent record. This is the single writer
+ * shared by `saveNow` and travel, so Park NPCs, forage, and scenery cannot be
+ * silently replaced by a freshly generated world. Unknown keys already on the
+ * record (`decor`, `buddies`) are preserved for later waves.
+ */
+export function captureLocationRecord({
+  seed = null,
+  terrain = null,
+  player = null,
+  npcs = null,
+  forage = null
+} = {}, previous = null) {
+  const base = isObject(previous) ? previous : {};
+  const encodedTerrain = Array.isArray(terrain) ? encodeTerrain(terrain) : terrain;
+  const nextPlayer = migratePlayerPosition(player) ?? base.player ?? undefined;
+  const nextNpcs = Array.isArray(npcs)
+    ? npcs.filter(isObject).map(serializeNpcRecord)
+    : (Array.isArray(base.npcs) ? base.npcs : []);
+
+  return {
+    ...base,
+    seed: normalizeSeed(seed ?? locationSeed(base)),
+    terrain: typeof encodedTerrain === 'string' ? encodedTerrain : base.terrain,
+    ...(nextPlayer ? { player: nextPlayer } : {}),
+    npcs: nextNpcs,
+    forage: normalizeForage(forage ?? base.forage)
   };
 }
 

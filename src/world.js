@@ -1,11 +1,15 @@
+import worldData from '../data/world.json' with { type: 'json' };
+
 export const WORLD_SIZE = 64;
-export const TILE_TYPES = ['grass', 'dirt', 'sand', 'water', 'field'];
+export const TILE_TYPES = ['grass', 'dirt', 'sand', 'water', 'field', 'home-floor', 'home-wall'];
 export const TERRAIN_COLORS = {
   grass: '#4e8950',
   dirt: '#98704a',
   sand: '#d0b876',
   water: '#347da0',
-  field: '#82934b'
+  field: '#82934b',
+  'home-floor': '#8a6844',
+  'home-wall': '#5c5148'
 };
 
 export const DIRS = [
@@ -20,8 +24,16 @@ const CHAR_TO_TYPE = {
   d: 'dirt',
   s: 'sand',
   w: 'water',
-  f: 'field'
+  f: 'field',
+  h: 'home-floor',
+  x: 'home-wall'
 };
+const TYPE_TO_CHAR = Object.fromEntries(
+  Object.entries(CHAR_TO_TYPE).map(([letter, type]) => [type, letter])
+);
+
+/** Terrain types that block a step. Water and the Home lot's walls only. */
+export const BLOCKING_TILES = ['water', 'home-wall'];
 
 export function hashString(value) {
   let hash = 2166136261;
@@ -78,7 +90,7 @@ function inBounds(x, y) {
 }
 
 export function isWalkable(type) {
-  return Boolean(type) && type !== 'water';
+  return Boolean(type) && !BLOCKING_TILES.includes(type);
 }
 
 export function typeAt(grid, x, y) {
@@ -86,7 +98,7 @@ export function typeAt(grid, x, y) {
 }
 
 export function encodeTerrain(grid) {
-  return grid.map(row => row.map(type => type[0]).join('')).join('');
+  return grid.map(row => row.map(type => TYPE_TO_CHAR[type]).join('')).join('');
 }
 
 export function decodeTerrain(encoded) {
@@ -296,6 +308,74 @@ export function generateScenery(grid, seed, spawn = { x: 32, y: 32 }) {
   // Sort by Y so they draw with natural depth
   items.sort((a, b) => a.y - b.y);
   return items;
+}
+
+/**
+ * Build the Home lot: a 64×64 grassy yard with one modest room in the middle.
+ *
+ * The house is real terrain rather than scenery: `home-wall` is unwalkable and
+ * `home-floor` is walkable, so the room needs no new collision rules. The door
+ * tile is carved out of the wall as floor, which keeps the yard and the room in
+ * one walkable component. Layout comes from `data/world.json`, so no coordinate
+ * is hardcoded here.
+ */
+export function generateHome(seed, spec = worldData.locations.home) {
+  const house = spec?.house || { x: 24, y: 22, width: 17, height: 17 };
+  const door = spec?.door || { x: 32, y: 38, to: 'park' };
+  const spawnSpec = spec?.spawn || { x: 32, y: 36 };
+  const maxX = house.x + house.width - 1;
+  const maxY = house.y + house.height - 1;
+
+  const grid = [];
+  for (let y = 0; y < WORLD_SIZE; y++) {
+    const row = [];
+    for (let x = 0; x < WORLD_SIZE; x++) row.push('grass');
+    grid.push(row);
+  }
+
+  for (let y = house.y; y <= maxY; y++) {
+    for (let x = house.x; x <= maxX; x++) {
+      const onWall = x === house.x || x === maxX || y === house.y || y === maxY;
+      grid[y][x] = onWall ? 'home-wall' : 'home-floor';
+    }
+  }
+
+  // The doorway is part of the wall line but walkable floor.
+  if (inBounds(door.x, door.y)) grid[door.y][door.x] = 'home-floor';
+
+  // A short dirt path from the door into the yard reads as an entrance.
+  for (let y = door.y + 1; y <= Math.min(WORLD_SIZE - 1, door.y + 8); y++) {
+    for (let x = door.x - 1; x <= door.x + 1; x++) {
+      if (!inBounds(x, y) || grid[y][x] !== 'grass') continue;
+      grid[y][x] = 'dirt';
+    }
+  }
+
+  const component = largestWalkableComponent(grid);
+  const safeComponent = component.length ? component : [{ x: door.x, y: door.y }];
+  const requested = {
+    x: clampTile(spawnSpec.x),
+    y: clampTile(spawnSpec.y)
+  };
+  const spawn = isWalkable(grid[requested.y][requested.x])
+    && safeComponent.some(cell => cell.x === requested.x && cell.y === requested.y)
+    ? requested
+    : nearestCell(safeComponent, requested.x, requested.y);
+
+  return {
+    seed,
+    grid,
+    spawn,
+    house,
+    door: { x: door.x, y: door.y, to: door.to || 'park' },
+    component: safeComponent,
+    componentKeys: new Set(safeComponent.map(cell => `${cell.x},${cell.y}`)),
+    scenery: generateScenery(grid, seed, spawn)
+  };
+}
+
+function clampTile(value) {
+  return Math.max(0, Math.min(WORLD_SIZE - 1, Math.round(Number(value) || 0)));
 }
 
 export function largestComponentFrom(grid) {

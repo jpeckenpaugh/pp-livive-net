@@ -365,7 +365,9 @@ export class PanelsUI {
     onAutoEquipNpc,
     onRosterChanged,
     onToast,
-    onSound
+    onSound,
+    getTravel,
+    onTravel
   }) {
     this.getGame = getGame;
     this.getFriends = getFriends;
@@ -402,6 +404,8 @@ export class PanelsUI {
     this.onRosterChanged = onRosterChanged;
     this.onToast = onToast;
     this.onSound = onSound;
+    this.getTravel = getTravel;
+    this.onTravel = onTravel;
     this.cardCharacter = null;
     this.lastNpcCharacter = null;
     this.activeTab = null;
@@ -742,6 +746,39 @@ export class PanelsUI {
     }
     const coins = game?.player?.coins || 0;
     const basket = basketSummary(game?.forage);
+
+    // Travel row: the current location's destination. It is absent when the
+    // only other location is disabled by data/world.json.
+    const travel = this.getTravel?.() || null;
+    if (travel?.label) {
+      const travelRow = document.createElement('div');
+      travelRow.className = 'friend-row travel-row';
+      travelRow.setAttribute('role', 'listitem');
+      travelRow.tabIndex = 0;
+      const travelIcon = document.createElement('span');
+      travelIcon.className = 'travel-icon';
+      travelIcon.textContent = '🚪';
+      const travelCopy = document.createElement('div');
+      travelCopy.className = 'friend-copy';
+      const travelName = document.createElement('strong');
+      travelName.textContent = travel.label;
+      const travelNote = document.createElement('small');
+      travelNote.textContent = travel.note || 'Travel';
+      travelCopy.append(travelName, travelNote);
+      travelRow.append(travelIcon, travelCopy);
+      const go = () => {
+        this.closeMenu();
+        this.onTravel?.(travel.id);
+      };
+      travelRow.addEventListener('click', go);
+      travelRow.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        event.stopPropagation();
+        go();
+      });
+      list.append(travelRow);
+    }
 
     // Coin + basket banner
     const coinRow = document.createElement('div');

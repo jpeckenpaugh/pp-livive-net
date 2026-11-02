@@ -15,8 +15,28 @@ import {
   findOpenTile,
   findPath
 } from './world.js';
+import {
+  DEFAULT_LOCATION,
+  allowsForage,
+  arrivalTile,
+  createHomeLocation,
+  doorFor,
+  isLocationEnabled,
+  locationDef,
+  locationLabel,
+  travelTargets,
+  worldFor
+} from './locations.js';
 import { PLAYER_NAMES, COMPANION_NAMES, pickName, pickVibe } from './names.js';
-import { serializeSave, saveState, loadSave, clearSave, recordGameResult, activeLocation } from './storage.js';
+import {
+  serializeSave,
+  captureLocationRecord,
+  saveState,
+  loadSave,
+  clearSave,
+  recordGameResult,
+  activeLocation
+} from './storage.js';
 import { castVoice } from './voice/casting.js';
 import { VoiceEngine } from './voice/engine.js';
 import { DialogueManager } from './dialogue.js';
@@ -72,6 +92,14 @@ let panels = null;
 let friends = new Set();
 let toastTimer = 0;
 let entered = false;
+/** v4 locations map captured from the save, kept in sync by captureLocation(). */
+let locationStates = {};
+/** Location the live game is standing in. */
+let currentLocationId = DEFAULT_LOCATION;
+/** Shared companion roster; companions of absent buddies stay here, not in game.companions. */
+let rosterCompanions = [];
+/** Home (and any location with `forage: false`) never grows or collects pickups. */
+let forageEnabled = true;
 let lastFrameAt = 0;
 let npcWatchPrompt = null;
 let delegated = { host: false, runtime: false, bubbles: false };
@@ -445,6 +473,7 @@ function liveForageOccupied() {
  */
 function updateForageGround(nowMs = Date.now()) {
   const player = game?.player;
+  if (!forageEnabled) return;
   if (!game?.forage || !game.terrain || !player) return;
   growForage(game.forage, {
     grid: game.terrain,
@@ -859,6 +888,12 @@ function handleActionKey(character) {
     panels.closeAllPanels();
     return;
   }
+  // A door underfoot (or straight ahead) beats opening the menu.
+  const door = doorNearPlayer();
+  if (door) {
+    openTravelPrompt(door);
+    return;
+  }
   // Open top-right HUD player menu
   panels?.setActiveTab(panels.lastActiveTab || 'backpack');
 }
@@ -1239,6 +1274,7 @@ function ensureGame() {
       onToast: showToast,
       onDialogue: openDialogue,
       onActionKey: handleActionKey,
+      onDoor: openTravelPrompt,
       isMenuOpen: () => Boolean(panels?.isMenuOpen?.())
     });
 
@@ -1561,18 +1597,22 @@ function applyState(state) {
   spokenChatSeqs.clear();
   chatGate?.reset();
 
+  const requested = typeof state.currentLocation === 'string' ? state.currentLocation : DEFAULT_LOCATION;
+  const locationId = isLocationEnabled(requested) ? requested : DEFAULT_LOCATION;
   const locationState = activeLocation(state) || {};
   const sharedPlayer = state.player && typeof state.player === 'object' ? state.player : {};
-  const worldData = generateWorld(locationState.seed);
+  const worldData = worldFor(locationId, locationState.seed);
   const terrain = decodeTerrain(locationState.terrain) || worldData.grid;
   const scenery = worldData.scenery || [];
+  const locationSpawn = locationDef(locationId)?.spawn || worldData.spawn || { x: 32, y: 32 };
+  const arrival = arrivalTile(locationId, { player: locationState.player });
   const rawPlayer = {
     id: 'player',
     name: state.playerName || 'You',
     recipe: state.playerRecipe,
-    x: Number.isFinite(Number(locationState.player?.x)) ? Math.round(Number(locationState.player.x)) : 32,
-    y: Number.isFinite(Number(locationState.player?.y)) ? Math.round(Number(locationState.player.y)) : 32,
-    direction: locationState.player?.direction ?? 0,
+    x: arrival.x,
+    y: arrival.y,
+    direction: arrival.direction,
     inventory: normalizeInventory(sharedPlayer.inventory || createStarterInventory()),
     equipped: Array.isArray(sharedPlayer.equipped) ? sharedPlayer.equipped : [],
     effectGhosts: Array.isArray(sharedPlayer.effectGhosts) ? sharedPlayer.effectGhosts : [],
@@ -1580,7 +1620,7 @@ function applyState(state) {
     stabledCompanions: Array.isArray(sharedPlayer.stabledCompanions) ? sharedPlayer.stabledCompanions : []
   };
   if (!isWalkable(terrain[rawPlayer.y]?.[rawPlayer.x])) {
-    const spot = findOpenTile(terrain, { x: 32, y: 32 });
+    const spot = findOpenTile(terrain, locationSpawn);
     rawPlayer.x = spot.x;
     rawPlayer.y = spot.y;
   }
@@ -1648,9 +1688,35 @@ function applyState(state) {
     }
   }
 
+  // A companion that follows the player between locations can arrive on a wall
+  // tile (the Home spawn is nowhere near its Park coordinates). Nudge those
+  // onto the nearest open tile instead of letting them spawn inside stone.
+  const companionTiles = new Set([
+    `${rawPlayer.x},${rawPlayer.y}`,
+    ...npcs.map(npc => `${npc.x},${npc.y}`)
+  ]);
+  companions = companions.map(comp => {
+    const x = Math.round(Number(comp.x));
+    const y = Math.round(Number(comp.y));
+    const key = `${x},${y}`;
+    if (Number.isFinite(x) && Number.isFinite(y) && isWalkable(terrain[y]?.[x]) && !companionTiles.has(key)) {
+      companionTiles.add(key);
+      return comp;
+    }
+    const spot = findOpenTile(terrain, { x: rawPlayer.x, y: rawPlayer.y }, companionTiles, 1);
+    companionTiles.add(`${spot.x},${spot.y}`);
+    return { ...comp, x: spot.x, y: spot.y };
+  });
+
   ensureGame();
   const forage = createForageState(locationState.forage);
-  if (!forage.seeded) {
+  forageEnabled = allowsForage(locationId);
+  if (!forageEnabled) {
+    // Home is a place to rest: no apples, no mushrooms, no respawn clocks.
+    forage.apples = [];
+    forage.harvested = {};
+    forage.seeded = true;
+  } else if (!forage.seeded) {
     seedApples(forage, {
       grid: terrain,
       occupied: forageOccupiedTiles({
@@ -1661,7 +1727,7 @@ function applyState(state) {
   }
   game.setWorld({
     terrain,
-    worldSeed: locationState.seed,
+    worldSeed: locationState.seed ?? worldData.seed,
     player: rawPlayer,
     npcs,
     companions,
@@ -1669,15 +1735,34 @@ function applyState(state) {
     forage,
     wander: state.wander !== false
   });
+  // Doors are per location, so they are set after setWorld resets them.
+  const door = doorFor(locationId, { terrain, spawn: rawPlayer });
+  game.doors = door ? [door] : [];
+
+  const knownFriendIds = knownNpcIds(state, npcs);
+  locationStates = isObjectMap(state.locations)
+    ? { ...state.locations }
+    : {
+        park: captureLocationRecord({
+          seed: locationState.seed ?? game.worldSeed,
+          terrain,
+          player: rawPlayer,
+          npcs,
+          forage: game.forage
+        })
+      };
+  currentLocationId = locationId;
+  rosterCompanions = companions.map(comp => ({ ...comp }));
+
   syncBehaviorWorld({ reset: true });
   applyBehaviorState(state);
   behaviorRuntime?.setDialogue(false);
   friends = new Set(
-    (Array.isArray(state.friends) ? state.friends : [])
-      .filter(id => npcs.some(npc => npc.id === id))
+    (Array.isArray(state.friends) ? state.friends : [...friends])
+      .filter(id => knownFriendIds.has(id))
   );
   draft = {
-    worldSeed: locationState.seed,
+    worldSeed: locationState.seed ?? worldData.seed,
     world: { grid: terrain, spawn: { x: rawPlayer.x, y: rawPlayer.y }, component: [] },
     playerName: rawPlayer.name,
     playerRecipe: rawPlayer.recipe,
@@ -1691,6 +1776,41 @@ function applyState(state) {
   updateWanderButton();
   panels?.updateFriendsUI();
   updateMeta();
+  updateLocationChrome();
+}
+
+function isObjectMap(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+/** Friend ids stay valid while their NPC exists in any location, not just this one. */
+function knownNpcIds(state, currentNpcs) {
+  const ids = new Set((currentNpcs || []).map(npc => npc?.id).filter(Boolean));
+  const locations = isObjectMap(state?.locations) ? state.locations : null;
+  if (locations) {
+    for (const record of Object.values(locations)) {
+      for (const npc of Array.isArray(record?.npcs) ? record.npcs : []) {
+        if (npc?.id) ids.add(npc.id);
+      }
+    }
+  }
+  return ids;
+}
+
+/** HUD copy that names the current location. */
+function updateLocationChrome() {
+  const label = $('map-label');
+  if (label) {
+    label.textContent = locationDef(currentLocationId)?.mapLabel
+      || `${locationLabel(currentLocationId)} map`;
+  }
+  const canvas = $('world');
+  if (canvas) {
+    canvas.setAttribute(
+      'aria-label',
+      `A 64 by 64 tile ${locationLabel(currentLocationId).toLowerCase()}. Use WASD or the arrow keys to walk, or click the ground to move.`
+    );
+  }
 }
 
 function behaviorSaveState() {
@@ -1704,8 +1824,156 @@ function behaviorSaveState() {
 
 function saveNow() {
   if (!entered) return;
-  const state = serializeSave(game, draft, friends, behaviorSaveState());
+  captureLocation();
+  captureCompanions();
+  const state = serializeSave(game, draft, friends, behaviorSaveState(), {
+    locations: locationStates,
+    currentLocation: currentLocationId,
+    companions: rosterCompanions
+  });
   saveState(state);
+}
+
+/** Write the live game back into its location record; shared by save and travel. */
+function captureLocation() {
+  if (!game?.terrain || !game.player) return;
+  locationStates[currentLocationId] = captureLocationRecord({
+    seed: game.worldSeed,
+    terrain: game.terrain,
+    player: game.player,
+    npcs: game.npcs,
+    forage: game.forage
+  }, locationStates[currentLocationId] || null);
+}
+
+/**
+ * Merge companions that are live here back into the shared roster. Buddies who
+ * stay behind (NPC companions while at Home) keep their last captured record
+ * instead of vanishing from the party. Companions moved into a reserve slot are
+ * dropped from the roster so they do not load as active and stabled at once.
+ */
+function captureCompanions() {
+  const byId = new Map((rosterCompanions || []).map(comp => [comp.id, comp]));
+  for (const comp of game?.companions || []) {
+    if (!comp?.id) continue;
+    byId.set(comp.id, { ...(byId.get(comp.id) || {}), ...comp });
+  }
+  const stabled = new Set();
+  for (const owner of [game?.player, ...(game?.npcs || [])]) {
+    for (const comp of owner?.stabledCompanions || []) {
+      if (comp?.id) stabled.add(comp.id);
+    }
+  }
+  // A removed neighbour should not leave a buddy ghost behind in other
+  // locations, so the roster only keeps buddies that still exist somewhere.
+  const knownBuddies = new Set(['player']);
+  for (const record of Object.values(locationStates || {})) {
+    for (const npc of Array.isArray(record?.npcs) ? record.npcs : []) {
+      if (npc?.id) knownBuddies.add(npc.id);
+    }
+  }
+  rosterCompanions = [...byId.values()].filter(comp => (
+    !stabled.has(comp.id) && knownBuddies.has(comp.buddyId)
+  ));
+}
+
+/** The door under the player, or the one they face. */
+function doorNearPlayer() {
+  const player = game?.player;
+  if (!player || !Array.isArray(game.doors) || !game.doors.length) return null;
+  const standing = game.doors.find(door => door.x === player.x && door.y === player.y);
+  if (standing) return standing;
+  const facing = facingTile(player, 1);
+  return game.doors.find(door => door.x === facing.x && door.y === facing.y) || null;
+}
+
+/** Ask before swapping worlds; door bumps and Enter on a door both land here. */
+function openTravelPrompt(door) {
+  if (!door || !game?.player || !dialogue) return;
+  if (!isLocationEnabled(door.to)) return;
+  if (dialogue.isOpen() || host?.isOpen()) return;
+  panels?.closeAllPanels();
+  game.paused = true;
+  game.interactive = false;
+  game.heldKeys = [];
+  game.destination = null;
+  if (game.player.path) game.player.path = [];
+  behaviorRuntime?.setDialogue(true);
+  sounds.play('ui-click');
+  showDialogueBeat(game.player, door.prompt, [
+    {
+      label: door.confirm,
+      className: 'primary',
+      onClick: () => {
+        dialogue.close();
+        travelTo(door.to);
+      }
+    },
+    {
+      label: door.cancel,
+      className: 'pill quiet',
+      onClick: () => dialogue.close()
+    }
+  ]);
+}
+
+/**
+ * Swap the live world for another location.
+ *
+ * Ordering matters: any board closes first (a board cannot span locations),
+ * then the departing location is captured, then the arriving world is built by
+ * `applyState` through `Game.setWorld` (which rebuilds the minimap and snaps
+ * the camera). Park state is never regenerated over the top of a capture.
+ */
+function travelTo(targetId) {
+  if (!entered || !game?.player || !game.terrain) return false;
+  if (!locationDef(targetId) || !isLocationEnabled(targetId)) {
+    showToast('That way is closed for now.');
+    return false;
+  }
+  if (targetId === currentLocationId) {
+    showToast(`You are already at the ${locationLabel(targetId).toLowerCase()}.`);
+    return false;
+  }
+
+  if (dialogue?.isOpen()) dialogue.close();
+  if (host?.isOpen()) {
+    if (npcOwnsSession()) packUpNpcSession('travel');
+    else host.close({ reason: 'travel', settle: false, record: false, reward: false });
+  }
+  refreshMiniGameFlags();
+  bubbles?.clear();
+  panels?.closeAllPanels();
+
+  captureLocation();
+  captureCompanions();
+  if (targetId === 'home' && !locationStates.home) {
+    locationStates.home = createHomeLocation({ basket: game.forage?.basket });
+  }
+
+  currentLocationId = targetId;
+  applyState({
+    version: 4,
+    currentLocation: targetId,
+    locations: locationStates,
+    playerName: game.player.name,
+    playerRecipe: game.player.recipe,
+    player: {
+      inventory: game.player.inventory,
+      coins: game.player.coins,
+      equipped: game.player.equipped,
+      stabledCompanions: game.player.stabledCompanions
+    },
+    companions: rosterCompanions,
+    friends: [...friends],
+    wander: game.wander,
+    behavior: behaviorSaveState()
+  });
+  game.setInteractive(true);
+  saveNow();
+  sounds.play('ui-click');
+  showToast(`You are at the ${locationLabel(targetId).toLowerCase()}.`);
+  return true;
 }
 
 function grantAllEffects() {
@@ -2143,6 +2411,14 @@ function boot() {
     onToast: showToast,
     onSound: cue => sounds.play(cue),
     onSave: saveNow,
+    getTravel: () => {
+      const target = travelTargets(currentLocationId)[0] || null;
+      return target ? { id: target.id, label: target.label, note: target.note } : null;
+    },
+    onTravel: targetId => {
+      panels?.closeMenu();
+      return travelTo(targetId);
+    },
     onSelect: character => panels?.showCard(character),
     onAddNeighbour: addNeighbour,
     onNewPark: () => {
@@ -2183,7 +2459,7 @@ function boot() {
     game.setInteractive(true);
     updateWanderButton();
     updateMeta();
-    showToast('Welcome back to the park.');
+    showToast(`Welcome back to the ${locationLabel(currentLocationId).toLowerCase()}.`);
   } else {
     draft = makeDraft();
     wizard.setDraft(draft);

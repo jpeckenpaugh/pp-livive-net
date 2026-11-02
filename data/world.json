@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "travel": {
+    "confirm": "Travel",
+    "cancel": "Cancel"
+  },
+  "locations": {
+    "park": {
+      "id": "park",
+      "label": "Park",
+      "enabled": true,
+      "mapLabel": "Park map",
+      "spawn": {
+        "x": 32,
+        "y": 32
+      },
+      "menu": {
+        "label": "Park",
+        "note": "Step back outside."
+      },
+      "door": {
+        "x": 32,
+        "y": 34,
+        "to": "home",
+        "prompt": "Go home?"
+      }
+    },
+    "home": {
+      "id": "home",
+      "label": "Home",
+      "enabled": false,
+      "mapLabel": "Home map",
+      "seed": "acorn-hearth-01",
+      "spawn": {
+        "x": 32,
+        "y": 36
+      },
+      "house": {
+        "x": 24,
+        "y": 22,
+        "width": 17,
+        "height": 17
+      },
+      "door": {
+        "x": 32,
+        "y": 38,
+        "to": "park",
+        "prompt": "Back to the park?"
+      },
+      "forage": false,
+      "menu": {
+        "label": "Home",
+        "note": "Head inside for a quiet moment."
+      }
+    }
+  }
+}

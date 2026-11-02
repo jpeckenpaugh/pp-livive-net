@@ -118,6 +118,60 @@ export function makeTileTextures() {
         for (let i = 0; i < 4; i++) ctx.fillRect(size * (0.15 + i * 0.2), size * 0.17, 2, size * 0.66);
       }
 
+      if (type === 'home-floor') {
+        // Wide wooden boards laid across the room.
+        const boards = 4;
+        const boardHeight = size / boards;
+        for (let i = 0; i < boards; i++) {
+          ctx.fillStyle = i % 2 === 0
+            ? 'rgba(255, 231, 190, 0.07)'
+            : 'rgba(58, 36, 20, 0.08)';
+          ctx.fillRect(0, i * boardHeight, size, boardHeight);
+          ctx.strokeStyle = 'rgba(58, 38, 22, 0.38)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(0, i * boardHeight + boardHeight);
+          ctx.lineTo(size, i * boardHeight + boardHeight);
+          ctx.stroke();
+          // One staggered end joint per board keeps the grain from reading as stripes.
+          const joint = (i % 2 === 0 ? 0.28 : 0.68) * size;
+          ctx.beginPath();
+          ctx.moveTo(joint, i * boardHeight);
+          ctx.lineTo(joint, i * boardHeight + boardHeight);
+          ctx.stroke();
+        }
+        for (let i = 0; i < 12; i++) {
+          ctx.fillStyle = 'rgba(72, 48, 28, 0.22)';
+          ctx.fillRect(random() * size, random() * size, 6 + random() * 14, 1);
+        }
+      }
+
+      if (type === 'home-wall') {
+        // Offset brick courses so a wall run never looks like a plain colour block.
+        const rows = 4;
+        const brickHeight = size / rows;
+        const brickWidth = size / 3;
+        for (let row = 0; row < rows; row++) {
+          const offset = row % 2 === 0 ? 0 : -brickWidth / 2;
+          for (let col = -1; col <= 3; col++) {
+            const bx = col * brickWidth + offset + 2;
+            const by = row * brickHeight + 2;
+            ctx.fillStyle = random() > 0.5
+              ? 'rgba(255, 239, 214, 0.08)'
+              : 'rgba(24, 18, 14, 0.12)';
+            ctx.fillRect(bx, by, brickWidth - 4, brickHeight - 4);
+          }
+        }
+        ctx.strokeStyle = 'rgba(28, 22, 18, 0.35)';
+        ctx.lineWidth = 2;
+        for (let row = 1; row < rows; row++) {
+          ctx.beginPath();
+          ctx.moveTo(0, (size * row) / rows);
+          ctx.lineTo(size, (size * row) / rows);
+          ctx.stroke();
+        }
+      }
+
       ctx.strokeStyle = 'rgba(232, 245, 223, 0.06)';
       ctx.lineWidth = 2;
       ctx.strokeRect(1, 1, size - 2, size - 2);
@@ -212,6 +266,10 @@ export class WorldRenderer {
         ctx.drawImage(texture, x * TILE, y * TILE, TILE, TILE);
       }
     }
+
+    // Travel doors sit above the ground and below every actor, so a character
+    // standing in the doorway is drawn in front of it.
+    for (const door of game.doors || []) this.drawDoorMarker(ctx, door, game.time);
 
     // Mini-game ground/object layers. The host owns sessions when present;
     // legacy miniGames remain a fallback for older wiring.
@@ -347,6 +405,62 @@ export class WorldRenderer {
     const hovered = game.hovered || game.selected;
     if (hovered) this.drawNameplate(game, hovered);
     this.drawMinimap(game);
+  }
+
+  drawDoorMarker(ctx, door, time = 0) {
+    if (!door) return;
+    const cx = (door.x + 0.5) * TILE;
+    const baseY = (door.y + 0.9) * TILE;
+    const doorW = TILE * 0.6;
+    const doorH = TILE * 0.9;
+    const left = cx - doorW / 2;
+    const top = baseY - doorH;
+    const pulse = 0.5 + Math.sin((time || 0) * 2.2 + door.x * 0.6) * 0.5;
+
+    // A soft welcome ring reads as "this one is interactive".
+    ctx.save();
+    ctx.globalAlpha = 0.16 + pulse * 0.14;
+    ctx.fillStyle = '#e5f4a5';
+    ctx.beginPath();
+    ctx.ellipse(cx, baseY, TILE * 0.42, TILE * 0.18, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = 0.24;
+    ctx.fillStyle = '#0b140d';
+    ctx.beginPath();
+    ctx.ellipse(cx, baseY, doorW * 0.62, TILE * 0.1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    // Frame.
+    ctx.fillStyle = '#3f2d20';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(left - 3, top - 3, doorW + 6, doorH + 3, 5);
+    else ctx.rect(left - 3, top - 3, doorW + 6, doorH + 3);
+    ctx.fill();
+    // Panelled door.
+    ctx.fillStyle = '#8a5c34';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(left, top, doorW, doorH, 4);
+    else ctx.rect(left, top, doorW, doorH);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(41, 27, 16, 0.55)';
+    ctx.lineWidth = 1.5;
+    for (let i = 1; i <= 2; i++) {
+      const y = top + (doorH * i) / 3;
+      ctx.beginPath();
+      ctx.moveTo(left + 3, y);
+      ctx.lineTo(left + doorW - 3, y);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#f0d48a';
+    ctx.beginPath();
+    ctx.arc(left + doorW * 0.78, top + doorH * 0.58, 2.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   drawForageItem(game, apple) {
@@ -824,6 +938,17 @@ export class WorldRenderer {
       );
       mctx.fillStyle = 'rgba(217, 58, 58, 0.9)';
       mctx.fill();
+    }
+
+    for (const door of game.doors || []) {
+      const marker = Math.max(2.5, size / 120);
+      mctx.fillStyle = 'rgba(240, 212, 138, 0.95)';
+      mctx.fillRect(
+        (door.x + 0.5) * (size / WORLD_SIZE) - marker / 2,
+        (door.y + 0.5) * (size / WORLD_SIZE) - marker / 2,
+        marker,
+        marker
+      );
     }
 
     if (game.player) {

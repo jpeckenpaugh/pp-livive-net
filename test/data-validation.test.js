@@ -298,3 +298,39 @@ test('board strip copy covers every rejection reason and instruction placeholder
     assert.equal(minigames.miniGames[id].kind, 'board', id);
   }
 });
+
+test('world.json locations resolve ids, doors, spawns, and the Home flag', () => {
+  const worldConfig = readJson('world.json');
+  assert.equal(worldConfig.version, 1);
+  assert.equal(typeof worldConfig.travel.confirm, 'string');
+  assert.equal(typeof worldConfig.travel.cancel, 'string');
+
+  for (const [id, def] of Object.entries(worldConfig.locations)) {
+    assert.equal(def.id, id, `locations.${id} id must match its key`);
+    assert.equal(typeof def.label, 'string', `${id} needs a label`);
+    assert.equal(typeof def.enabled, 'boolean', `${id} enabled must be explicit`);
+    assert.equal(typeof def.mapLabel, 'string', `${id} needs a map label`);
+    assert.ok(def.menu && typeof def.menu.label === 'string' && def.menu.label, `${id} needs a menu row label`);
+    assert.ok(def.door && typeof def.door.to === 'string', `${id} needs a door target`);
+    assert.ok(worldConfig.locations[def.door.to], `${id} door targets unknown location ${def.door.to}`);
+    assert.ok(Number.isInteger(def.door.x) && Number.isInteger(def.door.y), `${id} door tile`);
+    assert.ok(typeof def.door.prompt === 'string' && def.door.prompt.trim(), `${id} door prompt`);
+    assert.ok(Number.isInteger(def.spawn?.x) && Number.isInteger(def.spawn?.y), `${id} spawn tile`);
+  }
+
+  // The Home slice ships dark: Wave 2 flips this with companions and decor.
+  assert.equal(worldConfig.locations.park.enabled, true);
+  assert.equal(worldConfig.locations.home.enabled, false);
+  assert.equal(worldConfig.locations.home.forage, false);
+
+  const home = worldConfig.locations.home;
+  const { x, y, width, height } = home.house;
+  assert.ok(width >= 5 && height >= 5, 'the room needs a floor');
+  assert.ok(x > 0 && y > 0 && x + width <= 64 && y + height <= 64, 'house fits the lot');
+  const onWall = home.door.x === x || home.door.x === x + width - 1
+    || home.door.y === y || home.door.y === y + height - 1;
+  assert.ok(onWall, 'home door must cut through a wall');
+  const inside = home.spawn.x > x && home.spawn.x < x + width - 1
+    && home.spawn.y > y && home.spawn.y < y + height - 1;
+  assert.ok(inside, 'home spawn must stand inside the room');
+});

@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { decodeTerrain, encodeTerrain } from '../src/world.js';
+import { decodeTerrain, encodeTerrain, generateHome } from '../src/world.js';
 import {
   SAVE_VERSION,
   STORAGE_KEY,
   activeLocation,
+  captureLocationRecord,
   loadSave,
   migrateSave,
   serializeSave
@@ -284,7 +285,9 @@ test('strict v4 rejects a missing, non-object, or malformed park', () => {
   });
 });
 
-test('v4 serialization writes only the park and never a top-level mirror', () => {
+test('v4 serialization keeps every location and the current location', () => {
+  const parkTerrain = encodeTerrain(grassTerrain());
+  const homeTerrain = encodeTerrain(generateHome('acorn-hearth-01').grid);
   const game = {
     worldSeed: 'park-only',
     terrain: grassTerrain(),
@@ -301,23 +304,100 @@ test('v4 serialization writes only the park and never a top-level mirror', () =>
       stabledCompanions: []
     },
     npcs: [],
-    companions: [],
-    // A live game in a later wave may hold more locations; Wave 0 drops them
-    // deliberately, and this test documents that so Wave 1 must update it.
-    locations: {
-      park: { seed: 'park-only', terrain: 'gggg' },
-      home: { seed: 'home-seed', terrain: 'wwww' }
+    companions: []
+  };
+
+  const locations = {
+    park: {
+      seed: 'park-only',
+      terrain: parkTerrain,
+      player: { x: 10, y: 12, direction: 1 },
+      npcs: [],
+      forage: null
+    },
+    home: {
+      seed: 'home-seed',
+      terrain: homeTerrain,
+      player: { x: 32, y: 36, direction: 0 },
+      npcs: [],
+      forage: { apples: [], basket: { apple: 0, mushroom: 0 }, harvested: {}, seeded: true },
+      // Wave 2 fields must survive this wave's writer untouched.
+      decor: [{ id: 'rug-round', x: 30, y: 34 }],
+      buddies: [{ companionId: 'comp-1', x: 31, y: 33 }]
     }
   };
 
-  const save = serializeSave(game, {}, new Set());
-  assert.deepEqual(Object.keys(save.locations), ['park']);
-  assert.equal('home' in save.locations, false);
+  const save = serializeSave(game, {}, new Set(), null, {
+    locations,
+    currentLocation: 'home',
+    companions: []
+  });
+
+  assert.deepEqual(Object.keys(save.locations).sort(), ['home', 'park']);
+  assert.equal(save.currentLocation, 'home');
+  assert.equal(save.locations.park.seed, 'park-only');
+  assert.equal(save.locations.home.seed, 'home-seed');
+  assert.equal(decodeTerrain(save.locations.home.terrain).length, 64);
+  assert.deepEqual(save.locations.home.decor, locations.home.decor);
+  assert.deepEqual(save.locations.home.buddies, locations.home.buddies);
+  // Shared fields never mirror the old top-level world shape.
   assert.equal('worldSeed' in save, false);
   assert.equal('terrain' in save, false);
   assert.equal('npcs' in save, false);
   assert.equal('forage' in save, false);
-  assert.equal(save.locations.park.seed, 'park-only');
+
+  // A reload keeps both locations and does not collapse back to the park.
+  const loaded = migrateSave(JSON.parse(JSON.stringify(save)));
+  assert.deepEqual(Object.keys(loaded.locations).sort(), ['home', 'park']);
+  assert.equal(loaded.currentLocation, 'home');
+  assert.equal(activeLocation(loaded).seed, 'home-seed');
+
+  // Being at Home does not drop the Park record.
+  const atPark = serializeSave(game, {}, new Set(), null, {
+    locations,
+    currentLocation: 'park',
+    companions: []
+  });
+  assert.equal(atPark.currentLocation, 'park');
+  assert.deepEqual(Object.keys(atPark.locations).sort(), ['home', 'park']);
+});
+
+test('captureLocationRecord encodes terrain and preserves unknown location keys', () => {
+  const terrain = grassTerrain();
+  const npc = {
+    id: 'npc-1',
+    name: 'Pip',
+    recipe: npcRecipe('npc-1'),
+    x: 4,
+    y: 5,
+    direction: 2,
+    inventory: [],
+    equipped: [],
+    path: [{ x: 1, y: 1 }],
+    moving: true
+  };
+
+  const record = captureLocationRecord({
+    seed: 'capture-seed',
+    terrain,
+    player: { x: 7, y: 8, direction: 3 },
+    npcs: [npc],
+    forage: { apples: [], basket: { apple: 1 }, seeded: true }
+  }, { decor: [{ id: 'plant' }], buddies: [] });
+
+  assert.equal(typeof record.terrain, 'string');
+  assert.equal(record.terrain.length, 64 * 64);
+  assert.deepEqual(record.player, { x: 7, y: 8, direction: 3 });
+  assert.equal(record.npcs[0].x, 4);
+  assert.equal('path' in record.npcs[0], false);
+  assert.equal('moving' in record.npcs[0], false);
+  assert.deepEqual(record.forage.basket, { apple: 1, mushroom: 0 });
+  assert.deepEqual(record.decor, [{ id: 'plant' }]);
+  assert.deepEqual(record.buddies, []);
+
+  // Capturing the same record again is stable (travel and save share this path).
+  const again = captureLocationRecord(record, record);
+  assert.deepEqual(again, record);
 });
 
 test('a v4 save round-trips without re-rolling voices or losing park state', () => {

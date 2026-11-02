@@ -33,7 +33,7 @@ test('terrain round-trips through the save format', () => {
   assert.deepEqual(decodeTerrain(encoded), world.grid);
 
   assert.equal(decodeTerrain('too short'), null);
-  assert.equal(decodeTerrain('x'.repeat(WORLD_SIZE * WORLD_SIZE)), null);
+  assert.equal(decodeTerrain('z'.repeat(WORLD_SIZE * WORLD_SIZE)), null);
 });
 
 test('generated component is the largest and fully walkable', () => {
