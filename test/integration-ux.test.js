@@ -49,6 +49,9 @@ test('bag items dispatch through metadata instead of item ids', () => {
   assert.equal(itemAction(bracelet, metas).type, 'equip');
   assert.equal(getEffectForItem(bracelet).id, 'big-o');
 
+  // The baked pie is the one bag item you can eat; the row click consumes it.
+  assert.equal(itemAction(ITEM_CATALOG['apple-pie'], metas).type, 'eat');
+
   assert.equal(itemAction({ id: 'mystery', name: 'Mystery', action: 'unfurl' }, metas).type, 'none');
   assert.equal(itemAction(null, metas).type, 'none');
 });

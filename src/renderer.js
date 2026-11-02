@@ -14,7 +14,8 @@ import {
   homeItem,
   homeItemSize,
   homePoseAnchor,
-  itemColors
+  itemColors,
+  itemTierAccent
 } from './home_items.js';
 import sceneryAssets from '../data/nature_scenery.json' with { type: 'json' };
 
@@ -696,6 +697,67 @@ function drawRugShape(ctx, bounds, colors) {
   ctx.restore();
 }
 
+/**
+ * Tier trim, drawn after the shape so it reads as a finish rather than a
+ * recolour: a front-edge band for furniture, a dotted band for deluxe.
+ */
+function drawGroundTierAccent(ctx, bounds, entry) {
+  const accent = itemTierAccent(entry?.itemId, entry?.tier);
+  if (!accent) return;
+  const tier = Math.max(0, Math.round(Number(entry?.tier) || 0));
+  const inset = TILE * 0.3;
+  const width = bounds.width - inset * 2;
+  const height = bounds.height - inset * 2;
+  if (width <= 0 || height <= 0) return;
+  strokeRoundRect(
+    ctx,
+    bounds.left + inset,
+    bounds.top + inset,
+    width,
+    height,
+    TILE * 0.18,
+    accent,
+    Math.max(1.5, TILE * 0.03)
+  );
+  if (tier >= 2) {
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = accent;
+    ctx.beginPath();
+    ctx.arc(bounds.left + bounds.width / 2, bounds.top + inset, Math.max(1.6, TILE * 0.04), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawItemTierAccent(ctx, bounds, entry) {
+  const accent = itemTierAccent(entry?.itemId, entry?.tier);
+  if (!accent) return;
+  const tier = Math.max(0, Math.round(Number(entry?.tier) || 0));
+  const inset = TILE * 0.12;
+  const thickness = Math.max(2, TILE * 0.04);
+  const y = bounds.bottom - inset - thickness;
+  fillRoundRect(
+    ctx,
+    bounds.left + inset,
+    y,
+    bounds.width - inset * 2,
+    thickness,
+    thickness / 2,
+    accent
+  );
+  if (tier >= 2) {
+    ctx.save();
+    ctx.fillStyle = accent;
+    for (const x of [bounds.left + inset + thickness * 0.5, bounds.right - inset - thickness * 0.5]) {
+      ctx.beginPath();
+      ctx.arc(x, y + thickness / 2, thickness * 0.85, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
 const HOME_ITEM_SHAPES = {
   couch: drawCouch,
   armchair: drawArmchair,
@@ -897,6 +959,7 @@ export class WorldRenderer {
             y: draft.y,
             rot: draft.rot,
             variant: draft.variant,
+            tier: draft.tier,
             on: draft.on === true
           },
           draft: true
@@ -1181,6 +1244,7 @@ export class WorldRenderer {
       if (!bounds) continue;
       ctx.save();
       drawRugShape(ctx, bounds, itemColors(entry.itemId, entry.variant));
+      drawGroundTierAccent(ctx, bounds, entry);
       ctx.restore();
     }
     if (draft && homeItem(draft.itemId)?.ground) {
@@ -1189,6 +1253,7 @@ export class WorldRenderer {
         ctx.save();
         ctx.globalAlpha = 0.7;
         drawRugShape(ctx, bounds, itemColors(draft.itemId, draft.variant));
+        drawGroundTierAccent(ctx, bounds, draft);
         ctx.restore();
       }
     }
@@ -1252,6 +1317,7 @@ export class WorldRenderer {
     if (!draft && entry.on === true && item.shape === 'tv') {
       this.drawTvStatic(ctx, box, game?.time || 0);
     }
+    drawItemTierAccent(ctx, bounds, entry);
     ctx.restore();
   }
 
@@ -1687,9 +1753,21 @@ export class WorldRenderer {
     const isCompanion = Boolean(character.isCompanion);
     const fx = resolveFx(character, (game.time || 0) * 1000, characterEffectOwner(game, character));
     const height = characterVisualHeight(character, fx);
+    const homePose = character.homePose;
+    const poseAnchor = homePose ? homePoseAnchor(game.homeItems, homePose) : null;
+    const asleep = homePose?.kind === 'sleep';
+    const sitting = character.pose === 'sit' || homePose?.kind === 'sit';
     const position = game.interpolated(character);
-    const footX = (position.x + 0.5) * TILE - game.camera.x;
-    const footY = (position.y + 1) * TILE - game.camera.y;
+    let footX = (position.x + 0.5) * TILE - game.camera.x;
+    let footY = (position.y + 1) * TILE - game.camera.y;
+    // The posed sprite renders on the seat/bed and squashes, so the plate
+    // follows the drawn top instead of the logical tile.
+    if (poseAnchor) {
+      footX = (poseAnchor.x + 0.5) * TILE - game.camera.x;
+      footY = (poseAnchor.y + 1) * TILE - game.camera.y;
+    }
+    const spriteHeight = height * (asleep ? 0.52 : sitting ? 0.7 : 1);
+    const poseLift = sitting ? height * 0.08 : 0;
     let label = character.name;
     if (character.isPlayer) label = `${character.name} · you`;
     else if (isCompanion) label = `${character.name} · buddy`;
@@ -1700,7 +1778,7 @@ export class WorldRenderer {
     const width = textWidth + 16;
     const boxHeight = 22;
     const x = clamp(footX - width / 2, 6, game.width - width - 6);
-    const y = footY - height - 24 + (fx.offsetY || 0);
+    const y = footY - spriteHeight - 24 + poseLift + (fx.offsetY || 0);
     ctx.fillStyle = 'rgba(10, 17, 12, 0.9)';
     ctx.strokeStyle = 'rgba(163, 210, 139, 0.35)';
     ctx.lineWidth = 1;

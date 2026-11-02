@@ -17,8 +17,11 @@
       ],
       "interact": { "kind": "sit", "line": "you sink into the couch." },
       "use": { "verb": "Sit", "kind": "sit", "line": "you sink into the couch." },
-      "tier": 1,
-      "price": 0
+      "tiers": [
+        { "name": "plain", "price": 0, "accent": "#b7c6a2" },
+        { "name": "comfy", "price": 10, "accent": "#e2c48a" },
+        { "name": "deluxe", "price": 25, "accent": "#cfe9f4" }
+      ]
     },
     "armchair": {
       "id": "armchair",
@@ -36,8 +39,11 @@
       ],
       "interact": { "kind": "sit", "line": "the armchair hugs you back." },
       "use": { "verb": "Sit", "kind": "sit", "line": "the armchair hugs you back." },
-      "tier": 1,
-      "price": 0
+      "tiers": [
+        { "name": "plain", "price": 0, "accent": "#b7c6a2" },
+        { "name": "comfy", "price": 10, "accent": "#e2c48a" },
+        { "name": "deluxe", "price": 25, "accent": "#cfe9f4" }
+      ]
     },
     "coffee-table": {
       "id": "coffee-table",
@@ -55,8 +61,11 @@
       ],
       "interact": { "kind": "look", "line": "the coffee table is clear." },
       "use": { "verb": "Look", "kind": "look", "line": "the coffee table is clear." },
-      "tier": 1,
-      "price": 0
+      "tiers": [
+        { "name": "plain", "price": 0, "accent": "#b7c6a2" },
+        { "name": "comfy", "price": 10, "accent": "#e2c48a" },
+        { "name": "deluxe", "price": 25, "accent": "#cfe9f4" }
+      ]
     },
     "tv": {
       "id": "tv",
@@ -84,8 +93,11 @@
         "onLine": "the tv crackles to life.",
         "offLine": "the tv goes quiet."
       },
-      "tier": 1,
-      "price": 0
+      "tiers": [
+        { "name": "plain", "price": 0, "accent": "#b7c6a2" },
+        { "name": "comfy", "price": 10, "accent": "#e2c48a" },
+        { "name": "deluxe", "price": 25, "accent": "#cfe9f4" }
+      ]
     },
     "radio": {
       "id": "radio",
@@ -114,8 +126,11 @@
         "onLine": "the radio plays a little jingle.",
         "offLine": "the radio clicks off."
       },
-      "tier": 1,
-      "price": 0
+      "tiers": [
+        { "name": "plain", "price": 0, "accent": "#b7c6a2" },
+        { "name": "comfy", "price": 10, "accent": "#e2c48a" },
+        { "name": "deluxe", "price": 25, "accent": "#cfe9f4" }
+      ]
     },
     "floor-lamp": {
       "id": "floor-lamp",
@@ -143,8 +158,11 @@
         "onLine": "a warm glow fills the room.",
         "offLine": "the room dims again."
       },
-      "tier": 1,
-      "price": 0
+      "tiers": [
+        { "name": "plain", "price": 0, "accent": "#b7c6a2" },
+        { "name": "comfy", "price": 10, "accent": "#e2c48a" },
+        { "name": "deluxe", "price": 25, "accent": "#cfe9f4" }
+      ]
     },
     "bookshelf": {
       "id": "bookshelf",
@@ -162,8 +180,11 @@
       ],
       "interact": { "kind": "look", "line": "the shelves are full of borrowed books." },
       "use": { "verb": "Read", "kind": "look", "line": "the shelves are full of borrowed books." },
-      "tier": 1,
-      "price": 0
+      "tiers": [
+        { "name": "plain", "price": 0, "accent": "#b7c6a2" },
+        { "name": "comfy", "price": 10, "accent": "#e2c48a" },
+        { "name": "deluxe", "price": 25, "accent": "#cfe9f4" }
+      ]
     },
     "rug": {
       "id": "rug",
@@ -183,8 +204,11 @@
       ],
       "interact": null,
       "use": { "verb": "Look", "kind": "look", "line": "the rug is soft underfoot." },
-      "tier": 1,
-      "price": 0
+      "tiers": [
+        { "name": "plain", "price": 0, "accent": "#b7c6a2" },
+        { "name": "comfy", "price": 10, "accent": "#e2c48a" },
+        { "name": "deluxe", "price": 25, "accent": "#cfe9f4" }
+      ]
     },
     "plant": {
       "id": "plant",
@@ -203,8 +227,11 @@
       ],
       "interact": { "kind": "look", "line": "the plant looks happy here." },
       "use": { "verb": "Water", "kind": "look", "line": "the plant looks happy here." },
-      "tier": 1,
-      "price": 0
+      "tiers": [
+        { "name": "plain", "price": 0, "accent": "#b7c6a2" },
+        { "name": "comfy", "price": 10, "accent": "#e2c48a" },
+        { "name": "deluxe", "price": 25, "accent": "#cfe9f4" }
+      ]
     },
     "fridge": {
       "id": "fridge",
@@ -222,8 +249,11 @@
       ],
       "interact": { "kind": "look", "line": "the fridge hums." },
       "use": { "verb": "Open", "kind": "look", "line": "the fridge hums." },
-      "tier": 1,
-      "price": 0
+      "tiers": [
+        { "name": "plain", "price": 0, "accent": "#b7c6a2" },
+        { "name": "comfy", "price": 10, "accent": "#e2c48a" },
+        { "name": "deluxe", "price": 25, "accent": "#cfe9f4" }
+      ]
     },
     "stove": {
       "id": "stove",
@@ -245,8 +275,11 @@
         "kind": "recipe",
         "recipe": { "inputs": { "apple": 3 }, "output": "apple-pie" }
       },
-      "tier": 1,
-      "price": 0
+      "tiers": [
+        { "name": "plain", "price": 0, "accent": "#b7c6a2" },
+        { "name": "comfy", "price": 10, "accent": "#e2c48a" },
+        { "name": "deluxe", "price": 25, "accent": "#cfe9f4" }
+      ]
     },
     "counter": {
       "id": "counter",
@@ -264,8 +297,11 @@
       ],
       "interact": { "kind": "look", "line": "the counter is tidy." },
       "use": { "verb": "Look", "kind": "look", "line": "the counter is tidy." },
-      "tier": 1,
-      "price": 0
+      "tiers": [
+        { "name": "plain", "price": 0, "accent": "#b7c6a2" },
+        { "name": "comfy", "price": 10, "accent": "#e2c48a" },
+        { "name": "deluxe", "price": 25, "accent": "#cfe9f4" }
+      ]
     },
     "dining-table": {
       "id": "dining-table",
@@ -283,8 +319,11 @@
       ],
       "interact": { "kind": "look", "line": "the table is set for two." },
       "use": { "verb": "Look", "kind": "look", "line": "the table is set for two." },
-      "tier": 1,
-      "price": 0
+      "tiers": [
+        { "name": "plain", "price": 0, "accent": "#b7c6a2" },
+        { "name": "comfy", "price": 10, "accent": "#e2c48a" },
+        { "name": "deluxe", "price": 25, "accent": "#cfe9f4" }
+      ]
     },
     "chair": {
       "id": "chair",
@@ -302,8 +341,11 @@
       ],
       "interact": { "kind": "sit", "line": "you perch on the chair." },
       "use": { "verb": "Sit", "kind": "sit", "line": "you perch on the chair." },
-      "tier": 1,
-      "price": 0
+      "tiers": [
+        { "name": "plain", "price": 0, "accent": "#b7c6a2" },
+        { "name": "comfy", "price": 10, "accent": "#e2c48a" },
+        { "name": "deluxe", "price": 25, "accent": "#cfe9f4" }
+      ]
     },
     "bed": {
       "id": "bed",
@@ -321,8 +363,11 @@
       ],
       "interact": { "kind": "sleep", "line": "you flop onto the bed." },
       "use": { "verb": "Sleep", "kind": "sleep", "line": "you flop onto the bed." },
-      "tier": 1,
-      "price": 0
+      "tiers": [
+        { "name": "plain", "price": 0, "accent": "#b7c6a2" },
+        { "name": "comfy", "price": 10, "accent": "#e2c48a" },
+        { "name": "deluxe", "price": 25, "accent": "#cfe9f4" }
+      ]
     },
     "nightstand": {
       "id": "nightstand",
@@ -340,8 +385,11 @@
       ],
       "interact": { "kind": "look", "line": "the nightstand holds a spare key." },
       "use": { "verb": "Look", "kind": "look", "line": "the nightstand holds a spare key." },
-      "tier": 1,
-      "price": 0
+      "tiers": [
+        { "name": "plain", "price": 0, "accent": "#b7c6a2" },
+        { "name": "comfy", "price": 10, "accent": "#e2c48a" },
+        { "name": "deluxe", "price": 25, "accent": "#cfe9f4" }
+      ]
     },
     "dresser": {
       "id": "dresser",
@@ -359,8 +407,11 @@
       ],
       "interact": { "kind": "look", "line": "the dresser drawers are shut." },
       "use": { "verb": "Look", "kind": "look", "line": "the dresser drawers are shut." },
-      "tier": 1,
-      "price": 0
+      "tiers": [
+        { "name": "plain", "price": 0, "accent": "#b7c6a2" },
+        { "name": "comfy", "price": 10, "accent": "#e2c48a" },
+        { "name": "deluxe", "price": 25, "accent": "#cfe9f4" }
+      ]
     }
   },
   "layout": [

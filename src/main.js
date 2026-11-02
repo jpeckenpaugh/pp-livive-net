@@ -52,10 +52,12 @@ import {
   homeItemAtTop,
   homeItemReasonText,
   homeItemSize,
+  homeItemTierInfo,
   homeItemUse,
   loadHomeItems,
   rugTiles,
-  toggleHomeItem
+  toggleHomeItem,
+  upgradeHomeItem
 } from './home_items.js';
 import { castVoice } from './voice/casting.js';
 import { VoiceEngine } from './voice/engine.js';
@@ -877,6 +879,26 @@ function onThrowBall({ color } = {}) {
     }
   });
   if (!result.ok) showToast(result.message || 'Could not throw the ball.');
+}
+
+/** Eat a bag item: remove one instance, save, and say so. */
+function eatBagItem(item) {
+  const player = game?.player;
+  if (!player || !item) return false;
+  const inventory = Array.isArray(player.inventory) ? player.inventory : [];
+  const index = inventory.findIndex(entry => (
+    entry === item || (item.uid && entry?.uid === item.uid)
+  ));
+  if (index < 0) {
+    showToast('that is not in the bag.');
+    return false;
+  }
+  inventory.splice(index, 1);
+  sounds.play('pickup');
+  saveNow();
+  panels?.renderInventory?.();
+  showToast(`you eat the ${item.name || item.id}. tastes like a good afternoon.`);
+  return true;
 }
 
 function showAbandonPrompt(meta, opponent, onConfirm, onCancel) {
@@ -2400,7 +2422,7 @@ function homeFurnishState() {
         label: item?.label || record.itemId,
         icon: item?.icon || '•',
         zone: item?.zone || '',
-        note: `${variantLabel(item, record.variant)} · x${record.x} y${record.y}${record.on ? ' · on' : ''}`
+        note: `${variantLabel(item, record.variant)} · ${homeItemTierInfo(record.itemId, record.tier).name} · x${record.x} y${record.y}${record.on ? ' · on' : ''}`
       };
     })
   };
@@ -2490,6 +2512,7 @@ function startFurnish(target) {
       y: record.y,
       rot: record.rot,
       variant: record.variant,
+      tier: record.tier || 0,
       on: record.on === true
     },
     reason: null
@@ -2627,17 +2650,75 @@ function openHomeItemCard(record) {
   game.destination = null;
 
   homeItemCard = { uid: record.uid, itemId: record.itemId };
-  $('home-item-icon').textContent = item.icon || '•';
-  $('home-item-name').textContent = item.label || record.itemId;
-  $('home-item-use').textContent = use.verb;
-  const status = $('home-item-status');
-  const statusText = cardStatusText(record, use);
-  status.textContent = statusText;
-  status.hidden = !statusText;
+  syncHomeItemCard();
   const card = $('home-item-card');
   card.hidden = false;
   positionHomeItemCard();
   $('home-item-use')?.focus?.({ preventScroll: true });
+  return true;
+}
+
+/** Fill the card from the live record: title, tier badge, use, and upgrade. */
+function syncHomeItemCard() {
+  const record = homeItemCardRecord();
+  if (!record) return false;
+  const item = homeItem(record.itemId);
+  const use = homeItemUse(record.itemId);
+  if (!item || !use) return false;
+
+  $('home-item-icon').textContent = item.icon || '•';
+  $('home-item-name').textContent = item.label || record.itemId;
+  $('home-item-use').textContent = use.verb;
+
+  const info = homeItemTierInfo(record.itemId, record.tier);
+  const tier = $('home-item-tier');
+  if (tier) {
+    tier.textContent = info.name;
+    tier.hidden = info.index === 0;
+  }
+  const upgrade = $('home-item-upgrade');
+  if (upgrade) {
+    if (info.next) {
+      upgrade.hidden = false;
+      upgrade.textContent = `Upgrade · ${info.next.name} · ${info.next.price}🪙`;
+      upgrade.setAttribute('aria-label', `Upgrade to ${info.next.name} for ${info.next.price} coins`);
+    } else {
+      upgrade.hidden = true;
+    }
+  }
+
+  const status = $('home-item-status');
+  if (status) {
+    const statusText = cardStatusText(record, use);
+    status.textContent = statusText;
+    status.hidden = !statusText;
+  }
+  return true;
+}
+
+/** One click: pay the next tier's price, bump the record, and refresh in place. */
+function upgradeHomeItemCard() {
+  const record = homeItemCardRecord();
+  if (!record) {
+    closeHomeItemCard();
+    return false;
+  }
+  const result = upgradeHomeItem(activeHomeItems(), record.uid, game?.player?.coins);
+  if (!result.ok) {
+    if (result.reason === 'insufficient') {
+      showToast(`need ${result.short} more 🪙 for the ${result.tier.next.name} trim.`);
+    } else if (result.reason === 'max-tier') {
+      showToast('that piece is already deluxe.');
+    }
+    return false;
+  }
+  game.player.coins = result.coins;
+  applyHomeItems(result.items);
+  sounds.play('place');
+  saveNow();
+  syncHomeItemCard();
+  const label = homeItem(record.itemId)?.label || record.itemId;
+  showToast(`the ${label} is now ${result.tier.name}.`);
   return true;
 }
 
@@ -2711,13 +2792,7 @@ function useHomeItem() {
       ? (use.onLine || `the ${label} turns on.`)
       : (use.offLine || `the ${label} turns off.`));
     // Keep the card open so on/off can be checked without reopening it.
-    const updated = homeItemCardRecord();
-    const status = $('home-item-status');
-    const statusText = cardStatusText(updated, use);
-    if (status) {
-      status.textContent = statusText;
-      status.hidden = !statusText;
-    }
+    syncHomeItemCard();
     return true;
   }
 
@@ -3069,6 +3144,7 @@ function bindEvents() {
     if (record) startFurnish(record);
   });
   $('home-item-close')?.addEventListener('click', () => closeHomeItemCard());
+  $('home-item-upgrade')?.addEventListener('click', upgradeHomeItemCard);
   document.addEventListener('pointerdown', event => {
     if (!homeItemCard) return;
     const card = $('home-item-card');
@@ -3291,6 +3367,7 @@ function boot() {
     getGame: () => game,
     getFriends: () => friends,
     onThrowBall,
+    onEatItem: eatBagItem,
     onPlayGame,
     onTalkNpc: openCardDialogue,
     getBoardGames: npc => tableGamesFor(npc),

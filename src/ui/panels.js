@@ -372,6 +372,7 @@ export function describeTradeRejection(result, { player = null, npc = null } = {
 export function itemAction(item, gameMetas = []) {
   if (!item || typeof item !== 'object') return { type: 'none' };
   if (item.action === 'throw') return { type: 'throw', item };
+  if (item.action === 'eat' || item.use === 'eat') return { type: 'eat', item };
   if (getEffectForItem(item) || item.action === 'equip') return { type: 'equip', item };
   if (item.action === 'unfurl') {
     const meta = gameMetas.find(entry => entry && entry.itemId === item.id) || null;
@@ -403,6 +404,7 @@ export class PanelsUI {
     getGame,
     getFriends,
     onThrowBall,
+    onEatItem,
     onUnfurlTTT,
     onPackUpTTT,
     isTTTOpen,
@@ -445,6 +447,7 @@ export class PanelsUI {
     this.getGame = getGame;
     this.getFriends = getFriends;
     this.onThrowBall = onThrowBall;
+    this.onEatItem = onEatItem;
     this.onUnfurlTTT = onUnfurlTTT;
     this.onPackUpTTT = onPackUpTTT;
     this.isTTTOpen = isTTTOpen;
@@ -696,6 +699,10 @@ export class PanelsUI {
     if (action.type === 'throw') {
       this.closeMenu();
       this.onThrowBall?.({ color: item.color });
+      return;
+    }
+    if (action.type === 'eat') {
+      this.onEatItem?.(item);
       return;
     }
     if (action.type === 'equip') {

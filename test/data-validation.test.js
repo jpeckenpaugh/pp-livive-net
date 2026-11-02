@@ -357,8 +357,10 @@ test('home_items.json defines the furnished room and a testable default layout',
     assert.ok(item.colors && typeof item.colors.base === 'string', `${id} palette`);
     assert.ok(Array.isArray(item.variants) && item.variants.length >= 2, `${id} variants`);
     assert.ok(item.interact === null || typeof item.interact?.kind === 'string', `${id} interact`);
-    assert.ok(item.tier >= 1, `${id} tier`);
-    assert.ok(Number(item.price) >= 0, `${id} price`);
+    assert.ok(Array.isArray(item.tiers) && item.tiers.length === 3, `${id} tiers`);
+    assert.equal(item.tiers[0].price, 0, `${id} plain is free`);
+    assert.ok(item.tiers[1].price > 0, `${id} comfy price`);
+    assert.ok(item.tiers[2].price >= item.tiers[1].price, `${id} deluxe price`);
   }
 
   assert.equal(homeItems.items.rug.solid, false);

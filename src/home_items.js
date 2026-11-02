@@ -46,6 +46,15 @@ export function normalizeVariant(item, variant) {
   return value;
 }
 
+/** Saved records use index 0 when they predate tiers or carry a bad value. */
+export function normalizeTier(item, tier) {
+  const count = Array.isArray(item?.tiers) ? item.tiers.length : 0;
+  if (!count) return 0;
+  const value = Math.round(Number(tier) || 0);
+  if (value < 0 || value >= count) return 0;
+  return value;
+}
+
 /** Rotated size; odd quarter turns swap width and height. */
 export function homeItemSize(itemId, rot = 0) {
   const item = homeItem(itemId);
@@ -73,7 +82,86 @@ export function itemColors(itemId, variant = 0) {
   };
 }
 
-/** Every absolute tile a footprint covers. Empty when the item is unknown. */
+/**
+ * The tier ladder for one item: name, price in coins, and a trim accent.
+ * Tier 0 is always free and plain; the renderer only paints accents above it.
+ */
+export function homeItemTierInfo(itemId, tier = 0) {
+  const item = homeItem(itemId);
+  const tiers = Array.isArray(item?.tiers) && item.tiers.length
+    ? item.tiers
+    : [{ name: 'plain', price: 0, accent: null }];
+  const index = normalizeTier(item, tier);
+  const entry = tiers[index] || tiers[0];
+  const nextEntry = tiers[index + 1] || null;
+  const current = {
+    index,
+    name: typeof entry?.name === 'string' && entry.name ? entry.name : 'plain',
+    price: Math.max(0, Math.round(Number(entry?.price) || 0)),
+    accent: typeof entry?.accent === 'string' && entry.accent ? entry.accent : null,
+    max: tiers.length - 1
+  };
+  return {
+    ...current,
+    next: nextEntry
+      ? {
+          index: index + 1,
+          name: typeof nextEntry.name === 'string' && nextEntry.name ? nextEntry.name : 'upgraded',
+          price: Math.max(0, Math.round(Number(nextEntry.price) || 0)),
+          accent: typeof nextEntry.accent === 'string' && nextEntry.accent ? nextEntry.accent : null
+        }
+      : null
+  };
+}
+
+/** Trim colour above tier 0, or null so the plain palette is untouched. */
+export function itemTierAccent(itemId, tier = 0) {
+  const info = homeItemTierInfo(itemId, tier);
+  return info.index > 0 ? info.accent : null;
+}
+
+/**
+ * One-click upgrade: validate the next tier and the wallet, then return the new
+ * list and balance. `reason` is `max-tier`, `insufficient`, or `unknown-item`.
+ */
+export function upgradeHomeItem(items = [], uid, coins = 0) {
+  const list = Array.isArray(items) ? items : [];
+  const balance = Math.max(0, Math.round(Number(coins) || 0));
+  const record = list.find(entry => entry?.uid === uid) || null;
+  if (!record) {
+    return { ok: false, reason: 'unknown-item', items: list, record: null, cost: 0, short: 0, coins: balance, tier: null };
+  }
+  const info = homeItemTierInfo(record.itemId, record.tier);
+  if (!info.next) {
+    return { ok: false, reason: 'max-tier', items: list, record, cost: 0, short: 0, coins: balance, tier: info };
+  }
+  if (balance < info.next.price) {
+    return {
+      ok: false,
+      reason: 'insufficient',
+      items: list,
+      record,
+      cost: info.next.price,
+      short: info.next.price - balance,
+      coins: balance,
+      tier: info
+    };
+  }
+  const nextItems = list.map(entry => (
+    entry?.uid === uid ? { ...entry, tier: info.next.index } : entry
+  ));
+  return {
+    ok: true,
+    reason: null,
+    items: nextItems,
+    record: nextItems.find(entry => entry?.uid === uid) || null,
+    cost: info.next.price,
+    short: 0,
+    coins: balance - info.next.price,
+    tier: info.next
+  };
+}
+
 export function footprintTiles({ itemId, x, y, rot = 0 } = {}) {
   const size = homeItemSize(itemId, rot);
   const originX = Math.round(Number(x));
@@ -220,6 +308,7 @@ export function expandDefaultLayout(house, layout = DEFAULT_HOME_LAYOUT) {
       y: origin.y + Math.round(Number(entry.dy) || 0),
       rot: normalizeRotation(entry.rot),
       variant: normalizeVariant(item, entry.variant),
+      tier: 0,
       on: false
     });
   }
@@ -262,6 +351,7 @@ export function normalizeHomeItems(entries, { roomTiles = null } = {}) {
       y,
       rot,
       variant: normalizeVariant(item, entry.variant),
+      tier: normalizeTier(item, entry.tier),
       on: entry.on === true
     });
   }
@@ -298,6 +388,7 @@ export function migrateDecorItems(decor = [], { house, door, roomTiles = null } 
       y,
       rot: 0,
       variant: 0,
+      tier: 0,
       on: false
     });
   }

@@ -18,12 +18,16 @@ import {
   homeItem,
   homeItemAt,
   homeItemSize,
+  homeItemTierInfo,
   houseInteriorTiles,
   itemColors,
+  itemTierAccent,
   loadHomeItems,
   normalizeHomeItems,
   normalizeRotation,
-  rugTiles
+  normalizeTier,
+  rugTiles,
+  upgradeHomeItem
 } from '../src/home_items.js';
 
 const HOME_SEED = locationDef('home').seed;
@@ -38,7 +42,7 @@ function key(tile) {
   return `${tile.x},${tile.y}`;
 }
 
-test('home_items.json describes every furnished room type with reserved commerce fields', () => {
+test('home_items.json describes every furnished room type with three quality tiers', () => {
   assert.equal(HOME_ITEM_IDS.length, 17);
 
   for (const id of HOME_ITEM_IDS) {
@@ -54,8 +58,12 @@ test('home_items.json describes every furnished room type with reserved commerce
     assert.equal(typeof item.colors.accent, 'string', `${id} accent colour`);
     assert.ok(Array.isArray(item.variants) && item.variants.length >= 2, `${id} variants`);
     assert.ok(item.variants.every(variant => variant.id && typeof variant.label === 'string'));
-    assert.ok(Number(item.tier) >= 1, `${id} tier`);
-    assert.ok(Number.isFinite(item.price), `${id} price`);
+    assert.ok(Array.isArray(item.tiers) && item.tiers.length === 3, `${id} tiers`);
+    assert.equal(item.tiers[0].name, 'plain');
+    assert.equal(item.tiers[0].price, 0);
+    assert.ok(item.tiers.every(tier => typeof tier.name === 'string' && tier.name.length > 0));
+    assert.ok(item.tiers.every(tier => Number.isFinite(tier.price) && tier.price >= 0));
+    assert.ok(item.tiers.every(tier => /^#[0-9a-f]{6}$/i.test(tier.accent)));
     assert.ok(
       item.interact === null
         || (typeof item.interact === 'object' && typeof item.interact.kind === 'string'),
@@ -76,6 +84,95 @@ test('home_items.json describes every furnished room type with reserved commerce
   assert.equal(plain.trim, warm.trim);
   assert.notEqual(plain.base, warm.base);
   assert.equal(itemColors('couch', 99).base, plain.base);
+});
+
+test('quality tiers default to plain, clamp bad values, and price the ladder', () => {
+  const home = homeWorld();
+  const items = expandDefaultLayout(home.house);
+
+  // New records are plain and free.
+  assert.ok(items.every(record => record.tier === 0));
+  assert.deepEqual(normalizeHomeItems([{ uid: 'c', itemId: 'chair', x: 5, y: 5 }]), [
+    { uid: 'c', itemId: 'chair', x: 5, y: 5, rot: 0, variant: 0, tier: 0, on: false }
+  ]);
+  // Missing or nonsense saves migrate to 0; a valid tier survives.
+  const [saved] = normalizeHomeItems([{ uid: 'c', itemId: 'chair', x: 5, y: 5, tier: 2 }]);
+  assert.equal(saved.tier, 2);
+  assert.equal(normalizeHomeItems([{ uid: 'c', itemId: 'chair', x: 5, y: 5, tier: 9 }])[0].tier, 0);
+  assert.equal(normalizeHomeItems([{ uid: 'c', itemId: 'chair', x: 5, y: 5, tier: 'x' }])[0].tier, 0);
+  assert.equal(normalizeTier(homeItem('chair'), -1), 0);
+
+  const plainTier = homeItemTierInfo('chair', 0);
+  assert.deepEqual(plainTier, {
+    index: 0,
+    name: 'plain',
+    price: 0,
+    accent: homeItem('chair').tiers[0].accent,
+    max: 2,
+    next: {
+      index: 1,
+      name: 'comfy',
+      price: 10,
+      accent: homeItem('chair').tiers[1].accent
+    }
+  });
+  assert.equal(homeItemTierInfo('chair', 2).next, null);
+
+  // Only upgraded pieces paint a trim accent.
+  assert.equal(itemTierAccent('chair', 0), null);
+  assert.equal(itemTierAccent('chair', 1), '#e2c48a');
+  assert.equal(itemTierAccent('chair', 2), '#cfe9f4');
+});
+
+test('upgrading with coins bumps one tier, refuses shortfalls, and stops at deluxe', () => {
+  const items = expandDefaultLayout(homeWorld().house);
+  const couch = items.find(record => record.itemId === 'couch');
+
+  const poor = upgradeHomeItem(items, couch.uid, 4);
+  assert.equal(poor.ok, false);
+  assert.equal(poor.reason, 'insufficient');
+  assert.equal(poor.short, 6);
+  assert.equal(poor.items, items, 'a failed purchase leaves the list untouched');
+
+  const first = upgradeHomeItem(items, couch.uid, 12);
+  assert.equal(first.ok, true);
+  assert.equal(first.coins, 2);
+  assert.equal(first.cost, 10);
+  assert.equal(first.tier.name, 'comfy');
+  assert.equal(first.items.find(record => record.uid === couch.uid).tier, 1);
+  assert.equal(first.items.find(record => record.uid !== couch.uid).tier, 0);
+
+  const second = upgradeHomeItem(first.items, couch.uid, first.coins + 25);
+  assert.equal(second.ok, true);
+  assert.equal(second.items.find(record => record.uid === couch.uid).tier, 2);
+  assert.equal(second.coins, 2);
+
+  const maxed = upgradeHomeItem(second.items, couch.uid, 999);
+  assert.equal(maxed.ok, false);
+  assert.equal(maxed.reason, 'max-tier');
+  assert.equal(maxed.items, second.items);
+  assert.equal(upgradeHomeItem(items, 'nope', 999).reason, 'unknown-item');
+});
+
+test('a purchased tier survives the save round-trip', () => {
+  const home = homeWorld();
+  const items = expandDefaultLayout(home.house);
+  const bed = items.find(record => record.itemId === 'bed');
+  const bought = upgradeHomeItem(items, bed.uid, 25).items;
+
+  const record = captureLocationRecord({
+    seed: HOME_SEED,
+    terrain: encodeTerrain(home.grid),
+    player: { x: home.spawn.x, y: home.spawn.y, direction: 0 },
+    npcs: [],
+    forage: createHomeLocation().forage,
+    items: bought
+  }, null);
+
+  const loaded = normalizeHomeItems(record.items, { roomTiles: houseInteriorTiles(home.house) });
+  assert.equal(loaded.find(entry => entry.uid === bed.uid).tier, 1);
+  assert.equal(loadHomeItems(record, { house: home.house, door: home.door })
+    .find(entry => entry.uid === bed.uid).tier, 1);
 });
 
 test('the default layout fits the house, never overlaps, and keeps the door reachable', () => {

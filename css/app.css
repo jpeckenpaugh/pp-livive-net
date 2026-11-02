@@ -501,6 +501,35 @@ body.activity-open #furnish-hud {
   text-transform: capitalize;
 }
 
+.home-item-tier {
+  margin-left: auto;
+  padding: 2px 7px;
+  border: 1px solid rgba(226, 196, 138, 0.4);
+  border-radius: 999px;
+  color: #e2c48a;
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.home-item-actions.upgrade {
+  margin-top: 6px;
+}
+
+.home-item-actions.upgrade .pill.upgrade {
+  width: 100%;
+  min-height: 32px;
+  border-color: rgba(226, 196, 138, 0.35);
+  background: rgba(226, 196, 138, 0.1);
+  color: #ecd6a4;
+  font-size: 10.5px;
+}
+
+.home-item-actions.upgrade .pill.upgrade:hover {
+  border-color: rgba(226, 196, 138, 0.65);
+  background: rgba(226, 196, 138, 0.16);
+}
+
 .home-item-status {
   margin: 6px 0 0;
   color: var(--muted);

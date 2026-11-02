@@ -112,6 +112,7 @@
       "value": 6,
       "tradeable": true,
       "kind": "trinket",
+      "use": "eat",
       "icon": "🥧",
       "description": "Baked at home with three park apples. Smells like a good afternoon."
     },
