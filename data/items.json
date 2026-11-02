@@ -106,6 +106,15 @@
       "icon": "🖼️",
       "description": "A postcard of the park gate. Good for a small trade."
     },
+    "apple-pie": {
+      "id": "apple-pie",
+      "name": "Apple Pie",
+      "value": 6,
+      "tradeable": true,
+      "kind": "trinket",
+      "icon": "🥧",
+      "description": "Baked at home with three park apples. Smells like a good afternoon."
+    },
     "hover-halo": {
       "id": "hover-halo",
       "name": "Hover Halo",

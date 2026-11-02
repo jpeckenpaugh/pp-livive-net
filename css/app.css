@@ -444,7 +444,9 @@ body.activity-open #hint,
 body.activity-open .topbar,
 body.activity-open .minimap-wrap,
 body.activity-open #npc-card,
-body.activity-open #home-note {
+body.activity-open #home-note,
+body.activity-open #home-item-card,
+body.activity-open #furnish-hud {
   display: none !important;
 }
 
@@ -464,8 +466,126 @@ body.activity-open #home-note {
   pointer-events: none;
 }
 
-.decor-row strong {
+.furnish-row strong {
   text-transform: capitalize;
+}
+
+/* Home item card: anchored to the item by JS, above the canvas and below dialogue. */
+.home-item-card {
+  position: fixed;
+  z-index: 60;
+  width: 208px;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow);
+  animation: rise 140ms ease both;
+}
+
+.home-item-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.home-item-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.home-item-head strong {
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  text-transform: capitalize;
+}
+
+.home-item-status {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+.home-item-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.home-item-actions .pill {
+  flex: 1 1 auto;
+  min-height: 36px;
+  padding: 8px 9px;
+  font-size: 11px;
+}
+
+.home-item-actions.secondary .pill {
+  min-height: 32px;
+  font-size: 10.5px;
+}
+
+/* Furnish mode banner, clear of the touch d-pad. */
+.furnish-hud {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: min(520px, calc(100vw - 24px));
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  background: var(--panel);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.furnish-hud[hidden] {
+  display: none;
+}
+
+.furnish-hud strong {
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-transform: capitalize;
+}
+
+#furnish-note {
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+.furnish-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.furnish-actions .pill {
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: 10.5px;
+}
+
+.furnish-stop {
+  min-height: 32px;
+  margin: 0 0 6px;
+  font-size: 10.5px;
+}
+
+@media (pointer: coarse), (max-width: 768px) {
+  .furnish-hud {
+    bottom: calc(196px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 .minimap-wrap {
@@ -1540,6 +1660,10 @@ body.dialogue-open .topbar {
     left: 10px;
     right: 10px;
     width: auto;
+  }
+
+  .home-item-card {
+    width: min(208px, calc(100vw - 16px));
   }
 }
 

@@ -439,6 +439,189 @@ export function hasDoorPath({
   return findPath(terrain, from, to, blockedTiles(items)).length > 0;
 }
 
+/**
+ * Hit-testing order matches the renderer: ground cover draws below every actor,
+ * then furniture sorts by its footprint's bottom row with a left-edge tie-break.
+ * Ties keep the later record, because the renderer draws later records on top.
+ */
+function drawOrderKey(record) {
+  const size = homeItemSize(record?.itemId, record?.rot);
+  if (!size) return null;
+  return {
+    ground: Boolean(homeItem(record.itemId)?.ground),
+    bottom: Math.round(Number(record.y) || 0) + size.h - 1,
+    left: Math.round(Number(record.x) || 0)
+  };
+}
+
+function compareDrawOrder(a, b) {
+  if (a.ground !== b.ground) return a.ground ? -1 : 1;
+  if (a.bottom !== b.bottom) return a.bottom - b.bottom;
+  return a.left - b.left;
+}
+
+/** The record a click on this tile should act on, topmost in draw order. */
+export function homeItemAtTop(items, x, y) {
+  const tx = Math.round(Number(x));
+  const ty = Math.round(Number(y));
+  if (!Number.isFinite(tx) || !Number.isFinite(ty)) return null;
+  let best = null;
+  let bestKey = null;
+  for (const record of Array.isArray(items) ? items : []) {
+    if (!itemTiles(record).some(tile => tile.x === tx && tile.y === ty)) continue;
+    const key = drawOrderKey(record);
+    if (!key) continue;
+    if (!best || compareDrawOrder(bestKey, key) <= 0) {
+      best = record;
+      bestKey = key;
+    }
+  }
+  return best;
+}
+
+export const HOME_USE_KINDS = ['sit', 'sleep', 'toggle', 'recipe', 'look'];
+
+/**
+ * Resolve the card's primary action. `use` is authoritative; older records that
+ * only carry `interact` still map to a verb and kind instead of going silent.
+ */
+export function homeItemUse(itemId) {
+  const item = homeItem(itemId);
+  if (!item) return null;
+  const use = isRecord(item.use) ? item.use : {};
+  const interact = isRecord(item.interact) ? item.interact : {};
+  const kind = HOME_USE_KINDS.includes(use.kind)
+    ? use.kind
+    : (HOME_USE_KINDS.includes(interact.kind) ? interact.kind : 'look');
+  const fallbackVerb = kind === 'sit'
+    ? 'Sit'
+    : kind === 'sleep'
+      ? 'Sleep'
+      : kind === 'toggle'
+        ? 'Use'
+        : 'Look';
+  return {
+    kind,
+    verb: typeof use.verb === 'string' && use.verb ? use.verb : fallbackVerb,
+    line: typeof use.line === 'string' ? use.line : (typeof interact.line === 'string' ? interact.line : ''),
+    onLine: typeof use.onLine === 'string' ? use.onLine : (typeof interact.onLine === 'string' ? interact.onLine : ''),
+    offLine: typeof use.offLine === 'string' ? use.offLine : (typeof interact.offLine === 'string' ? interact.offLine : ''),
+    cue: typeof use.cue === 'string' ? use.cue : '',
+    recipe: isRecord(use.recipe) ? use.recipe : (isRecord(interact.recipe) ? interact.recipe : null)
+  };
+}
+
+/** Recipe requirement check against a basket of `{ apple, mushroom }` counts. */
+export function recipeStatus(recipe, basket = {}) {
+  const inputs = isRecord(recipe?.inputs) ? recipe.inputs : {};
+  const missing = [];
+  for (const [id, rawNeed] of Object.entries(inputs)) {
+    const need = Math.max(0, Math.round(Number(rawNeed) || 0));
+    if (!need) continue;
+    const have = Math.max(0, Math.round(Number(basket?.[id]) || 0));
+    if (have < need) missing.push({ id, need, have, short: need - have });
+  }
+  return {
+    ok: missing.length === 0,
+    missing,
+    output: typeof recipe?.output === 'string' && recipe.output ? recipe.output : null,
+    inputs
+  };
+}
+
+/** Consume a recipe from a basket; returns a new basket and leaves the old one alone. */
+export function consumeRecipe(basket = {}, recipe = null) {
+  const status = recipeStatus(recipe, basket);
+  if (!status.ok || !status.output) return { ...status, ok: false, basket };
+  const nextBasket = { ...(isRecord(basket) ? basket : {}) };
+  for (const [id, rawNeed] of Object.entries(status.inputs)) {
+    const need = Math.max(0, Math.round(Number(rawNeed) || 0));
+    if (!need) continue;
+    nextBasket[id] = Math.max(0, Math.round(Number(nextBasket[id]) || 0) - need);
+  }
+  return { ...status, ok: true, basket: nextBasket };
+}
+
+/** Flip one record's persisted switch; returns a new list plus the new state. */
+export function toggleHomeItem(items, uid) {
+  const list = Array.isArray(items) ? items : [];
+  let on = false;
+  let found = null;
+  const next = list.map(record => {
+    if (record?.uid !== uid) return record;
+    found = record;
+    on = record.on !== true;
+    return { ...record, on };
+  });
+  return { items: found ? next : list, on: found ? on : false, record: found };
+}
+
+export function setHomeItemOn(items, uid, on) {
+  const list = Array.isArray(items) ? items : [];
+  let found = null;
+  const next = list.map(record => {
+    if (record?.uid !== uid) return record;
+    found = record;
+    return { ...record, on: Boolean(on) };
+  });
+  return { items: found ? next : list, on: found ? Boolean(on) : false, record: found };
+}
+
+/** The posture a use implies, or null for a non-posture action. */
+export function homePoseForUse(itemId) {
+  const use = homeItemUse(itemId);
+  return use?.kind === 'sit' || use?.kind === 'sleep' ? use.kind : null;
+}
+
+/**
+ * Where the pose renders: the middle of the footprint, or its front seat row.
+ * The player's logical tile never changes, so collision stays untouched.
+ */
+export function homePoseAnchor(items, pose) {
+  const kind = pose?.kind;
+  if (kind !== 'sit' && kind !== 'sleep') return null;
+  const record = (Array.isArray(items) ? items : []).find(entry => entry?.uid === pose.uid);
+  const size = record ? homeItemSize(record.itemId, record.rot) : null;
+  if (!record || !size) return null;
+  const bottom = Math.round(Number(record.y) || 0) + size.h - 1;
+  return {
+    x: Math.round(Number(record.x) || 0) + (size.w - 1) / 2,
+    y: kind === 'sleep'
+      ? Math.round(Number(record.y) || 0) + Math.floor(size.h / 2)
+      : bottom,
+    // Depth key: the resting sprite draws just above the piece it rests on.
+    sortY: bottom + 0.55,
+    kind,
+    record
+  };
+}
+
+/**
+ * Action priority in Home, in the order the player expects it: an open
+ * conversation, an open player menu, the item being faced, the door, then the
+ * player menu itself.
+ */
+export function homeActionPriority({ dialogueOpen = false, menuOpen = false, facingItem = null, door = null } = {}) {
+  if (dialogueOpen) return 'dialogue';
+  if (menuOpen) return 'menu';
+  if (facingItem) return 'item';
+  if (door) return 'door';
+  return 'menu-open';
+}
+
+/** Player-facing copy for a placement refusal. */
+export function homeItemReasonText(reason) {
+  switch (reason) {
+    case 'outside-room': return 'that needs to stay inside the room.';
+    case 'door-lane': return 'keep the doorway clear.';
+    case 'occupied': return 'something else is already there.';
+    case 'player': return 'step off that tile first.';
+    case 'no-path': return 'the door needs a clear path.';
+    case 'unknown-item': return 'that piece is missing from the catalog.';
+    default: return 'that spot will not work.';
+  }
+}
+
 /** Move an existing record; returns a new list, or the original on a bad uid. */
 export function moveHomeItem(items, uid, x, y) {
   const list = Array.isArray(items) ? items : [];

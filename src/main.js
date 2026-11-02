@@ -43,13 +43,19 @@ import {
   selectHomeRoster
 } from './home.js';
 import {
-  BACKPACK_ITEM_IDS,
   blockedTiles,
   canPlaceHomeItem,
+  consumeRecipe,
   doorLaneTiles,
+  homeActionPriority,
   homeItem,
+  homeItemAtTop,
+  homeItemReasonText,
+  homeItemSize,
+  homeItemUse,
   loadHomeItems,
-  rugTiles
+  rugTiles,
+  toggleHomeItem
 } from './home_items.js';
 import { castVoice } from './voice/casting.js';
 import { VoiceEngine } from './voice/engine.js';
@@ -83,12 +89,14 @@ import { awardNpcGame } from './npc/game-rewards.js';
 import { autoEquipOwner } from './npc/loadout.js';
 import {
   basketSummary,
+  carryBasket,
   collectForageAt,
   createForageState,
   growForage,
   seedApples
 } from './forage.js';
 import { SoundBoard } from './audio.js';
+import { TILE } from './renderer.js';
 
 const MAX_NPCS = engineConfig.crowd.maxNpcs;
 const DEFAULT_CROWD = engineConfig.crowd.defaultCount;
@@ -146,6 +154,10 @@ let stripFlash = null;
 const activityHolds = new Set();
 /** Throttle for the activity HUD text, so we do not touch the DOM every frame. */
 let activityHudAt = 0;
+/** Open Home item card: the record uid plus the item id for its verb and icon. */
+let homeItemCard = null;
+/** Home Furnish mode: the selected record and its uncommitted draft placement. */
+let furnish = null;
 
 /** True while a session has taken over the whole canvas. */
 function isActivitySession() {
@@ -637,6 +649,7 @@ function tableGamesFor(opponent) {
 
 function openDialogue(npc) {
   if (!npc) return;
+  closeHomeItemCard();
   setVoiceVolumeOpen(false);
   dismissNpcWatchPrompt();
   panels?.closeAllPanels();
@@ -1098,6 +1111,14 @@ function handleActionKey(character) {
   if (dialogue?.isOpen() || (Date.now() - (dialogue?.justClosedAt || 0) < 300)) {
     return;
   }
+  // A pose is a rest state: the next action stands the player up or wakes them.
+  if (game?.player?.homePose) {
+    wakeHomePose();
+    return;
+  }
+  // An open item card owns Enter: its focused button receives the native click.
+  if (homeItemCard) return;
+  if (furnish) return;
   if (panels?.isMenuOpen?.()) {
     // Already in menu: trigger focused action
     panels.triggerFocusedAction();
@@ -1107,9 +1128,19 @@ function handleActionKey(character) {
     panels.closeAllPanels();
     return;
   }
-  // A door underfoot (or straight ahead) beats opening the menu.
+  // In Home the facing item beats the door; both beat opening the menu. This is
+  // the same order asserted by homeActionPriority().
+  const facing = currentLocationId === 'home' && game?.homeMode
+    ? facingTile(game.player, 1)
+    : null;
+  const facingRecord = facing ? homeItemAtTop(activeHomeItems(), facing.x, facing.y) : null;
   const door = doorNearPlayer();
-  if (door) {
+  const priority = homeActionPriority({ facingItem: facingRecord, door });
+  if (priority === 'item') {
+    openHomeItemCard(facingRecord);
+    return;
+  }
+  if (priority === 'door') {
     openTravelPrompt(door);
     return;
   }
@@ -1504,12 +1535,17 @@ function ensureGame() {
     game = new Game({
       canvas: $('world'),
       minimap: $('minimap'),
-      onSelect: character => panels?.showCard(character),
+      onSelect: character => {
+        if (character) closeHomeItemCard();
+        panels?.showCard(character);
+      },
       onToast: showToast,
       onDialogue: openDialogue,
       onActionKey: handleActionKey,
       onDoor: openTravelPrompt,
-      isMenuOpen: () => Boolean(panels?.isMenuOpen?.())
+      isMenuOpen: () => Boolean(panels?.isMenuOpen?.()),
+      onHomeItem: handleHomeItemClick,
+      onCanvasPointer: handleHomeCanvasPointer
     });
 
     bubbles = new SpeechBubbles({ getActor: resolveCharacter });
@@ -1534,6 +1570,7 @@ function ensureGame() {
 
     game.onFrame = () => {
       if (dialogue?.isOpen()) dialogue.updatePosition();
+      if (homeItemCard) positionHomeItemCard();
 
       const now = performance.now();
       const dtMs = lastFrameAt ? Math.max(0, Math.min(now - lastFrameAt, 80)) : 0;
@@ -1840,6 +1877,9 @@ function applyState(state) {
   prefetchedVoices.clear();
   spokenChatSeqs.clear();
   chatGate?.reset();
+  // A new world never inherits an item card or an uncommitted furnishing draft.
+  closeHomeItemCard();
+  endFurnish();
 
   const requested = typeof state.currentLocation === 'string' ? state.currentLocation : DEFAULT_LOCATION;
   const locationId = isLocationEnabled(requested) ? requested : DEFAULT_LOCATION;
@@ -2200,6 +2240,7 @@ function doorNearPlayer() {
 /** Ask before swapping worlds; door bumps and Enter on a door both land here. */
 function openTravelPrompt(door) {
   if (!door || !game?.player || !dialogue) return;
+  closeHomeItemCard();
   // Activity entrances start a session instead of swapping worlds.
   if (door.kind === 'activity') {
     if (!isActivityEnabled(door.activityId)) {
@@ -2263,11 +2304,20 @@ function travelTo(targetId) {
   refreshMiniGameFlags();
   bubbles?.clear();
   panels?.closeAllPanels();
+  cancelFurnish({ silent: true });
+  closeHomeItemCard();
+  wakeHomePose({ silent: true });
 
+  const carriedBasket = game.forage?.basket;
   captureLocation();
   captureCompanions();
   if (targetId === 'home' && !locationStates.home) {
-    locationStates.home = createHomeLocation({ basket: game.forage?.basket });
+    locationStates.home = createHomeLocation({ basket: carriedBasket });
+  }
+  // The basket travels with the player, so Park apples are bakeable at Home and
+  // a pie baked at Home spends the same count back in the Park.
+  if (locationStates[targetId]) {
+    locationStates[targetId] = carryBasket(locationStates[targetId], carriedBasket);
   }
 
   currentLocationId = targetId;
@@ -2295,106 +2345,420 @@ function travelTo(targetId) {
   return true;
 }
 
-/**
- * Home decor state for the backpack row. Null outside Home, so the row is
- * invisible in the Park and cannot collide with travel or a future activity HUD.
- *
- * The two legacy decor choices are ordinary `home.items` records now; this row
- * simply points at the rug and plant records that the furniture layout owns.
- */
-function homeDecorState() {
-  if (currentLocationId !== 'home' || !game?.player) return null;
-  const player = game.player;
-  const homeDef = locationDef('home');
-  const lane = doorLaneTiles({ house: homeDef?.house, door: homeDef?.door });
-  const onFloor = (game.homeRoomTiles || []).some(tile => tile.x === player.x && tile.y === player.y)
-    && !lane.has(`${player.x},${player.y}`);
-  const records = Array.isArray(game.homeItems) ? game.homeItems : [];
-  const placed = records.find(record => BACKPACK_ITEM_IDS.includes(record.itemId)) || null;
-
-  return {
-    canPlace: onFloor,
-    items: BACKPACK_ITEM_IDS.map(id => {
-      const item = homeItem(id);
-      const record = records.find(entry => entry.itemId === id) || null;
-      return {
-        id,
-        label: item?.label || id,
-        icon: item?.icon || '•',
-        kind: item?.shape || id,
-        active: Boolean(record),
-        here: Boolean(record && record.x === player.x && record.y === player.y)
-      };
-    }),
-    placed: placed ? { ...placed, id: placed.itemId } : null
-  };
+/** The live Home furniture records; always an array. */
+function activeHomeItems() {
+  return Array.isArray(game?.homeItems) ? game.homeItems : [];
 }
 
-/** Place or move the rug/plant item at the player's feet. */
-function placeHomeDecor(itemId) {
-  if (currentLocationId !== 'home' || !game?.player) return false;
-  const item = homeItem(itemId);
-  if (!item?.backpack) return false;
-  const player = game.player;
-  const homeDef = locationDef('home');
-  const records = Array.isArray(game.homeItems) ? game.homeItems : [];
-  const existing = records.find(record => record.itemId === itemId) || null;
-
-  if (existing && existing.x === player.x && existing.y === player.y) {
-    showToast(`The ${item.label} is already here.`);
-    return false;
+/**
+ * Commit a furniture list to the live room and rebuild the derived sets every
+ * walker and buddy reads. Moving furniture stands sitting buddies up.
+ */
+function applyHomeItems(nextItems, { standBuddies = false } = {}) {
+  if (!game) return;
+  game.homeItems = Array.isArray(nextItems) ? nextItems : [];
+  if (currentLocationId === 'home') {
+    game.homeBlockedTiles = blockedTiles(game.homeItems);
+    game.homeRugTiles = rugTiles(game.homeItems);
   }
-
-  const placement = canPlaceHomeItem({
-    items: records,
-    itemId,
-    x: player.x,
-    y: player.y,
-    rot: existing?.rot || 0,
-    roomTiles: game.homeRoomTiles || [],
-    house: homeDef?.house,
-    door: homeDef?.door,
-    terrain: game.terrain,
-    uid: existing?.uid || null,
-    player,
-    allowPlayer: true
-  });
-  if (!placement.ok) {
-    showToast(placement.reason === 'door-lane'
-      ? 'Keep the doorway clear.'
-      : 'Stand on open floor inside to place that.');
-    return false;
-  }
-
-  let nextItems;
-  if (existing) {
-    nextItems = records.map(record => (
-      record.uid === existing.uid ? { ...record, x: player.x, y: player.y } : record
-    ));
-  } else {
-    const count = records.filter(record => record.itemId === itemId).length;
-    nextItems = [...records, {
-      uid: `home_${itemId}_${count + 1}`,
-      itemId,
-      x: player.x,
-      y: player.y,
-      rot: 0,
-      variant: 0,
-      on: false
-    }];
-  }
-
-  game.homeItems = nextItems;
-  game.homeBlockedTiles = blockedTiles(nextItems);
-  game.homeRugTiles = rugTiles(nextItems);
+  if (!standBuddies) return;
   for (const buddy of game.homeBuddies || []) {
     if (buddy.pose !== 'sit') continue;
     buddy.pose = 'stand';
     buddy.sitTimer = 0;
     buddy.timer = 0.4;
   }
+}
+
+function homeItemRecord(uid) {
+  return activeHomeItems().find(record => record?.uid === uid) || null;
+}
+
+function variantLabel(item, index) {
+  const entry = Array.isArray(item?.variants) ? item.variants[index] : null;
+  return entry?.label || 'plain';
+}
+
+/**
+ * Backpack furnishing list: every placed piece, plus the live draft when Furnish
+ * mode is on. Null outside Home so the section never appears in the Park.
+ */
+function homeFurnishState() {
+  if (currentLocationId !== 'home' || !game?.player) return null;
+  return {
+    active: Boolean(furnish),
+    uid: furnish?.uid || null,
+    moving: furnish ? (homeItem(furnish.itemId)?.label || furnish.itemId) : '',
+    hint: furnish
+      ? 'arrows move · R rotates · C recolours · Enter places · Esc cancels'
+      : 'pick a piece to move, or tap one in the room',
+    items: activeHomeItems().map(record => {
+      const item = homeItem(record.itemId);
+      return {
+        uid: record.uid,
+        itemId: record.itemId,
+        label: item?.label || record.itemId,
+        icon: item?.icon || '•',
+        zone: item?.zone || '',
+        note: `${variantLabel(item, record.variant)} · x${record.x} y${record.y}${record.on ? ' · on' : ''}`
+      };
+    })
+  };
+}
+
+/** Validate the current draft against walls, furniture, the player, and the door path. */
+function validateFurnish() {
+  if (!furnish || !game?.player) return null;
+  const homeDef = locationDef('home');
+  const placement = canPlaceHomeItem({
+    items: activeHomeItems(),
+    itemId: furnish.itemId,
+    x: furnish.draft.x,
+    y: furnish.draft.y,
+    rot: furnish.draft.rot,
+    roomTiles: game.homeRoomTiles || [],
+    house: homeDef?.house,
+    door: homeDef?.door,
+    terrain: game.terrain,
+    uid: furnish.uid,
+    player: game.player
+  });
+  furnish.reason = placement.ok ? null : placement.reason;
+  if (game.homeDraft) {
+    game.homeDraft = {
+      ...game.homeDraft,
+      ...furnish.draft,
+      reason: furnish.reason
+    };
+  }
+  refreshFurnishHud();
+  return placement;
+}
+
+/** Small screen-space banner while a piece is being moved. */
+function refreshFurnishHud() {
+  const hud = $('furnish-hud');
+  if (!hud) return;
+  hud.hidden = !furnish;
+  if (!furnish) return;
+  const item = homeItem(furnish.itemId);
+  const title = $('furnish-title');
+  if (title) title.textContent = `moving ${item?.label || furnish.itemId}`;
+  const note = $('furnish-note');
+  if (note) {
+    note.textContent = furnish.reason
+      ? `cannot place: ${homeItemReasonText(furnish.reason)}`
+      : `${variantLabel(item, furnish.draft.variant)} · x${furnish.draft.x} y${furnish.draft.y} · tap a spot to move it`;
+  }
+  const place = $('furnish-place');
+  if (place) place.disabled = Boolean(furnish.reason);
+}
+
+/** Leave Furnish mode, restoring normal clicks. The record was never touched. */
+function endFurnish() {
+  if (!furnish) return false;
+  furnish = null;
+  if (game) game.homeDraft = null;
+  refreshFurnishHud();
+  panels?.renderInventory?.();
+  return true;
+}
+
+function cancelFurnish({ silent = false } = {}) {
+  if (!furnish) return false;
+  const label = homeItem(furnish.itemId)?.label || furnish.itemId;
+  endFurnish();
+  if (!silent) showToast(`Left the ${label} where it was.`);
+  return true;
+}
+
+/** Enter Furnish with a placed piece selected (card Move, or the Backpack list). */
+function startFurnish(target) {
+  if (currentLocationId !== 'home' || !game?.player) return false;
+  const record = typeof target === 'string' ? homeItemRecord(target) : target;
+  const item = record ? homeItem(record.itemId) : null;
+  if (!record?.uid || !item) return false;
+  closeHomeItemCard();
+  panels?.closeAllPanels();
+  wakeHomePose({ silent: true });
+
+  furnish = {
+    uid: record.uid,
+    itemId: record.itemId,
+    draft: {
+      x: record.x,
+      y: record.y,
+      rot: record.rot,
+      variant: record.variant,
+      on: record.on === true
+    },
+    reason: null
+  };
+  game.homeDraft = { ...furnish.draft, uid: furnish.uid, itemId: furnish.itemId, reason: null };
+  game.player.path = [];
+  game.destination = null;
+  game.heldKeys = [];
+  validateFurnish();
+  panels?.renderInventory?.();
+  showToast(`Moving the ${item.label}. Arrows move, R rotates, C recolours, Enter places.`);
+  return true;
+}
+
+function moveFurnishBy(dx, dy) {
+  if (!furnish) return false;
+  furnish.draft = {
+    ...furnish.draft,
+    x: furnish.draft.x + dx,
+    y: furnish.draft.y + dy
+  };
+  validateFurnish();
+  return true;
+}
+
+/** A tap places the footprint's centre under the tapped tile. */
+function moveFurnishTo(tileX, tileY) {
+  if (!furnish) return false;
+  const size = homeItemSize(furnish.itemId, furnish.draft.rot);
+  if (!size) return false;
+  furnish.draft = {
+    ...furnish.draft,
+    x: Math.round(tileX) - Math.floor((size.w - 1) / 2),
+    y: Math.round(tileY) - Math.floor((size.h - 1) / 2)
+  };
+  validateFurnish();
+  return true;
+}
+
+function rotateFurnish() {
+  if (!furnish) return false;
+  furnish.draft = { ...furnish.draft, rot: (furnish.draft.rot + 1) % 4 };
+  validateFurnish();
+  return true;
+}
+
+function cycleFurnishVariant() {
+  if (!furnish) return false;
+  const item = homeItem(furnish.itemId);
+  const count = Array.isArray(item?.variants) ? item.variants.length : 0;
+  if (!count) return false;
+  furnish.draft = { ...furnish.draft, variant: (furnish.draft.variant + 1) % count };
+  if (game.homeDraft) game.homeDraft = { ...game.homeDraft, ...furnish.draft };
+  refreshFurnishHud();
+  return true;
+}
+
+function placeFurnish() {
+  if (!furnish) return false;
+  const placement = validateFurnish();
+  if (!placement?.ok) {
+    showToast(`Cannot place there: ${homeItemReasonText(furnish.reason)}`);
+    return false;
+  }
+  const label = homeItem(furnish.itemId)?.label || furnish.itemId;
+  const draft = furnish.draft;
+  const nextItems = activeHomeItems().map(record => (
+    record.uid === furnish.uid
+      ? { ...record, x: draft.x, y: draft.y, rot: draft.rot, variant: draft.variant }
+      : record
+  ));
+  applyHomeItems(nextItems, { standBuddies: true });
+  endFurnish();
+  sounds.play('place');
   saveNow();
-  showToast(`Placed the ${item.label}.`);
+  showToast(`Placed the ${label}.`);
+  return true;
+}
+
+// --- Home item card -------------------------------------------------------
+
+function homeItemCardRecord() {
+  return homeItemCard ? homeItemRecord(homeItemCard.uid) : null;
+}
+
+function cardStatusText(record, use) {
+  if (!record || !use) return '';
+  if (use.kind === 'toggle') return record.on === true ? 'on' : 'off';
+  if (use.kind === 'recipe') {
+    const need = Number(use.recipe?.inputs?.apple) || 0;
+    const have = Number(game?.forage?.basket?.apple) || 0;
+    return `needs ${need} apples · basket has ${have}`;
+  }
+  return '';
+}
+
+/** Anchor the card beside the item's footprint, clamped away from HUD and touch pad. */
+function positionHomeItemCard() {
+  const card = $('home-item-card');
+  const record = homeItemCardRecord();
+  if (!card || !record || !game?.camera) return;
+  if (card.hidden) return;
+  const size = homeItemSize(record.itemId, record.rot);
+  if (!size) return;
+  const left = record.x * TILE - game.camera.x;
+  const top = record.y * TILE - game.camera.y;
+  const width = size.w * TILE;
+  const height = size.h * TILE;
+  const viewWidth = window.innerWidth;
+  const viewHeight = window.innerHeight;
+  const cardWidth = card.offsetWidth || 208;
+  const cardHeight = card.offsetHeight || 120;
+  const margin = 8;
+  const lotTop = 64;
+  const coarse = window.matchMedia?.('(pointer: coarse)').matches || viewWidth <= 768;
+  const bottomInset = coarse ? 196 : 12;
+  let cardTop = top - cardHeight - 10;
+  if (cardTop < lotTop) cardTop = top + height + 10;
+  const cardLeft = Math.max(
+    margin,
+    Math.min(left + width / 2 - cardWidth / 2, viewWidth - cardWidth - margin)
+  );
+  cardTop = Math.max(lotTop, Math.min(cardTop, viewHeight - cardHeight - bottomInset));
+  card.style.left = `${Math.round(cardLeft)}px`;
+  card.style.top = `${Math.round(cardTop)}px`;
+}
+
+function openHomeItemCard(record) {
+  if (!record?.uid || currentLocationId !== 'home' || furnish) return false;
+  const item = homeItem(record.itemId);
+  const use = homeItemUse(record.itemId);
+  if (!item || !use) return false;
+  panels?.closeAllPanels();
+  if (game.player?.path?.length) game.player.path = [];
+  game.destination = null;
+
+  homeItemCard = { uid: record.uid, itemId: record.itemId };
+  $('home-item-icon').textContent = item.icon || '•';
+  $('home-item-name').textContent = item.label || record.itemId;
+  $('home-item-use').textContent = use.verb;
+  const status = $('home-item-status');
+  const statusText = cardStatusText(record, use);
+  status.textContent = statusText;
+  status.hidden = !statusText;
+  const card = $('home-item-card');
+  card.hidden = false;
+  positionHomeItemCard();
+  $('home-item-use')?.focus?.({ preventScroll: true });
+  return true;
+}
+
+function closeHomeItemCard() {
+  if (!homeItemCard) return false;
+  homeItemCard = null;
+  const card = $('home-item-card');
+  if (card) card.hidden = true;
+  return true;
+}
+
+function recipeShortText(status) {
+  const parts = (status?.missing || []).map(entry => {
+    const name = entry.id === 'apple' ? 'apples' : `${entry.id}s`;
+    return `${entry.need} ${name} (you have ${entry.have})`;
+  });
+  return `the recipe needs ${parts.join(' and ') || 'more ingredients'}.`;
+}
+
+/** Primary card action, dispatched by the data-driven `use.kind`. */
+function useHomeItem() {
+  const record = homeItemCardRecord();
+  if (!record) {
+    closeHomeItemCard();
+    return false;
+  }
+  const item = homeItem(record.itemId);
+  const use = homeItemUse(record.itemId);
+  const label = item?.label || record.itemId;
+
+  if (use?.kind === 'sit' || use?.kind === 'sleep') {
+    // Using the same piece again stands the player up or wakes them.
+    if (game.player?.homePose?.uid === record.uid) {
+      wakeHomePose();
+      closeHomeItemCard();
+      return true;
+    }
+    if (!game.setHomePose?.(use.kind, record.uid)) return false;
+    closeHomeItemCard();
+    showToast(use.line || (use.kind === 'sleep' ? `you curl up on the ${label}.` : `you sit on the ${label}.`));
+    return true;
+  }
+
+  if (use?.kind === 'recipe') {
+    const result = consumeRecipe(game.forage?.basket, use.recipe);
+    if (!result.ok) {
+      showToast(recipeShortText(result));
+      return false;
+    }
+    if (game.forage) game.forage.basket = result.basket;
+    const baked = result.output ? createItemInstance(result.output) : null;
+    if (baked) {
+      if (!Array.isArray(game.player.inventory)) game.player.inventory = [];
+      game.player.inventory.push(baked);
+    }
+    sounds.play('pickup');
+    closeHomeItemCard();
+    panels?.renderInventory?.();
+    saveNow();
+    showToast(`Baked an apple pie. ${result.basket.apple} apples left in the basket.`);
+    return true;
+  }
+
+  if (use?.kind === 'toggle') {
+    const result = toggleHomeItem(activeHomeItems(), record.uid);
+    if (!result.record) return false;
+    applyHomeItems(result.items);
+    if (result.on && use.cue) sounds.play(use.cue);
+    saveNow();
+    showToast(result.on
+      ? (use.onLine || `the ${label} turns on.`)
+      : (use.offLine || `the ${label} turns off.`));
+    // Keep the card open so on/off can be checked without reopening it.
+    const updated = homeItemCardRecord();
+    const status = $('home-item-status');
+    const statusText = cardStatusText(updated, use);
+    if (status) {
+      status.textContent = statusText;
+      status.hidden = !statusText;
+    }
+    return true;
+  }
+
+  showToast(use?.line || `the ${label} is quiet.`);
+  closeHomeItemCard();
+  return false;
+}
+
+/** Stand up or wake; movement, Escape, and Use all land here. */
+function wakeHomePose({ silent = false } = {}) {
+  const pose = game?.player?.homePose;
+  if (!pose) return false;
+  game.clearHomePose?.();
+  if (!silent) showToast(pose.kind === 'sleep' ? 'you wake up.' : 'you stand up.');
+  return true;
+}
+
+/** Canvas click on a Home item: open its card. Null means "clicked the floor". */
+function handleHomeItemClick(record) {
+  if (currentLocationId !== 'home' || furnish) return false;
+  if (!record) {
+    closeHomeItemCard();
+    return false;
+  }
+  return openHomeItemCard(record);
+}
+
+/**
+ * Furnish owns canvas clicks while it is on: pick another piece, or drop the
+ * draft under the tapped tile. Returning true stops Game's normal walk/select.
+ */
+function handleHomeCanvasPointer(event, point) {
+  if (!furnish || !game) return false;
+  if (event?.target && event.target !== game.canvas) return false;
+  const record = homeItemAtTop(activeHomeItems(), point.tileX, point.tileY);
+  if (record && record.uid !== furnish.uid) {
+    startFurnish(record);
+    return true;
+  }
+  if (record && record.uid === furnish.uid) return true;
+  moveFurnishTo(point.tileX, point.tileY);
   return true;
 }
 
@@ -2697,6 +3061,72 @@ function bindEvents() {
   $('npc-shuffle').addEventListener('click', rerollCardCharacter);
   $('npc-remove').addEventListener('click', removeCardCharacter);
 
+  // Home item card. The card closes on click-away and Escape; the canvas owns
+  // its own click resolution so another item can replace the card in one tap.
+  $('home-item-use')?.addEventListener('click', useHomeItem);
+  $('home-item-move')?.addEventListener('click', () => {
+    const record = homeItemCardRecord();
+    if (record) startFurnish(record);
+  });
+  $('home-item-close')?.addEventListener('click', () => closeHomeItemCard());
+  document.addEventListener('pointerdown', event => {
+    if (!homeItemCard) return;
+    const card = $('home-item-card');
+    if (!card || card.hidden || card.contains(event.target)) return;
+    if (game?.canvas?.contains(event.target)) return;
+    closeHomeItemCard();
+  });
+
+  // Furnish HUD buttons mirror the keyboard hints for mouse and touch users.
+  $('furnish-rotate')?.addEventListener('click', rotateFurnish);
+  $('furnish-variant')?.addEventListener('click', cycleFurnishVariant);
+  $('furnish-place')?.addEventListener('click', placeFurnish);
+  $('furnish-cancel')?.addEventListener('click', () => cancelFurnish());
+
+  // Furnish owns the keyboard while it is on. Capture phase beats the canvas
+  // movement handler and the app's other global shortcuts.
+  window.addEventListener('keydown', event => {
+    if (!furnish) return;
+    if (event.target instanceof HTMLElement
+      && event.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+    if (event.target instanceof HTMLElement
+      && event.target.closest('button')
+      && (event.key === 'Enter' || event.key === ' ')) return;
+    const key = event.key;
+    const lower = key.toLowerCase();
+    let handled = true;
+    if (key === 'Escape') cancelFurnish();
+    else if (key === 'Enter' || key === ' ') placeFurnish();
+    else if (lower === 'r') rotateFurnish();
+    else if (lower === 'c') cycleFurnishVariant();
+    else if (key === 'ArrowUp' || lower === 'w') moveFurnishBy(0, -1);
+    else if (key === 'ArrowDown' || lower === 's') moveFurnishBy(0, 1);
+    else if (key === 'ArrowLeft' || lower === 'a') moveFurnishBy(-1, 0);
+    else if (key === 'ArrowRight' || lower === 'd') moveFurnishBy(1, 0);
+    else handled = false;
+    if (!handled) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }, true);
+
+  window.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    if (furnish) {
+      event.preventDefault();
+      cancelFurnish();
+      return;
+    }
+    if (homeItemCard) {
+      event.preventDefault();
+      closeHomeItemCard();
+      return;
+    }
+    if (game?.player?.homePose) {
+      event.preventDefault();
+      wakeHomePose();
+    }
+  });
+
   // Mobile / touch screen virtual d-pad & action buttons
   const simulateKey = (key, type = 'keydown') => {
     const event = new KeyboardEvent(type, {
@@ -2892,8 +3322,9 @@ function boot() {
       panels?.closeMenu();
       return travelTo(targetId);
     },
-    getDecor: homeDecorState,
-    onPlaceDecor: placeHomeDecor,
+    getFurnish: homeFurnishState,
+    onFurnishSelect: uid => startFurnish(uid),
+    onFurnishStop: () => cancelFurnish(),
     onSelect: character => panels?.showCard(character),
     onAddNeighbour: addNeighbour,
     onNewPark: () => {

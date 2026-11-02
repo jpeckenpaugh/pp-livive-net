@@ -71,6 +71,15 @@
       "notes": [
         { "freq": 180, "ms": 160, "wave": "sawtooth", "gain": 0.28 }
       ]
+    },
+    "radio-tune": {
+      "notes": [
+        { "at": 0, "freq": 587, "ms": 90, "wave": "square", "gain": 0.32 },
+        { "at": 90, "freq": 784, "ms": 90, "wave": "square", "gain": 0.32 },
+        { "at": 180, "freq": 659, "ms": 90, "wave": "square", "gain": 0.3 },
+        { "at": 270, "freq": 988, "ms": 130, "wave": "square", "gain": 0.3 },
+        { "at": 400, "freq": 784, "ms": 220, "wave": "square", "gain": 0.26 }
+      ]
     }
   }
 }

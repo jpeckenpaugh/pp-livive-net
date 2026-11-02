@@ -235,3 +235,19 @@ export function basketSummary(state) {
     }
   };
 }
+
+/**
+ * Copy a carried basket into a location record before arrivals. The basket is
+ * shared across locations, so apples picked in the Park are bakeable at Home and
+ * a pie baked at Home leaves the same count when you walk back out.
+ */
+export function carryBasket(record, basket) {
+  if (!isObject(record)) return record;
+  return {
+    ...record,
+    forage: {
+      ...(isObject(record.forage) ? record.forage : {}),
+      basket: normalizeBasket(basket)
+    }
+  };
+}

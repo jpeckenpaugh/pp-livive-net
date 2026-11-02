@@ -16,6 +16,7 @@
         { "id": "cool", "label": "cool", "colors": { "base": "#5e7280", "accent": "#8fa7b8" } }
       ],
       "interact": { "kind": "sit", "line": "you sink into the couch." },
+      "use": { "verb": "Sit", "kind": "sit", "line": "you sink into the couch." },
       "tier": 1,
       "price": 0
     },
@@ -34,6 +35,7 @@
         { "id": "cool", "label": "cool", "colors": { "base": "#66707a", "accent": "#93a2ae" } }
       ],
       "interact": { "kind": "sit", "line": "the armchair hugs you back." },
+      "use": { "verb": "Sit", "kind": "sit", "line": "the armchair hugs you back." },
       "tier": 1,
       "price": 0
     },
@@ -52,6 +54,7 @@
         { "id": "cool", "label": "cool", "colors": { "base": "#6f6357", "accent": "#9d8f7d" } }
       ],
       "interact": { "kind": "look", "line": "the coffee table is clear." },
+      "use": { "verb": "Look", "kind": "look", "line": "the coffee table is clear." },
       "tier": 1,
       "price": 0
     },
@@ -72,6 +75,12 @@
       "interact": {
         "kind": "toggle",
         "line": "the tv is off.",
+        "onLine": "the tv crackles to life.",
+        "offLine": "the tv goes quiet."
+      },
+      "use": {
+        "verb": "Watch",
+        "kind": "toggle",
         "onLine": "the tv crackles to life.",
         "offLine": "the tv goes quiet."
       },
@@ -98,6 +107,13 @@
         "onLine": "the radio plays a little jingle.",
         "offLine": "the radio clicks off."
       },
+      "use": {
+        "verb": "Play a tune",
+        "kind": "toggle",
+        "cue": "radio-tune",
+        "onLine": "the radio plays a little jingle.",
+        "offLine": "the radio clicks off."
+      },
       "tier": 1,
       "price": 0
     },
@@ -121,6 +137,12 @@
         "onLine": "a warm glow fills the room.",
         "offLine": "the room dims again."
       },
+      "use": {
+        "verb": "Light",
+        "kind": "toggle",
+        "onLine": "a warm glow fills the room.",
+        "offLine": "the room dims again."
+      },
       "tier": 1,
       "price": 0
     },
@@ -139,6 +161,7 @@
         { "id": "cool", "label": "cool", "colors": { "base": "#5d5a4f", "accent": "#aeb6a8" } }
       ],
       "interact": { "kind": "look", "line": "the shelves are full of borrowed books." },
+      "use": { "verb": "Read", "kind": "look", "line": "the shelves are full of borrowed books." },
       "tier": 1,
       "price": 0
     },
@@ -159,6 +182,7 @@
         { "id": "cool", "label": "cool", "colors": { "base": "#7f7f9a", "accent": "#c9c9e4" } }
       ],
       "interact": null,
+      "use": { "verb": "Look", "kind": "look", "line": "the rug is soft underfoot." },
       "tier": 1,
       "price": 0
     },
@@ -178,6 +202,7 @@
         { "id": "cool", "label": "cool", "colors": { "base": "#5f9f8f", "accent": "#6f8fa8" } }
       ],
       "interact": { "kind": "look", "line": "the plant looks happy here." },
+      "use": { "verb": "Water", "kind": "look", "line": "the plant looks happy here." },
       "tier": 1,
       "price": 0
     },
@@ -196,6 +221,7 @@
         { "id": "cool", "label": "cool", "colors": { "base": "#cfdae4", "accent": "#93a9bd" } }
       ],
       "interact": { "kind": "look", "line": "the fridge hums." },
+      "use": { "verb": "Open", "kind": "look", "line": "the fridge hums." },
       "tier": 1,
       "price": 0
     },
@@ -214,6 +240,11 @@
         { "id": "cool", "label": "cool", "colors": { "base": "#3f4a55", "accent": "#b4c4d0" } }
       ],
       "interact": { "kind": "look", "line": "the stove is cold." },
+      "use": {
+        "verb": "Bake a pie",
+        "kind": "recipe",
+        "recipe": { "inputs": { "apple": 3 }, "output": "apple-pie" }
+      },
       "tier": 1,
       "price": 0
     },
@@ -232,6 +263,7 @@
         { "id": "cool", "label": "cool", "colors": { "base": "#8f948f", "accent": "#c9cfc7" } }
       ],
       "interact": { "kind": "look", "line": "the counter is tidy." },
+      "use": { "verb": "Look", "kind": "look", "line": "the counter is tidy." },
       "tier": 1,
       "price": 0
     },
@@ -250,6 +282,7 @@
         { "id": "cool", "label": "cool", "colors": { "base": "#6d6256", "accent": "#9c9080" } }
       ],
       "interact": { "kind": "look", "line": "the table is set for two." },
+      "use": { "verb": "Look", "kind": "look", "line": "the table is set for two." },
       "tier": 1,
       "price": 0
     },
@@ -268,6 +301,7 @@
         { "id": "cool", "label": "cool", "colors": { "base": "#5f6a72", "accent": "#8f9da8" } }
       ],
       "interact": { "kind": "sit", "line": "you perch on the chair." },
+      "use": { "verb": "Sit", "kind": "sit", "line": "you perch on the chair." },
       "tier": 1,
       "price": 0
     },
@@ -286,6 +320,7 @@
         { "id": "cool", "label": "cool", "colors": { "base": "#5d7285", "accent": "#e2e7ec" } }
       ],
       "interact": { "kind": "sleep", "line": "you flop onto the bed." },
+      "use": { "verb": "Sleep", "kind": "sleep", "line": "you flop onto the bed." },
       "tier": 1,
       "price": 0
     },
@@ -304,6 +339,7 @@
         { "id": "cool", "label": "cool", "colors": { "base": "#5c5a51", "accent": "#9ea598" } }
       ],
       "interact": { "kind": "look", "line": "the nightstand holds a spare key." },
+      "use": { "verb": "Look", "kind": "look", "line": "the nightstand holds a spare key." },
       "tier": 1,
       "price": 0
     },
@@ -322,6 +358,7 @@
         { "id": "cool", "label": "cool", "colors": { "base": "#5c5a51", "accent": "#9ea598" } }
       ],
       "interact": { "kind": "look", "line": "the dresser drawers are shut." },
+      "use": { "verb": "Look", "kind": "look", "line": "the dresser drawers are shut." },
       "tier": 1,
       "price": 0
     }

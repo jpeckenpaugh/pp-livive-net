@@ -48,6 +48,32 @@
     </div>
     <p id="home-note" class="home-note" role="status" aria-live="polite" hidden></p>
 
+    <aside id="home-item-card" class="home-item-card" hidden role="dialog" aria-labelledby="home-item-name">
+      <div class="home-item-head">
+        <span id="home-item-icon" class="home-item-icon" aria-hidden="true">🛏️</span>
+        <strong id="home-item-name">bed</strong>
+      </div>
+      <p id="home-item-status" class="home-item-status" hidden></p>
+      <div class="home-item-actions">
+        <button id="home-item-use" class="pill primary" type="button">Sleep</button>
+      </div>
+      <div class="home-item-actions secondary">
+        <button id="home-item-move" class="pill" type="button">Move</button>
+        <button id="home-item-close" class="pill quiet" type="button">Close</button>
+      </div>
+    </aside>
+
+    <div id="furnish-hud" class="furnish-hud" hidden role="group" aria-label="Furnish mode">
+      <strong id="furnish-title">moving</strong>
+      <span id="furnish-note"></span>
+      <div class="furnish-actions">
+        <button id="furnish-rotate" class="pill" type="button">Rotate (R)</button>
+        <button id="furnish-variant" class="pill" type="button">Recolour (C)</button>
+        <button id="furnish-place" class="pill primary" type="button">Place (Enter)</button>
+        <button id="furnish-cancel" class="pill quiet" type="button">Cancel (Esc)</button>
+      </div>
+    </div>
+
     <aside id="npc-card" class="npc-card" hidden aria-live="polite">
       <button id="npc-close" class="icon-button close" type="button" aria-label="Close character card">×</button>
       <div class="npc-card-preview"><img id="npc-avatar" alt=""></div>

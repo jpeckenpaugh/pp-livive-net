@@ -438,8 +438,9 @@ export class PanelsUI {
     onSound,
     getTravel,
     onTravel,
-    getDecor,
-    onPlaceDecor
+    getFurnish,
+    onFurnishSelect,
+    onFurnishStop
   }) {
     this.getGame = getGame;
     this.getFriends = getFriends;
@@ -479,8 +480,9 @@ export class PanelsUI {
     this.onSound = onSound;
     this.getTravel = getTravel;
     this.onTravel = onTravel;
-    this.getDecor = getDecor;
-    this.onPlaceDecor = onPlaceDecor;
+    this.getFurnish = getFurnish;
+    this.onFurnishSelect = onFurnishSelect;
+    this.onFurnishStop = onFurnishStop;
     this.cardCharacter = null;
     this.lastNpcCharacter = null;
     this.tradeOffer = null;
@@ -861,22 +863,38 @@ export class PanelsUI {
       list.append(travelRow);
     }
 
-    // Home decor row: two one-click choices, visible only in Home. Keeping it
-    // inside the backpack list means it never competes with travel or a future
-    // activity HUD for screen space.
-    const decor = this.getDecor?.() || null;
-    if (decor?.items?.length) {
+    // Home furnishing: every placed piece is listed here, so a bed tucked
+    // behind the sofa is still selectable. The card's Move button and these rows
+    // are two paths into the same Furnish mode.
+    const furnishing = this.getFurnish?.() || null;
+    if (furnishing?.items?.length) {
       const header = document.createElement('p');
       header.className = 'panel-note';
       header.style.margin = '10px 0 6px';
-      header.textContent = decor.canPlace
-        ? 'Home decor · place at your feet'
-        : 'Home decor · stand on the floor inside';
+      header.textContent = furnishing.active
+        ? `Furnishing · moving ${furnishing.moving}`
+        : 'Home furnishing · pick a piece to move';
       list.append(header);
 
-      for (const item of decor.items) {
+      const hint = document.createElement('p');
+      hint.className = 'panel-note';
+      hint.style.margin = '0 0 6px';
+      hint.textContent = furnishing.hint;
+      list.append(hint);
+
+      if (furnishing.active) {
+        const stop = document.createElement('button');
+        stop.type = 'button';
+        stop.className = 'pill quiet furnish-stop';
+        stop.textContent = 'Stop furnishing';
+        stop.addEventListener('click', () => this.onFurnishStop?.());
+        list.append(stop);
+      }
+
+      for (const item of furnishing.items) {
         const row = document.createElement('div');
-        row.className = 'friend-row travel-row decor-row';
+        row.className = 'friend-row travel-row furnish-row';
+        if (item.uid === furnishing.uid) row.classList.add('nav-focused');
         row.setAttribute('role', 'listitem');
         row.tabIndex = 0;
 
@@ -889,23 +907,20 @@ export class PanelsUI {
         const name = document.createElement('strong');
         name.textContent = item.label;
         const note = document.createElement('small');
-        if (item.active && item.here) note.textContent = 'Placed here';
-        else if (item.active) note.textContent = 'Click to move here';
-        else if (decor.placed) note.textContent = 'Click to swap in';
-        else note.textContent = 'Click to place here';
+        note.textContent = item.note;
         copy.append(name, note);
         row.append(icon, copy);
 
-        const place = () => {
+        const select = () => {
           this.closeMenu();
-          this.onPlaceDecor?.(item.id);
+          this.onFurnishSelect?.(item.uid);
         };
-        row.addEventListener('click', place);
+        row.addEventListener('click', select);
         row.addEventListener('keydown', event => {
           if (event.key !== 'Enter' && event.key !== ' ') return;
           event.preventDefault();
           event.stopPropagation();
-          place();
+          select();
         });
         list.append(row);
       }

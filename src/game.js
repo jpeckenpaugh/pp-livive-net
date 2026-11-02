@@ -19,7 +19,7 @@ import {
 import { resolveFx } from './effects.js';
 import { focusOptionsFor, focusPointFor } from './camera-focus.js';
 import { tickHomeBuddy } from './home.js';
-import { blockedTiles as homeFurnitureBlockedTiles } from './home_items.js';
+import { blockedTiles as homeFurnitureBlockedTiles, homeItemAtTop } from './home_items.js';
 import engineConfig from '../data/engine_config.json' with { type: 'json' };
 
 export {
@@ -232,7 +232,18 @@ export function frameDelta(now, last, max = 0.05) {
 }
 
 export class Game {
-  constructor({ canvas, minimap, onSelect, onToast, onDialogue, onActionKey, onDoor, isMenuOpen } = {}) {
+  constructor({
+    canvas,
+    minimap,
+    onSelect,
+    onToast,
+    onDialogue,
+    onActionKey,
+    onDoor,
+    isMenuOpen,
+    onHomeItem,
+    onCanvasPointer
+  } = {}) {
     this.canvas = canvas;
     this.renderer = new WorldRenderer({ canvas, minimap });
     this.onSelect = onSelect || (() => {});
@@ -241,6 +252,8 @@ export class Game {
     this.onActionKey = onActionKey || (() => {});
     this.onDoor = onDoor || (() => {});
     this.isMenuOpen = isMenuOpen || (() => false);
+    this.onHomeItem = onHomeItem || (() => {});
+    this.onCanvasPointer = onCanvasPointer || (() => false);
 
     this.terrain = null;
     this.worldSeed = null;
@@ -256,6 +269,8 @@ export class Game {
     this.homeRugTiles = [];
     this.homeItems = [];
     this.homeBlockedTiles = new Set();
+    this.homeDraft = null;
+    this.hoveredItem = null;
     this.homeOverflow = 0;
     this.miniGames = [];
     this.miniGameHost = null;
@@ -484,6 +499,8 @@ export class Game {
       : new Set();
     this.homeRoomTiles = Array.isArray(homeRoomTiles) ? homeRoomTiles : [];
     this.homeRugTiles = Array.isArray(homeRugTiles) ? homeRugTiles : [];
+    this.homeDraft = null;
+    this.hoveredItem = null;
     this.homeOverflow = 0;
     this.player = player ? this.makeCharacter(player, true) : null;
     this.npcs = (npcs || []).map(npc => this.makeCharacter(npc, false));
@@ -541,6 +558,8 @@ export class Game {
     this.homeRugTiles = [];
     this.homeItems = [];
     this.homeBlockedTiles = new Set();
+    this.homeDraft = null;
+    this.hoveredItem = null;
     this.homeOverflow = 0;
     this.selected = null;
     this.hovered = null;
@@ -628,8 +647,37 @@ export class Game {
     return list;
   }
 
+  /**
+   * Settle the player into a Home seat or bed. The logical tile stays put, so
+   * collision, reservations, and buddy paths are untouched; the renderer offsets
+   * the sprite over the item. Any step clears the pose.
+   */
+  setHomePose(kind, uid) {
+    if (!this.player || (kind !== 'sit' && kind !== 'sleep')) return false;
+    if (this.player.moving) {
+      this.player.x = this.player.toX;
+      this.player.y = this.player.toY;
+      this.player.moving = false;
+      this.player.elapsed = 0;
+    }
+    this.player.homePose = { kind, uid: uid || null };
+    this.player.pose = 'sit';
+    this.player.path = [];
+    this.heldKeys = [];
+    this.destination = null;
+    return true;
+  }
+
+  clearHomePose() {
+    if (!this.player?.homePose) return false;
+    this.player.homePose = null;
+    this.player.pose = 'stand';
+    return true;
+  }
+
   tryPlayerStep(dx, dy) {
     if (!this.player || !this.interactive || this.paused || this.worldSuspended) return false;
+    if (this.player.homePose) this.clearHomePose();
     const nx = this.player.x + dx;
     const ny = this.player.y + dy;
     this.player.direction = directionForStep(dx, dy);
@@ -1444,21 +1492,33 @@ export class Game {
 
   handlePointerMove(event) {
     if (!this.interactive) return;
-    const { sx, sy } = this.pointerWorld(event);
+    const { sx, sy, x, y } = this.pointerWorld(event);
     this.pointer = { x: sx, y: sy };
     const character = this.characterAtScreen(sx, sy);
     this.hovered = character;
-    this.canvas.style.cursor = character ? 'pointer' : 'default';
+    this.hoveredItem = !character && this.homeMode
+      ? homeItemAtTop(this.homeItems, Math.floor(x / TILE), Math.floor(y / TILE))
+      : null;
+    if (character) this.canvas.style.cursor = 'pointer';
+    else if (this.hoveredItem) this.canvas.style.cursor = this.homeDraft ? 'grabbing' : 'pointer';
+    else this.canvas.style.cursor = 'default';
   }
 
   handlePointerLeave() {
     this.hovered = null;
+    this.hoveredItem = null;
     this.canvas.style.cursor = 'default';
   }
 
   handlePointerDown(event) {
     if (!this.interactive || this.worldSuspended || event.button !== 0) return;
     const { sx, sy, x, y } = this.pointerWorld(event);
+    const tileX = Math.floor(x / TILE);
+    const tileY = Math.floor(y / TILE);
+    // Main owns Furnish placement and intercepts the canvas before any other
+    // click target resolves.
+    if (this.onCanvasPointer(event, { sx, sy, x, y, tileX, tileY })) return;
+
     const character = this.characterAtScreen(sx, sy);
     if (character) {
       this.selected = character;
@@ -1466,8 +1526,17 @@ export class Game {
       return;
     }
 
-    const tileX = Math.floor(x / TILE);
-    const tileY = Math.floor(y / TILE);
+    // A Home item opens its card instead of becoming a walk target. The click
+    // still lands on any tile of a multi-tile footprint, topmost first.
+    if (this.homeMode) {
+      const record = homeItemAtTop(this.homeItems, tileX, tileY);
+      if (record) {
+        this.onHomeItem(record, { sx, sy });
+        return;
+      }
+      this.onHomeItem(null, { sx, sy });
+    }
+
     if (!this.player || !this.terrain) return;
     const flying = this.canFly(this.player)
       || !isWalkable(typeAt(this.terrain, this.player.x, this.player.y));
@@ -1489,6 +1558,7 @@ export class Game {
       { fly: flying }
     );
     if (path.length) {
+      if (this.player.homePose) this.clearHomePose();
       this.player.path = path;
       this.destination = { x: tileX, y: tileY, until: this.time + 1.4 };
       this.heldKeys = [];

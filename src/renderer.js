@@ -13,6 +13,7 @@ import { isMushroomHidden, isMushroomScenery } from './forage.js';
 import {
   homeItem,
   homeItemSize,
+  homePoseAnchor,
   itemColors
 } from './home_items.js';
 import sceneryAssets from '../data/nature_scenery.json' with { type: 'json' };
@@ -808,6 +809,8 @@ export class WorldRenderer {
 
     // Ground cover (the rug) sits above the floor and below doors and actors.
     this.drawHomeItemsGround(ctx, game);
+    // A lit lamp casts a warm pool before actors and furniture draw over it.
+    this.drawHomeLampGlow(ctx, game);
 
     // Travel doors sit above the ground and below every actor, so a character
     // standing in the doorway is drawn in front of it.
@@ -840,9 +843,22 @@ export class WorldRenderer {
       ctx.fill();
     }
 
+    if (game.homeDraft) this.drawHomeDraft(ctx, game.homeDraft);
+
     // Render characters and scenery sorted by Y depth
     const renderables = [];
-    if (game.player) renderables.push({ type: 'char', y: game.interpolated(game.player).y, entity: game.player });
+    const poseAnchor = game.player?.homePose
+      ? homePoseAnchor(game.homeItems, game.player.homePose)
+      : null;
+    if (game.player) {
+      renderables.push({
+        type: 'char',
+        // A sleeping or seated player sorts with the item it is resting on, so
+        // the blanket and sprite stay above the furniture.
+        y: poseAnchor ? poseAnchor.sortY : game.interpolated(game.player).y,
+        entity: game.player
+      });
+    }
     for (const npc of game.npcs) renderables.push({ type: 'char', y: game.interpolated(npc).y, entity: npc });
     for (const comp of game.companions) renderables.push({ type: 'char', y: game.interpolated(comp).y, entity: comp });
     for (const buddy of game.homeBuddies || []) {
@@ -851,16 +867,41 @@ export class WorldRenderer {
     // Furniture sorts by its footprint's bottom row, so a tall bed occludes the
     // player behind it and never the player in front. Ground cover is skipped:
     // the rug already drew below every actor.
+    const draftUid = game.homeDraft?.uid || null;
     for (const entry of game.homeItems || []) {
       const item = homeItem(entry.itemId);
       const size = homeItemSize(entry.itemId, entry.rot);
       if (!item || !size || item.ground) continue;
+      // The piece being moved is hidden while its translucent draft is shown.
+      if (draftUid && entry.uid === draftUid) continue;
       renderables.push({
         type: 'home-item',
         y: entry.y + size.h - 1,
         x: entry.x,
         entity: entry
       });
+    }
+    if (game.homeDraft) {
+      const draft = game.homeDraft;
+      const size = homeItemSize(draft.itemId, draft.rot);
+      const item = homeItem(draft.itemId);
+      if (size && item && !item.ground) {
+        renderables.push({
+          type: 'home-item',
+          y: draft.y + size.h - 1,
+          x: draft.x,
+          entity: {
+            uid: draft.uid,
+            itemId: draft.itemId,
+            x: draft.x,
+            y: draft.y,
+            rot: draft.rot,
+            variant: draft.variant,
+            on: draft.on === true
+          },
+          draft: true
+        });
+      }
     }
 
     if (Array.isArray(game.scenery)) {
@@ -935,7 +976,7 @@ export class WorldRenderer {
       } else if (item.type === 'forage') {
         this.drawForageItem(game, item.entity);
       } else if (item.type === 'home-item') {
-        this.drawHomeItem(item.entity);
+        this.drawHomeItem(item.entity, game, { draft: Boolean(item.draft) });
       } else {
         this.drawSceneryItem(ctx, item.entity, item.opacity);
       }
@@ -1130,25 +1171,123 @@ export class WorldRenderer {
   }
 
   drawHomeItemsGround(ctx, game) {
+    const draft = game.homeDraft;
+    const draftUid = draft?.uid || null;
     for (const entry of game.homeItems || []) {
       const item = homeItem(entry.itemId);
       if (!item?.ground) continue;
+      if (draftUid && entry.uid === draftUid) continue;
       const bounds = itemBounds(entry);
       if (!bounds) continue;
       ctx.save();
       drawRugShape(ctx, bounds, itemColors(entry.itemId, entry.variant));
       ctx.restore();
     }
+    if (draft && homeItem(draft.itemId)?.ground) {
+      const bounds = itemBounds(draft);
+      if (bounds) {
+        ctx.save();
+        ctx.globalAlpha = 0.7;
+        drawRugShape(ctx, bounds, itemColors(draft.itemId, draft.variant));
+        ctx.restore();
+      }
+    }
   }
 
-  drawHomeItem(entry) {
+  /** Warm pool under every lit floor lamp. `on` is the only persisted state. */
+  drawHomeLampGlow(ctx, game) {
+    for (const entry of game.homeItems || []) {
+      if (entry.on !== true) continue;
+      if (homeItem(entry.itemId)?.shape !== 'floor-lamp') continue;
+      const size = homeItemSize(entry.itemId, entry.rot);
+      if (!size) continue;
+      const cx = (entry.x + size.w / 2) * TILE;
+      const cy = (entry.y + size.h - 0.4) * TILE;
+      const radius = TILE * 3.1;
+      const gradient = ctx.createRadialGradient(cx, cy, TILE * 0.12, cx, cy, radius);
+      gradient.addColorStop(0, 'rgba(255, 218, 150, 0.32)');
+      gradient.addColorStop(0.55, 'rgba(255, 198, 112, 0.14)');
+      gradient.addColorStop(1, 'rgba(255, 190, 100, 0)');
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, radius, radius * 0.72, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  /** Dashed footprint under the piece being moved; red when it cannot sit there. */
+  drawHomeDraft(ctx, draft) {
+    const size = homeItemSize(draft.itemId, draft.rot);
+    if (!size) return;
+    const x = draft.x * TILE;
+    const y = draft.y * TILE;
+    const width = size.w * TILE;
+    const height = size.h * TILE;
+    const valid = draft.reason == null;
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+    ctx.fillStyle = valid ? '#b6e37c' : '#e07a6b';
+    ctx.fillRect(x + 2, y + 2, width - 4, height - 4);
+    ctx.globalAlpha = 0.9;
+    ctx.strokeStyle = valid ? '#d8f7a8' : '#ff9d8a';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(x + 1.5, y + 1.5, width - 3, height - 3);
+    ctx.restore();
+  }
+
+  drawHomeItem(entry, game = null, { draft = false } = {}) {
     const { ctx } = this;
     const item = homeItem(entry.itemId);
     const bounds = itemBounds(entry);
     if (!item || !bounds) return;
     const draw = HOME_ITEM_SHAPES[item.shape] || drawGenericFurniture;
+    const box = itemPad(bounds);
     ctx.save();
-    draw(ctx, itemPad(bounds), itemColors(entry.itemId, entry.variant));
+    if (draft) ctx.globalAlpha = 0.72;
+    draw(ctx, box, itemColors(entry.itemId, entry.variant));
+    if (!draft && entry.on === true && item.shape === 'tv') {
+      this.drawTvStatic(ctx, box, game?.time || 0);
+    }
+    ctx.restore();
+  }
+
+  /** Animated static; derived from game.time so a reload needs no extra state. */
+  drawTvStatic(ctx, box, time) {
+    const centerX = (box.left + box.right) / 2;
+    const bodyWidth = Math.min(box.width * 0.88, TILE * 0.9);
+    const bodyHeight = TILE * 0.76;
+    const bodyX = centerX - bodyWidth / 2;
+    const bodyY = box.baseY - TILE * 0.12 - bodyHeight;
+    const screenX = bodyX + 4;
+    const screenY = bodyY + 4;
+    const screenW = Math.max(2, bodyWidth - 16);
+    const screenH = Math.max(2, bodyHeight - 10);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(screenX, screenY, screenW, screenH);
+    ctx.clip();
+    ctx.fillStyle = '#22332c';
+    ctx.fillRect(screenX, screenY, screenW, screenH);
+    const rows = Math.max(4, Math.floor(screenH / 3));
+    for (let row = 0; row < rows; row += 1) {
+      const seed = Math.sin(time * 11 + row * 91.7) * 0.5 + 0.5;
+      ctx.globalAlpha = 0.16 + seed * 0.46;
+      ctx.fillStyle = seed > 0.6 ? '#e6fff2' : '#9dc7b5';
+      ctx.fillRect(
+        screenX + seed * screenW * 0.3,
+        screenY + (row / rows) * screenH,
+        screenW * (0.2 + seed * 0.7),
+        1.3
+      );
+    }
+    const rollY = screenY + ((time * 26) % screenH);
+    ctx.globalAlpha = 0.22;
+    ctx.fillStyle = '#f2fff8';
+    ctx.fillRect(screenX, rollY, screenW, 2);
     ctx.restore();
   }
 
@@ -1208,7 +1347,10 @@ export class WorldRenderer {
   drawCharacter(game, character) {
     const { ctx } = this;
     const isCompanion = Boolean(character.isCompanion);
-    const sitting = character.pose === 'sit';
+    const homePose = character.homePose;
+    const poseAnchor = homePose ? homePoseAnchor(game.homeItems, homePose) : null;
+    const asleep = homePose?.kind === 'sleep';
+    const sitting = character.pose === 'sit' || homePose?.kind === 'sit';
     const profile = getAnimationProfile(character.recipe);
     const is3DModel = Boolean(profile.family?.startsWith('pet-') || profile.family?.startsWith('creature-'));
     const baseHeight = characterBaseHeight(character);
@@ -1217,8 +1359,14 @@ export class WorldRenderer {
     const height = characterVisualHeight(character, fx);
     const width = height;
     const position = game.interpolated(character);
-    const footX = (position.x + 0.5) * TILE;
-    const footY = (position.y + 1) * TILE;
+    let footX = (position.x + 0.5) * TILE;
+    let footY = (position.y + 1) * TILE;
+    // Seated and sleeping poses render over the seat/bed while the logical tile
+    // stays where collision expects it.
+    if (poseAnchor) {
+      footX = (poseAnchor.x + 0.5) * TILE;
+      footY = (poseAnchor.y + 1) * TILE;
+    }
     const movingT = character.moving ? clamp(character.elapsed / character.duration, 0, 1) : 0;
     const cheerHop = isCompanion && character.cheerTimer > 0
       ? Math.abs(Math.sin(
@@ -1284,10 +1432,11 @@ export class WorldRenderer {
       if (progress > 0.35 && progress < 0.65) alpha *= 0.12;
     }
 
-    // Home buddies settle with a small squash rather than a new sprite frame.
+    // Home buddies and the seated/sleeping player settle with a small squash
+    // rather than a new sprite frame.
     if (sitting) offsetY += height * 0.08;
     const scaleX = (animTransform.scaleX ?? 1) * (sitting ? 1.08 : 1);
-    const scaleY = (animTransform.scaleY ?? 1) * (sitting ? 0.7 : 1);
+    const scaleY = (animTransform.scaleY ?? 1) * (asleep ? 0.52 : sitting ? 0.7 : 1);
     const shadowScale = (animTransform.shadowScale ?? 1) * (sitting ? 1.12 : 1);
     const drawX = footX + offsetX;
     const top = footY - height + offsetY;
@@ -1488,6 +1637,37 @@ export class WorldRenderer {
       ctx.fill();
       ctx.strokeStyle = 'rgba(229, 244, 165, 0.5)';
       ctx.stroke();
+    }
+
+    if (asleep) {
+      const blanketWidth = width * 0.9;
+      const blanketHeight = height * 0.26;
+      const blanketX = drawX - blanketWidth / 2;
+      const blanketY = footY - height * 0.34;
+      ctx.save();
+      ctx.globalAlpha = 0.94;
+      fillRoundRect(ctx, blanketX, blanketY, blanketWidth, blanketHeight, 7, '#d7e6cf');
+      fillRoundRect(ctx, blanketX, blanketY, blanketWidth, blanketHeight * 0.32, 6, '#b6d2a8');
+      ctx.globalAlpha = 0.5;
+      strokeRoundRect(ctx, blanketX + 1, blanketY + 1, blanketWidth - 2, blanketHeight - 2, 6, '#7d9a72', 1.2);
+      ctx.restore();
+
+      // Drifting zzz, one letter per beat.
+      const beat = (game.time || 0) * 1.6;
+      ctx.save();
+      ctx.font = '700 15px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(229, 244, 165, 0.92)';
+      for (let index = 0; index < 3; index += 1) {
+        const phase = (beat + index * 0.38) % 1;
+        ctx.globalAlpha = 0.15 + phase * 0.75;
+        ctx.fillText(
+          'z',
+          drawX + width * (0.26 + index * 0.12),
+          footY - height * 0.6 - 6 - phase * TILE * 0.5 - index * 4
+        );
+      }
+      ctx.restore();
     }
 
     if (fx.outline) {
