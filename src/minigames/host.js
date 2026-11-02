@@ -402,6 +402,17 @@ export class MiniGameHost {
   }
 
   /**
+   * Public, read-only view of the active board rectangle in tile coordinates.
+   * Returns `null` when the activity has no board.
+   *
+   * @returns {{ x: number, y: number, width: number, height: number } | null}
+   */
+  getFootprint() {
+    const footprint = this._footprint();
+    return footprint ? { ...footprint } : null;
+  }
+
+  /**
    * Board tiles that should be treated as solid. Activities with no footprint
    * simply return an empty set.
    */

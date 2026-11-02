@@ -169,6 +169,20 @@ test('participants are exempt while bystanders may enter blocked and escape', ()
   assert.ok(host.getHiddenZones().some(zone => zone.x === 10 && zone.y === 10));
 });
 
+test('getFootprint exposes a read-only copy of the active board rectangle', () => {
+  const { host, player, npc } = setup();
+  assert.equal(host.getFootprint(), null);
+
+  host.start('tic-tac-toe', { player, opponent: npc, placement: { originX: 10, originY: 10 }, terrain });
+  const footprint = host.getFootprint();
+  assert.deepEqual(footprint, { x: 10, y: 10, width: 3, height: 3 });
+  assert.equal(host.isTileOnBoard(10, 10), true);
+  assert.equal(host.isTileOnBoard(13, 13), false);
+
+  footprint.x = 99;
+  assert.equal(host.getFootprint().x, 10, 'callers cannot mutate the session rectangle');
+});
+
 test('board-less activities never block steps', () => {
   const host = new MiniGameHost({ game: { terrain } });
   host.register({ meta: fetchMeta, create: ({ meta }) => ({ ...makeGame(meta), getFootprint: () => null }) });

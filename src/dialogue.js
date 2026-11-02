@@ -26,6 +26,70 @@ function interpolate(template, vars) {
   return template.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? '');
 }
 
+const BOARD_TILE = 48;
+const BOARD_GAP = 12;
+
+function clampValue(value, min, max) {
+  if (min > max) return min;
+  return Math.max(min, Math.min(max, value));
+}
+
+function rectsOverlap(a, b) {
+  return a.left < b.left + b.width
+    && a.left + a.width > b.left
+    && a.top < b.top + b.height
+    && a.top + a.height > b.top;
+}
+
+function boardScreenRect(game) {
+  const target = game?.cameraTarget;
+  if (!target) return null;
+  return {
+    left: target.x * BOARD_TILE - game.camera.x,
+    top: target.y * BOARD_TILE - game.camera.y,
+    width: target.width * BOARD_TILE,
+    height: target.height * BOARD_TILE
+  };
+}
+
+function placementDistance(a, b) {
+  const dx = (a.left + a.width / 2) - (b.left + b.width / 2);
+  const dy = (a.top + a.height / 2) - (b.top + b.height / 2);
+  return dx * dx + dy * dy;
+}
+
+/**
+ * Keep the bubble off the board footprint while a session is open. Prefers the
+ * closest side that fits the viewport, so it reads as a nudge rather than a
+ * jump; if no side fits (a board filling a tiny screen) the original placement
+ * stands and the board keeps priority.
+ */
+function placeClearOfBoard(card, board, bounds) {
+  if (!rectsOverlap(card, board)) return { left: card.left, top: card.top };
+  const clampLeft = value => clampValue(value, bounds.left, Math.max(bounds.left, bounds.right - card.width));
+  const clampTop = value => clampValue(value, bounds.top, Math.max(bounds.top, bounds.bottom - card.height));
+  const centredLeft = clampLeft(board.left + board.width / 2 - card.width / 2);
+  const centredTop = clampTop(board.top + board.height / 2 - card.height / 2);
+  const candidates = [
+    { left: centredLeft, top: board.top - card.height - BOARD_GAP },
+    { left: centredLeft, top: board.top + board.height + BOARD_GAP },
+    { left: board.left - card.width - BOARD_GAP, top: centredTop },
+    { left: board.left + board.width + BOARD_GAP, top: centredTop }
+  ].map(candidate => ({ ...candidate, width: card.width, height: card.height }));
+  const fitting = candidates.filter(candidate => (
+    candidate.left >= bounds.left
+    && candidate.left + candidate.width <= bounds.right
+    && candidate.top >= bounds.top
+    && candidate.top + candidate.height <= bounds.bottom
+    && !rectsOverlap(candidate, board)
+  ));
+  if (!fitting.length) return { left: card.left, top: card.top };
+  const best = fitting.reduce((winner, candidate) => (
+    placementDistance(candidate, card) < placementDistance(winner, card) ? candidate : winner
+  ));
+  return { left: best.left, top: best.top };
+}
+
 const LEGACY_GAME_FLAGS = Object.freeze([
   { id: 'tic-tac-toe', flag: 'canPlayTicTacToe', labelKey: 'playTttLabel', fallback: 'Play Tic-Tac-Toe' },
   { id: 'checkers', flag: 'canPlayCheckers', labelKey: 'playCheckersLabel', fallback: 'Play Checkers' },
@@ -298,6 +362,20 @@ export class DialogueManager {
     }
     if (top < 65) {
       top = 65;
+    }
+
+    // A board session owns the camera; keep the bubble clear of the squares.
+    if (document.body.classList.contains('board-open')) {
+      const board = boardScreenRect(game);
+      if (board) {
+        const placed = placeClearOfBoard(
+          { left, top, width: bubbleW, height: bubbleH },
+          board,
+          { left: pad, right: window.innerWidth - pad, top: 65, bottom: Math.max(65, maxBottom) }
+        );
+        left = placed.left;
+        top = placed.top;
+      }
     }
 
     this.container.style.left = `${Math.round(left)}px`;

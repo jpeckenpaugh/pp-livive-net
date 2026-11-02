@@ -316,16 +316,29 @@ function usesTouchControls() {
   return Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
 }
 
+/** Frame the active board and flag it for dialogue placement. */
+function syncBoardFraming(boardOpen) {
+  document.body.classList.toggle('board-open', boardOpen);
+  if (!boardOpen) {
+    game?.clearCameraTarget?.();
+    return;
+  }
+  const footprint = host?.getFootprint?.() || null;
+  if (footprint) game?.setCameraTarget?.(footprint);
+  else game?.clearCameraTarget?.();
+}
+
 /**
  * Persistent board strip. Reuses `#hint` while a board session is active and
  * restores the original hint afterwards. Runs every frame; DOM writes only
  * when the composed line changes.
  */
 function refreshGameStrip() {
-  const hint = $('hint');
-  if (!hint) return;
   const state = host?.getState?.() || null;
   const boardOpen = Boolean(state?.active && state.kind !== 'activity');
+  syncBoardFraming(boardOpen);
+  const hint = $('hint');
+  if (!hint) return;
 
   if (!boardOpen) {
     stripReject = null;

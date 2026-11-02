@@ -17,6 +17,7 @@ import {
   characterVisualHeight
 } from './renderer.js';
 import { resolveFx } from './effects.js';
+import { focusOptionsFor, focusPointFor } from './camera-focus.js';
 import engineConfig from '../data/engine_config.json' with { type: 'json' };
 
 export {
@@ -58,6 +59,36 @@ const COMPANION_CAP_FALLBACKS = Object.freeze({
 function capValue(value, fallback) {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? Math.floor(number) : fallback;
+}
+
+/** Accept the host's `{ x, y, width, height }` rectangle without keeping it. */
+function normalizeCameraTarget(target) {
+  if (!target) return null;
+  const rect = {
+    x: Number(target.x),
+    y: Number(target.y),
+    width: Number(target.width ?? target.w),
+    height: Number(target.height ?? target.h)
+  };
+  const values = [rect.x, rect.y, rect.width, rect.height];
+  if (!values.every(Number.isFinite) || rect.width <= 0 || rect.height <= 0) return null;
+  return rect;
+}
+
+function rectsMatch(a, b) {
+  return Boolean(a && b)
+    && a.x === b.x
+    && a.y === b.y
+    && a.width === b.width
+    && a.height === b.height;
+}
+
+function tileInRect(rect, x, y) {
+  return Boolean(rect)
+    && x >= rect.x
+    && x < rect.x + rect.width
+    && y >= rect.y
+    && y < rect.y + rect.height;
 }
 
 export const COMPANION_CAPS = Object.freeze({
@@ -216,6 +247,7 @@ export class Game {
     this.previewFocus = { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 };
     this.camera = { x: 0, y: 0 };
     this.cameraSnap = true;
+    this.cameraTarget = null;
     this.time = 0;
     this.last = 0;
     this.running = false;
@@ -433,6 +465,7 @@ export class Game {
       : { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 };
     this.renderer.buildMinimapBase(terrain);
     this.cameraSnap = true;
+    this.cameraTarget = null;
   }
 
   setPreview(terrain, worldSeed, focus) {
@@ -451,6 +484,7 @@ export class Game {
     this.previewFocus = focus || { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 };
     this.renderer.buildMinimapBase(terrain);
     this.cameraSnap = true;
+    this.cameraTarget = null;
   }
 
   setInteractive(value) {
@@ -597,9 +631,45 @@ export class Game {
     this.interactive = true;
   }
 
+  /**
+   * Frame an active board alongside the player. Opening a session while the
+   * player stands off the board snaps once so the board comes into view; all
+   * later changes and the close transition ease normally.
+   */
+  setCameraTarget(target) {
+    const rect = normalizeCameraTarget(target);
+    if (!rect) {
+      this.clearCameraTarget();
+      return;
+    }
+    if (rectsMatch(this.cameraTarget, rect)) return;
+    const opening = !this.cameraTarget;
+    this.cameraTarget = rect;
+    if (opening && this.player && !tileInRect(rect, this.player.x, this.player.y)) {
+      this.cameraSnap = true;
+    }
+  }
+
+  clearCameraTarget() {
+    this.cameraTarget = null;
+  }
+
   cameraFocus() {
-    if (this.player) return this.interpolated(this.player);
-    return this.previewFocus;
+    const player = this.player ? this.interpolated(this.player) : this.previewFocus;
+    if (!this.cameraTarget) return player;
+    const options = focusOptionsFor(this.width);
+    const focus = focusPointFor({
+      player,
+      board: this.cameraTarget,
+      viewportWidth: this.width,
+      viewportHeight: this.height,
+      tile: TILE,
+      weight: options.weight,
+      clampBoard: options.clampBoard
+    });
+    if (!focus) return player;
+    // updateCamera consumes a tile-space focus point.
+    return { x: focus.x / TILE - 0.5, y: focus.y / TILE - 0.5 };
   }
 
   updateCamera(dt) {
