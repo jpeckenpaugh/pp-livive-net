@@ -38,7 +38,16 @@ const TOWN_SEED = LOCATIONS.town.seed;
 const ENTERABLE = [
   { to: 'home', x: 23, y: 17 },
   { to: 'shop', x: 8, y: 17 },
-  { to: 'library', x: 38, y: 17 }
+  { to: 'library', x: 38, y: 17 },
+  { to: 'cafe', x: 53, y: 17 },
+  { to: 'bakery', x: 8, y: 27 },
+  { to: 'clinic', x: 23, y: 27 },
+  { to: 'rose-cottage', x: 38, y: 27 },
+  { to: 'workshop-north', x: 53, y: 27 },
+  { to: 'maple-house', x: 8, y: 39 },
+  { to: 'workshop-south', x: 23, y: 39 },
+  { to: 'willow-house', x: 38, y: 39 },
+  { to: 'hill-house', x: 53, y: 39 }
 ];
 
 function townWorld() {
@@ -160,19 +169,32 @@ test('Town declares the grid layout, spawn, theme, menu row, and 12 buildings', 
   assert.equal(locationLayout('town'), 'town-grid');
 });
 
-test('Town has doors to the Park, Home, Shop, Library, and Beach', () => {
+test('Town has doors to the Park, Beach, and every enterable building', () => {
   const world = townWorld();
   const doors = doorsFor('town', { terrain: world.grid, spawn: world.spawn });
-  assert.deepEqual(doors.map(door => door.kind), ['travel', 'travel', 'travel', 'travel', 'travel']);
-  assert.deepEqual(doors.map(door => door.to), ['park', 'home', 'shop', 'library', 'beach']);
+  assert.deepEqual(doors.map(door => door.kind), Array(14).fill('travel'));
+  assert.deepEqual(doors.map(door => door.to), [
+    'park', 'home', 'shop', 'library', 'beach',
+    'cafe', 'bakery', 'clinic', 'rose-cottage', 'workshop-north',
+    'maple-house', 'workshop-south', 'willow-house', 'hill-house'
+  ]);
   assert.deepEqual(doors.map(door => door.prompt), [
     'Head into the park?',
     'Go home?',
     'Step into the shop?',
     'Visit the library?',
-    'Walk down to the beach?'
+    'Walk down to the beach?',
+    'Step into the café?',
+    'Visit the bakery?',
+    'Visit the clinic?',
+    'Call at Rose Cottage?',
+    'Knock at the workshop?',
+    'Call at Maple House?',
+    'Knock at the workshop?',
+    'Call at Willow House?',
+    'Call at Hill House?'
   ]);
-  assert.equal(new Set(doors.map(door => `${door.x},${door.y}`)).size, 5);
+  assert.equal(new Set(doors.map(door => `${door.x},${door.y}`)).size, 14);
 
   const byTarget = new Map(doors.map(door => [door.to, door]));
   assert.deepEqual({ x: byTarget.get('park').x, y: byTarget.get('park').y }, { x: 2, y: 31 });
@@ -208,13 +230,13 @@ test('interior doors stand inside an enterable footprint, not on the pavement', 
     assert.ok(!blocked.has(`${door.x},${door.y + 1}`), 'the doorway is a two-tile corridor');
   }
 
-  // Every other building is a solid shell: no opening, no trigger.
+  // Every building now has a doorway, so no facade is left as a solid shell.
   const shells = buildings.filter(building => propOpenings(building).length === 0);
-  assert.equal(shells.length, buildings.length - ENTERABLE.length);
-  for (const shell of shells) {
-    for (const tile of propTiles(shell)) {
-      assert.ok(blocked.has(`${tile.x},${tile.y}`), `${shell.x},${shell.y} stays solid at ${tile.x},${tile.y}`);
-    }
+  assert.equal(shells.length, 0, 'each town facade opens onto a room');
+  assert.equal(ENTERABLE.length, buildings.length);
+  for (const building of buildings) {
+    const door = doors.find(entry => entry.x === building.x + 2 && entry.y === building.y + 2);
+    assert.ok(door, `${building.label} has an inner door`);
   }
 });
 
@@ -317,7 +339,16 @@ test('bumping the inner trigger of each Town door fires that travel target', () 
     home: { x: 23, y: 18, dx: 0, dy: -1 },
     shop: { x: 8, y: 18, dx: 0, dy: -1 },
     library: { x: 38, y: 18, dx: 0, dy: -1 },
-    beach: { x: 61, y: 31, dx: 1, dy: 0 }
+    beach: { x: 61, y: 31, dx: 1, dy: 0 },
+    cafe: { x: 53, y: 18, dx: 0, dy: -1 },
+    bakery: { x: 8, y: 28, dx: 0, dy: -1 },
+    clinic: { x: 23, y: 28, dx: 0, dy: -1 },
+    'rose-cottage': { x: 38, y: 28, dx: 0, dy: -1 },
+    'workshop-north': { x: 53, y: 28, dx: 0, dy: -1 },
+    'maple-house': { x: 8, y: 40, dx: 0, dy: -1 },
+    'workshop-south': { x: 23, y: 40, dx: 0, dy: -1 },
+    'willow-house': { x: 38, y: 40, dx: 0, dy: -1 },
+    'hill-house': { x: 53, y: 40, dx: 0, dy: -1 }
   };
 
   for (const door of doors) {

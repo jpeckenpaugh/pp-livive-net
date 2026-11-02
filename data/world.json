@@ -238,23 +238,95 @@
           "x": 62,
           "y": 31,
           "prompt": "Walk down to the beach?"
+        },
+        {
+          "id": "cafe-door",
+          "kind": "travel",
+          "to": "cafe",
+          "x": 53,
+          "y": 17,
+          "prompt": "Step into the café?"
+        },
+        {
+          "id": "bakery-door",
+          "kind": "travel",
+          "to": "bakery",
+          "x": 8,
+          "y": 27,
+          "prompt": "Visit the bakery?"
+        },
+        {
+          "id": "clinic-door",
+          "kind": "travel",
+          "to": "clinic",
+          "x": 23,
+          "y": 27,
+          "prompt": "Visit the clinic?"
+        },
+        {
+          "id": "rose-cottage-door",
+          "kind": "travel",
+          "to": "rose-cottage",
+          "x": 38,
+          "y": 27,
+          "prompt": "Call at Rose Cottage?"
+        },
+        {
+          "id": "workshop-north-door",
+          "kind": "travel",
+          "to": "workshop-north",
+          "x": 53,
+          "y": 27,
+          "prompt": "Knock at the workshop?"
+        },
+        {
+          "id": "maple-house-door",
+          "kind": "travel",
+          "to": "maple-house",
+          "x": 8,
+          "y": 39,
+          "prompt": "Call at Maple House?"
+        },
+        {
+          "id": "workshop-south-door",
+          "kind": "travel",
+          "to": "workshop-south",
+          "x": 23,
+          "y": 39,
+          "prompt": "Knock at the workshop?"
+        },
+        {
+          "id": "willow-house-door",
+          "kind": "travel",
+          "to": "willow-house",
+          "x": 38,
+          "y": 39,
+          "prompt": "Call at Willow House?"
+        },
+        {
+          "id": "hill-house-door",
+          "kind": "travel",
+          "to": "hill-house",
+          "x": 53,
+          "y": 39,
+          "prompt": "Call at Hill House?"
         }
       ],
       "props": [
         { "type": "building", "x": 6, "y": 15, "variant": 0, "label": "Shop", "openings": [{ "dx": 2, "dy": 3 }, { "dx": 2, "dy": 2 }] },
         { "type": "building", "x": 21, "y": 15, "variant": 1, "label": "Home", "openings": [{ "dx": 2, "dy": 3 }, { "dx": 2, "dy": 2 }] },
         { "type": "building", "x": 36, "y": 15, "variant": 2, "label": "Library", "openings": [{ "dx": 2, "dy": 3 }, { "dx": 2, "dy": 2 }] },
-        { "type": "building", "x": 51, "y": 15, "variant": 0, "label": "Café" },
+        { "type": "building", "x": 51, "y": 15, "variant": 0, "label": "Café", "openings": [{ "dx": 2, "dy": 3 }, { "dx": 2, "dy": 2 }] },
 
-        { "type": "building", "x": 6, "y": 25, "variant": 1, "label": "Bakery" },
-        { "type": "building", "x": 21, "y": 25, "variant": 2, "label": "Clinic" },
-        { "type": "building", "x": 36, "y": 25, "variant": 0, "label": "Rose Cottage" },
-        { "type": "building", "x": 51, "y": 25, "variant": 1, "label": "Workshop" },
+        { "type": "building", "x": 6, "y": 25, "variant": 1, "label": "Bakery", "openings": [{ "dx": 2, "dy": 3 }, { "dx": 2, "dy": 2 }] },
+        { "type": "building", "x": 21, "y": 25, "variant": 2, "label": "Clinic", "openings": [{ "dx": 2, "dy": 3 }, { "dx": 2, "dy": 2 }] },
+        { "type": "building", "x": 36, "y": 25, "variant": 0, "label": "Rose Cottage", "openings": [{ "dx": 2, "dy": 3 }, { "dx": 2, "dy": 2 }] },
+        { "type": "building", "x": 51, "y": 25, "variant": 1, "label": "Workshop", "openings": [{ "dx": 2, "dy": 3 }, { "dx": 2, "dy": 2 }] },
 
-        { "type": "building", "x": 6, "y": 37, "variant": 2, "label": "Maple House" },
-        { "type": "building", "x": 21, "y": 37, "variant": 0, "label": "Workshop" },
-        { "type": "building", "x": 36, "y": 37, "variant": 1, "label": "Willow House" },
-        { "type": "building", "x": 51, "y": 37, "variant": 2, "label": "Hill House" },
+        { "type": "building", "x": 6, "y": 37, "variant": 2, "label": "Maple House", "openings": [{ "dx": 2, "dy": 3 }, { "dx": 2, "dy": 2 }] },
+        { "type": "building", "x": 21, "y": 37, "variant": 0, "label": "Workshop", "openings": [{ "dx": 2, "dy": 3 }, { "dx": 2, "dy": 2 }] },
+        { "type": "building", "x": 36, "y": 37, "variant": 1, "label": "Willow House", "openings": [{ "dx": 2, "dy": 3 }, { "dx": 2, "dy": 2 }] },
+        { "type": "building", "x": 51, "y": 37, "variant": 2, "label": "Hill House", "openings": [{ "dx": 2, "dy": 3 }, { "dx": 2, "dy": 2 }] },
 
         { "type": "fountain", "x": 30, "y": 30 },
 
@@ -533,6 +605,420 @@
           "seed": "beach-finn",
           "x": 33,
           "y": 25,
+          "direction": 2
+        }
+      ]
+    },
+    "cafe": {
+      "id": "cafe",
+      "label": "Café",
+      "enabled": true,
+      "mapLabel": "Café map",
+      "template": "interior",
+      "seed": "sunny-cup-cafe-01",
+      "spawn": {
+        "x": 32,
+        "y": 33
+      },
+      "house": {
+        "x": 26,
+        "y": 25,
+        "width": 13,
+        "height": 11
+      },
+      "door": {
+        "x": 32,
+        "y": 35,
+        "to": "town",
+        "prompt": "Back to town?"
+      },
+      "forage": false,
+      "theme": {
+        "wall": "#6b4a35",
+        "floor": "#c7a578"
+      },
+      "props": [
+        { "type": "rug", "x": 30, "y": 28 },
+        { "type": "desk", "x": 28, "y": 27 },
+        { "type": "desk", "x": 34, "y": 27, "variant": 1 },
+        { "type": "planter", "x": 36, "y": 32, "variant": 1 }
+      ],
+      "residents": [
+        {
+          "id": "cafe-juno",
+          "name": "Juno",
+          "seed": "cafe-juno",
+          "role": "barista",
+          "x": 31,
+          "y": 28,
+          "direction": 2
+        }
+      ]
+    },
+    "bakery": {
+      "id": "bakery",
+      "label": "Bakery",
+      "enabled": true,
+      "mapLabel": "Bakery map",
+      "template": "interior",
+      "seed": "warm-loaf-bakery-01",
+      "spawn": {
+        "x": 32,
+        "y": 33
+      },
+      "house": {
+        "x": 26,
+        "y": 25,
+        "width": 13,
+        "height": 11
+      },
+      "door": {
+        "x": 32,
+        "y": 35,
+        "to": "town",
+        "prompt": "Back to town?"
+      },
+      "forage": false,
+      "theme": {
+        "wall": "#7a5438",
+        "floor": "#d9b98c"
+      },
+      "props": [
+        { "type": "desk", "x": 28, "y": 27 },
+        { "type": "desk", "x": 31, "y": 27, "variant": 1 },
+        { "type": "bookshelf", "x": 36, "y": 27, "variant": 1 },
+        { "type": "planter", "x": 27, "y": 33 }
+      ],
+      "residents": [
+        {
+          "id": "bakery-marlow",
+          "name": "Marlow",
+          "seed": "bakery-marlow",
+          "role": "baker",
+          "x": 30,
+          "y": 29,
+          "direction": 0
+        }
+      ]
+    },
+    "clinic": {
+      "id": "clinic",
+      "label": "Clinic",
+      "enabled": true,
+      "mapLabel": "Clinic map",
+      "template": "interior",
+      "seed": "quiet-ward-clinic-01",
+      "spawn": {
+        "x": 32,
+        "y": 33
+      },
+      "house": {
+        "x": 26,
+        "y": 25,
+        "width": 13,
+        "height": 11
+      },
+      "door": {
+        "x": 32,
+        "y": 35,
+        "to": "town",
+        "prompt": "Back to town?"
+      },
+      "forage": false,
+      "theme": {
+        "wall": "#5f6f68",
+        "floor": "#c9d6cf"
+      },
+      "props": [
+        { "type": "desk", "x": 28, "y": 28 },
+        { "type": "bookshelf", "x": 27, "y": 31, "rot": 1 },
+        { "type": "bench", "x": 35, "y": 32, "variant": 1 },
+        { "type": "planter", "x": 36, "y": 34 }
+      ],
+      "residents": [
+        {
+          "id": "clinic-iris",
+          "name": "Iris",
+          "seed": "clinic-iris",
+          "role": "nurse",
+          "x": 31,
+          "y": 29,
+          "direction": 2
+        }
+      ]
+    },
+    "rose-cottage": {
+      "id": "rose-cottage",
+      "label": "Rose Cottage",
+      "enabled": true,
+      "mapLabel": "Rose Cottage map",
+      "template": "interior",
+      "seed": "rose-cottage-01",
+      "spawn": {
+        "x": 32,
+        "y": 33
+      },
+      "house": {
+        "x": 26,
+        "y": 25,
+        "width": 13,
+        "height": 11
+      },
+      "door": {
+        "x": 32,
+        "y": 35,
+        "to": "town",
+        "prompt": "Back to town?"
+      },
+      "forage": false,
+      "theme": {
+        "wall": "#7d5a5a",
+        "floor": "#d3b2a4"
+      },
+      "props": [
+        { "type": "rug", "x": 30, "y": 29, "variant": 1 },
+        { "type": "bench", "x": 27, "y": 32 },
+        { "type": "planter", "x": 36, "y": 32, "variant": 1 },
+        { "type": "lamp", "x": 34, "y": 27 }
+      ],
+      "residents": [
+        {
+          "id": "rose-rosalind",
+          "name": "Rosalind",
+          "seed": "rose-rosalind",
+          "role": "gardener",
+          "x": 33,
+          "y": 30,
+          "direction": 0
+        }
+      ]
+    },
+    "workshop-north": {
+      "id": "workshop-north",
+      "label": "Workshop",
+      "enabled": true,
+      "mapLabel": "North workshop map",
+      "template": "interior",
+      "seed": "sawdust-workshop-north-01",
+      "spawn": {
+        "x": 32,
+        "y": 33
+      },
+      "house": {
+        "x": 26,
+        "y": 25,
+        "width": 13,
+        "height": 11
+      },
+      "door": {
+        "x": 32,
+        "y": 35,
+        "to": "town",
+        "prompt": "Back to town?"
+      },
+      "forage": false,
+      "theme": {
+        "wall": "#6a5a45",
+        "floor": "#c2a377"
+      },
+      "props": [
+        { "type": "desk", "x": 27, "y": 27 },
+        { "type": "bookshelf", "x": 35, "y": 27 },
+        { "type": "bench", "x": 35, "y": 31, "variant": 1 },
+        { "type": "planter", "x": 27, "y": 33 }
+      ],
+      "residents": [
+        {
+          "id": "workshop-north-hal",
+          "name": "Hal",
+          "seed": "workshop-north-hal",
+          "role": "carpenter",
+          "x": 31,
+          "y": 29,
+          "direction": 2
+        }
+      ]
+    },
+    "maple-house": {
+      "id": "maple-house",
+      "label": "Maple House",
+      "enabled": true,
+      "mapLabel": "Maple House map",
+      "template": "interior",
+      "seed": "maple-house-01",
+      "spawn": {
+        "x": 32,
+        "y": 33
+      },
+      "house": {
+        "x": 26,
+        "y": 25,
+        "width": 13,
+        "height": 11
+      },
+      "door": {
+        "x": 32,
+        "y": 35,
+        "to": "town",
+        "prompt": "Back to town?"
+      },
+      "forage": false,
+      "theme": {
+        "wall": "#6d513b",
+        "floor": "#c9a878"
+      },
+      "props": [
+        { "type": "rug", "x": 30, "y": 28 },
+        { "type": "bookshelf", "x": 27, "y": 31, "rot": 1 },
+        { "type": "bench", "x": 35, "y": 32 },
+        { "type": "lamp", "x": 36, "y": 27 }
+      ],
+      "residents": [
+        {
+          "id": "maple-elm",
+          "name": "Elm",
+          "seed": "maple-elm",
+          "role": "resident",
+          "x": 33,
+          "y": 30,
+          "direction": 0
+        }
+      ]
+    },
+    "workshop-south": {
+      "id": "workshop-south",
+      "label": "Workshop",
+      "enabled": true,
+      "mapLabel": "South workshop map",
+      "template": "interior",
+      "seed": "sawdust-workshop-south-01",
+      "spawn": {
+        "x": 32,
+        "y": 33
+      },
+      "house": {
+        "x": 26,
+        "y": 25,
+        "width": 13,
+        "height": 11
+      },
+      "door": {
+        "x": 32,
+        "y": 35,
+        "to": "town",
+        "prompt": "Back to town?"
+      },
+      "forage": false,
+      "theme": {
+        "wall": "#5c5546",
+        "floor": "#b9a98a"
+      },
+      "props": [
+        { "type": "desk", "x": 34, "y": 27 },
+        { "type": "desk", "x": 28, "y": 31, "variant": 1 },
+        { "type": "planter", "x": 36, "y": 33 },
+        { "type": "lamp", "x": 27, "y": 28 }
+      ],
+      "residents": [
+        {
+          "id": "workshop-south-dov",
+          "name": "Dov",
+          "seed": "workshop-south-dov",
+          "role": "carpenter",
+          "x": 31,
+          "y": 29,
+          "direction": 2
+        }
+      ]
+    },
+    "willow-house": {
+      "id": "willow-house",
+      "label": "Willow House",
+      "enabled": true,
+      "mapLabel": "Willow House map",
+      "template": "interior",
+      "seed": "willow-house-01",
+      "spawn": {
+        "x": 32,
+        "y": 33
+      },
+      "house": {
+        "x": 26,
+        "y": 25,
+        "width": 13,
+        "height": 11
+      },
+      "door": {
+        "x": 32,
+        "y": 35,
+        "to": "town",
+        "prompt": "Back to town?"
+      },
+      "forage": false,
+      "theme": {
+        "wall": "#5f6f57",
+        "floor": "#c3cfb2"
+      },
+      "props": [
+        { "type": "rug", "x": 29, "y": 27, "variant": 1 },
+        { "type": "planter", "x": 27, "y": 32 },
+        { "type": "planter", "x": 36, "y": 31, "variant": 1 },
+        { "type": "bench", "x": 34, "y": 33, "variant": 1 }
+      ],
+      "residents": [
+        {
+          "id": "willow-willa",
+          "name": "Willa",
+          "seed": "willow-willa",
+          "role": "resident",
+          "x": 32,
+          "y": 29,
+          "direction": 0
+        }
+      ]
+    },
+    "hill-house": {
+      "id": "hill-house",
+      "label": "Hill House",
+      "enabled": true,
+      "mapLabel": "Hill House map",
+      "template": "interior",
+      "seed": "hill-house-01",
+      "spawn": {
+        "x": 32,
+        "y": 33
+      },
+      "house": {
+        "x": 26,
+        "y": 25,
+        "width": 13,
+        "height": 11
+      },
+      "door": {
+        "x": 32,
+        "y": 35,
+        "to": "town",
+        "prompt": "Back to town?"
+      },
+      "forage": false,
+      "theme": {
+        "wall": "#6f5b4a",
+        "floor": "#cdb48d"
+      },
+      "props": [
+        { "type": "bench", "x": 28, "y": 32 },
+        { "type": "bookshelf", "x": 35, "y": 27 },
+        { "type": "lamp", "x": 27, "y": 27, "variant": 1 },
+        { "type": "planter", "x": 36, "y": 33 }
+      ],
+      "residents": [
+        {
+          "id": "hill-hollis",
+          "name": "Hollis",
+          "seed": "hill-hollis",
+          "role": "resident",
+          "x": 31,
+          "y": 29,
           "direction": 2
         }
       ]

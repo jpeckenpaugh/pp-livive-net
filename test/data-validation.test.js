@@ -416,7 +416,13 @@ test('world.json locations resolve ids, doors, spawns, and the Home flag', () =>
     assert.equal(typeof def.label, 'string', `${id} needs a label`);
     assert.equal(typeof def.enabled, 'boolean', `${id} enabled must be explicit`);
     assert.equal(typeof def.mapLabel, 'string', `${id} needs a map label`);
-    assert.ok(def.menu && typeof def.menu.label === 'string' && def.menu.label, `${id} needs a menu row label`);
+    // Interiors behind a Town door may stay out of the Player Menu. Anything
+    // with a menu still needs a usable label.
+    if (def.menu !== undefined) {
+      assert.ok(def.menu && typeof def.menu.label === 'string' && def.menu.label, `${id} needs a menu row label`);
+    } else {
+      assert.equal(def.template, 'interior', `${id} without a menu must be an interior`);
+    }
     if (def.template !== undefined) {
       assert.ok(templates.has(def.template), `${id} names unknown template ${def.template}`);
     }
