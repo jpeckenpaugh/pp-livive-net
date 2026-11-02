@@ -237,6 +237,15 @@ failed save. Cover with pure transaction tests before UI.
 - **Equipped protection:** reject with `reason: "untradeable"` and an `equipped` detail; no silent unequip; match both `uid` and legacy `itemId`.
 - **Coins** stay a separate scalar balance on each character; offers name coins separately from items; negative or non-integer amounts are rejected.
 
+**Wave 6 UI decisions (autopilot, 2026-11-01)**
+
+- **Offer selection:** choose the first template `canTrade` passes; if none, the card says "nothing to trade right now" and hints that neighbours earn coins in games.
+- **Starter economy:** add a non-effect trinket (`park-postcard`, value 4, tradeable) to the catalog and the starter inventory, and set `economy.startingCoins: 10` for new characters, so a fresh park has one working buy and one working sell offer. Existing saves keep their balances.
+- **Any neighbour** can trade; Trade is a fourth social pill, not the primary action.
+- **Panel:** an offer section inside the NPC card — two columns on desktop, stacked give → get at 360 px. No overlay.
+- **Double-apply guard:** an `applying` flag disables Confirm; the card stays open after success with a result line and refreshed balances.
+- **Rejection copy:** a pure `describeTradeRejection(result, { player, npc })` returning plain per-side copy, including the equipped detail.
+
 ---
 
 ## 7. Development and deployment cycle
