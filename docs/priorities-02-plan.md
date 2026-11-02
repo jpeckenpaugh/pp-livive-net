@@ -123,6 +123,18 @@ find the Park exactly as you left it.
 **Deliberately not in this milestone:** multiple destinations, building/editor, furniture
 catalogue, companion trading, Home NPCs, world-size refactor.
 
+**Wave 1 decisions (autopilot, 2026-11-01)**
+
+- **House = real tiles.** Add `home-floor` (`h`) and `home-wall` (`x`) to `TILE_TYPES`, `CHAR_TO_TYPE`, the renderer textures, and `decodeTerrain` validation. Walls are unwalkable, floors are walkable. Tile definitions stay JS constants this wave; data-driving them is a follow-up.
+- **Doors:** bumping a door (or Enter while standing on it) opens a short "Go home?" / "Back to the park?" beat with Travel / Cancel; the menu row travels directly. Door tiles stay walkable.
+- **Arrival:** the player returns to the exact last position in that location, falling back to its spawn.
+- **Capture:** one `captureLocation()` helper shared by travel and `saveNow`, so Park scenery, NPCs, forage, and position cannot be silently overwritten.
+- **Who travels:** player-owned active companions only. Stabled buddies stay stabled. NPC-owned companions do not appear in Home.
+- **Home forage:** explicitly empty and non-harvestable; a test asserts no apples spawn.
+- **Scenery** stays seed-derived this wave.
+- **Flag:** `data/world.json` → `locations.home.enabled` is read in `main.js` only. Flag off means no door, no menu row, and no travel path; Home generation remains callable but unreachable.
+- **Save writer:** writes every location plus `currentLocation`; the Wave 0 single-key guard test is replaced by one asserting both locations survive a round trip.
+
 **Acceptance (also the play-test checklist):**
 - Enter, return, and re-enter without losing player or companion state.
 - Park activities, friends, forage, and any active effects survive the round trip.
