@@ -256,6 +256,8 @@ review saw a visibility gap, not a state bug.
 
 Total ≈ **5–7 dev days**, with a human check after each wave.
 
+**Status (2026-11-01):** A done (`5eeb97f`) · B done (`f4ed86b`) · C done (`5db2b7d`) · D in build.
+
 ---
 
 ## 8. What I would not do now
