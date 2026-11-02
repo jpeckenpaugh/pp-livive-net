@@ -28,6 +28,12 @@ export const ACTIVITY_MODES = Object.freeze(['turn-based', 'continuous']);
 
 export const RENDER_LAYERS = Object.freeze(['ground', 'object', 'overlay', 'hud']);
 
+/**
+ * How a session paints. `inline` draws layers over the Park; `fullview` owns
+ * the whole canvas and the shell skips the Park entirely.
+ */
+export const RENDER_MODES = Object.freeze(['inline', 'fullview']);
+
 export const REQUIRED_META_FIELDS = Object.freeze([
   'id',
   'title',
@@ -159,14 +165,18 @@ export function validateMeta(meta) {
   if (meta.kind !== undefined && !GAME_KINDS.includes(meta.kind)) {
     errors.push(`kind must be one of: ${GAME_KINDS.join(', ')}`);
   }
-  if (meta.itemId !== undefined && !isNonEmptyString(meta.itemId)) {
-    errors.push('itemId must be a non-empty string');
+  if (meta.itemId !== undefined && meta.itemId !== null && !isNonEmptyString(meta.itemId)) {
+    errors.push('itemId must be a non-empty string or null');
   }
-  if (meta.dialogueKey !== undefined && !isNonEmptyString(meta.dialogueKey)) {
-    errors.push('dialogueKey must be a non-empty string');
+  if (meta.dialogueKey !== undefined && meta.dialogueKey !== null && !isNonEmptyString(meta.dialogueKey)) {
+    errors.push('dialogueKey must be a non-empty string or null');
   }
-  if (meta.rewardKey !== undefined && !isNonEmptyString(meta.rewardKey)) {
-    errors.push('rewardKey must be a non-empty string');
+  if (meta.rewardKey !== undefined && meta.rewardKey !== null && !isNonEmptyString(meta.rewardKey)) {
+    errors.push('rewardKey must be a non-empty string or null');
+  }
+  if (meta.activityId !== undefined && meta.activityId !== null
+    && (!isNonEmptyString(meta.activityId) || !ID_PATTERN.test(meta.activityId))) {
+    errors.push('activityId must be a kebab-case identifier or null');
   }
 
   if (meta.players !== undefined && !isPositiveInteger(meta.players)) {
@@ -206,6 +216,20 @@ export function validateMeta(meta) {
         if (!RENDER_LAYERS.includes(layer)) {
           errors.push(`renderLayers contains unknown layer: ${String(layer)}`);
         }
+      }
+    }
+  }
+
+  if (meta.render !== undefined) {
+    if (!isPlainObject(meta.render)) {
+      errors.push('render must be an object');
+    } else {
+      if (meta.render.mode !== undefined && !RENDER_MODES.includes(meta.render.mode)) {
+        errors.push(`render.mode must be one of: ${RENDER_MODES.join(', ')}`);
+      }
+      if (meta.render.mode === 'fullview') {
+        if (meta.kind !== 'activity') errors.push('render.mode fullview requires kind activity');
+        if (meta.board !== null) errors.push('render.mode fullview requires board: null');
       }
     }
   }

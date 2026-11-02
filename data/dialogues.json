@@ -115,6 +115,20 @@
         { "label": "Throw again", "className": "primary", "action": "play_again" },
         { "label": "Pack up", "className": "pill quiet", "action": "pack_up" }
       ]
+    },
+    "jungle-gym": {
+      "win": "{name} is still catching their breath. You beat par!",
+      "loss": "{name} set the pace that time. Want another run?",
+      "complete": "Course finished. Want another run?",
+      "abandonPrompt": "{name}: Leaving the course already?",
+      "abandonChoices": [
+        { "label": "Leave the gym", "className": "danger", "action": "abandon" },
+        { "label": "Keep running", "className": "pill", "action": "keep_playing" }
+      ],
+      "endChoices": [
+        { "label": "Run again", "className": "primary", "action": "play_again" },
+        { "label": "Leave the gym", "className": "pill quiet", "action": "pack_up" }
+      ]
     }
   },
   "social": {
@@ -131,6 +145,7 @@
     "items": [
       { "id": "backpack", "label": "🎒 Backpack", "className": "primary" },
       { "id": "companions", "label": "🐾 Companions", "className": "pill" },
+      { "id": "jungle-gym", "label": "🌿 Jungle gym", "className": "pill" },
       { "id": "friends", "label": "👥 Friends", "className": "pill" },
       { "id": "stats", "label": "🏆 Stats", "className": "pill" },
       { "id": "debug", "label": "⚙️ Debug", "className": "pill" },

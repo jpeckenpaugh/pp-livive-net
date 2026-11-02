@@ -24,6 +24,8 @@ const ALL_GAME_IDS = ['checkers', 'chess', 'connect-four', 'fetch', 'memory-grid
 
 test('every mini-game item exists in the catalog and the starter backpack', () => {
   for (const meta of metaList) {
+    // Door-driven activities (the jungle gym) have no backpack item.
+    if (meta.itemId === null) continue;
     assert.ok(catalog[meta.itemId], `${meta.id} itemId ${meta.itemId} is missing from the catalog`);
     assert.ok(
       starterIds.includes(meta.itemId),
@@ -69,6 +71,8 @@ test('every mini-game dialogue key resolves with win, loss, draw, abandon, and e
 
 test('every mini-game reward key resolves for each competitive outcome', () => {
   for (const meta of metaList) {
+    // rewardKey: null is an explicit "no currency this wave" declaration.
+    if (meta.rewardKey === null) continue;
     const spec = rewardsData.miniGames[meta.rewardKey];
     assert.ok(spec, `${meta.id} rewardKey ${meta.rewardKey} does not resolve`);
     if (meta.kind !== 'board') continue;

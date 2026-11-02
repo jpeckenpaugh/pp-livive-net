@@ -16,6 +16,7 @@ import {
   arrivalTile,
   createHomeLocation,
   doorFor,
+  doorsFor,
   isLocationEnabled,
   locationDef,
   travelTargets,
@@ -122,8 +123,29 @@ test('the Home flag exposes the Park door and the menu row', () => {
   );
 });
 
-test('the Home door lands on the carved doorway and returns to the park', () => {
-  const home = generateHome(HOME_SEED);
+test('the Park exposes a travel door and a jungle-gym entrance', () => {
+  const park = generateWorld('home-door-fixture');
+  const doors = doorsFor('park', { terrain: park.grid, spawn: park.spawn });
+  assert.deepEqual(doors.map(door => door.kind), ['travel', 'activity']);
+
+  const travel = doors.find(door => door.kind === 'travel');
+  assert.equal(travel.to, 'home');
+  const entrance = doors.find(door => door.kind === 'activity');
+  assert.equal(entrance.activityId, 'jungle-gym');
+  assert.equal(entrance.prompt, 'Run the jungle gym?');
+  assert.ok(isWalkable(typeAt(park.grid, entrance.x, entrance.y)));
+  assert.ok(entrance.x !== travel.x || entrance.y !== travel.y, 'entrance must not share the travel door tile');
+
+  // A disabled activity removes its entrance without touching travel.
+  const gated = doorsFor('park', {
+    terrain: park.grid,
+    spawn: park.spawn,
+    isActivity: () => false
+  });
+  assert.deepEqual(gated.map(door => door.kind), ['travel']);
+});
+
+test('the Home door lands on the carved doorway and returns to the park', () => {  const home = generateHome(HOME_SEED);
   const door = doorFor('home', { terrain: home.grid, spawn: home.spawn, isEnabled: () => true });
   assert.ok(door);
   assert.equal(door.to, 'park');

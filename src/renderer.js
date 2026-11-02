@@ -233,6 +233,13 @@ export class WorldRenderer {
 
   drawFrame(game) {
     if (!game.terrain) return;
+    // A full-view activity owns the whole canvas; the Park is not painted.
+    if (game.miniGameHost?.renderView?.(this.ctx, {
+      width: game.width,
+      height: game.height,
+      dpr: game.dpr,
+      tileSize: TILE
+    })) return;
     this.initTextures();
     const { ctx } = this;
     const { width, height, camera, terrain } = game;
@@ -426,6 +433,10 @@ export class WorldRenderer {
 
   drawDoorMarker(ctx, door, time = 0) {
     if (!door) return;
+    if (door.kind === 'activity') {
+      this.drawActivityDoorMarker(ctx, door, time);
+      return;
+    }
     const cx = (door.x + 0.5) * TILE;
     const baseY = (door.y + 0.9) * TILE;
     const doorW = TILE * 0.6;
@@ -477,6 +488,51 @@ export class WorldRenderer {
     ctx.beginPath();
     ctx.arc(left + doorW * 0.78, top + doorH * 0.58, 2.4, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
+  }
+
+  /**
+   * A course entrance reads as a climbing frame, not a front door: two posts,
+   * three rungs, and the same welcome ring as a travel door.
+   */
+  drawActivityDoorMarker(ctx, door, time = 0) {
+    const cx = (door.x + 0.5) * TILE;
+    const baseY = (door.y + 0.9) * TILE;
+    const frameW = TILE * 0.56;
+    const frameH = TILE * 0.86;
+    const left = cx - frameW / 2;
+    const top = baseY - frameH;
+    const pulse = 0.5 + Math.sin((time || 0) * 2.2 + door.x * 0.6) * 0.5;
+
+    ctx.save();
+    ctx.globalAlpha = 0.18 + pulse * 0.14;
+    ctx.fillStyle = '#b6e37c';
+    ctx.beginPath();
+    ctx.ellipse(cx, baseY, TILE * 0.44, TILE * 0.18, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = '#6f9f5b';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(left, baseY);
+    ctx.lineTo(left, top);
+    ctx.moveTo(left + frameW, baseY);
+    ctx.lineTo(left + frameW, top);
+    for (let i = 0; i < 3; i++) {
+      const y = top + (frameH * (i + 1)) / 4;
+      ctx.moveTo(left, y);
+      ctx.lineTo(left + frameW, y);
+    }
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(229, 244, 165, 0.55)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(left, top);
+    ctx.lineTo(left + frameW, top);
+    ctx.stroke();
     ctx.restore();
   }
 
@@ -994,7 +1050,9 @@ export class WorldRenderer {
 
     for (const door of game.doors || []) {
       const marker = Math.max(2.5, size / 120);
-      mctx.fillStyle = 'rgba(240, 212, 138, 0.95)';
+      mctx.fillStyle = door.kind === 'activity'
+        ? 'rgba(182, 227, 124, 0.95)'
+        : 'rgba(240, 212, 138, 0.95)';
       mctx.fillRect(
         (door.x + 0.5) * (size / WORLD_SIZE) - marker / 2,
         (door.y + 0.5) * (size / WORLD_SIZE) - marker / 2,

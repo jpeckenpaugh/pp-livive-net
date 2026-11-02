@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "activities": {
+    "jungle-gym": {
+      "id": "jungle-gym",
+      "enabled": true,
+      "title": "Jungle Gym",
+      "physics": {
+        "stepHz": 120,
+        "maxCatchupSteps": 5,
+        "viewHeight": 540,
+        "minViewWidth": 300,
+        "runSpeed": 260,
+        "accelGround": 2400,
+        "accelAir": 1500,
+        "frictionGround": 3000,
+        "frictionAir": 260,
+        "gravityUp": 2000,
+        "gravityDown": 2600,
+        "jumpVelocity": 640,
+        "jumpCut": 0.45,
+        "maxFallSpeed": 1100,
+        "coyoteTime": 0.1,
+        "jumpBuffer": 0.1,
+        "playerWidth": 24,
+        "playerHeight": 38,
+        "cameraLead": 0.38,
+        "cameraSmooth": 10,
+        "ghostSpeed": 220
+      },
+      "par": 30.09,
+      "visual": {
+        "playerWidth": 34,
+        "playerHeight": 56,
+        "ghostWidth": 34,
+        "ghostHeight": 56,
+        "ghostAlpha": 0.55
+      },
+      "course": {
+        "startX": 80,
+        "finishX": 6700,
+        "width": 6900,
+        "groundY": 440,
+        "groundDepth": 220,
+        "pitY": 720,
+        "ground": [
+          { "x": 0, "w": 900 },
+          { "x": 1000, "w": 500 },
+          { "x": 1810, "w": 690 },
+          { "x": 2790, "w": 510 },
+          { "x": 3430, "w": 670 },
+          { "x": 4650, "w": 650 },
+          { "x": 5610, "w": 490 },
+          { "x": 6200, "w": 700 }
+        ],
+        "platforms": [
+          { "x": 1570, "w": 200, "y": 380 },
+          { "x": 2560, "w": 180, "y": 380 },
+          { "x": 4180, "w": 200, "y": 380 },
+          { "x": 4450, "w": 150, "y": 320 },
+          { "x": 5380, "w": 180, "y": 380 }
+        ]
+      },
+      "ghost": {
+        "sampleStep": 4,
+        "legs": [
+          { "from": [80, 440], "to": [900, 440], "arc": 0 },
+          { "from": [900, 440], "to": [1000, 440], "arc": 74 },
+          { "from": [1000, 440], "to": [1500, 440], "arc": 0 },
+          { "from": [1500, 440], "to": [1570, 380], "arc": 90 },
+          { "from": [1570, 380], "to": [1770, 380], "arc": 0 },
+          { "from": [1770, 380], "to": [1810, 440], "arc": 70 },
+          { "from": [1810, 440], "to": [2500, 440], "arc": 0 },
+          { "from": [2500, 440], "to": [2560, 380], "arc": 90 },
+          { "from": [2560, 380], "to": [2740, 380], "arc": 0 },
+          { "from": [2740, 380], "to": [2790, 440], "arc": 70 },
+          { "from": [2790, 440], "to": [3300, 440], "arc": 0 },
+          { "from": [3300, 440], "to": [3430, 440], "arc": 96 },
+          { "from": [3430, 440], "to": [4100, 440], "arc": 0 },
+          { "from": [4100, 440], "to": [4180, 380], "arc": 90 },
+          { "from": [4180, 380], "to": [4380, 380], "arc": 0 },
+          { "from": [4380, 380], "to": [4450, 320], "arc": 80 },
+          { "from": [4450, 320], "to": [4600, 320], "arc": 0 },
+          { "from": [4600, 320], "to": [4650, 440], "arc": 70 },
+          { "from": [4650, 440], "to": [5300, 440], "arc": 0 },
+          { "from": [5300, 440], "to": [5380, 380], "arc": 90 },
+          { "from": [5380, 380], "to": [5560, 380], "arc": 0 },
+          { "from": [5560, 380], "to": [5610, 440], "arc": 70 },
+          { "from": [5610, 440], "to": [6100, 440], "arc": 0 },
+          { "from": [6100, 440], "to": [6200, 440], "arc": 74 },
+          { "from": [6200, 440], "to": [6900, 440], "arc": 0 }
+        ]
+      }
+    }
+  }
+}

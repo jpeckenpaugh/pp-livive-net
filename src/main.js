@@ -20,7 +20,7 @@ import {
   allowsForage,
   arrivalTile,
   createHomeLocation,
-  doorFor,
+  doorsFor,
   isLocationEnabled,
   locationDef,
   locationLabel,
@@ -58,6 +58,7 @@ import { PanelsUI } from './ui/panels.js';
 import { MiniGameHost } from './minigames/host.js';
 import { formatGameStrip, turnNameFor } from './minigames/strip.js';
 import { registerContractGames } from './games/contract-adapters.js';
+import { createJungleGym, isActivityEnabled } from './activities/jungle-gym.js';
 import { buildAbandonPrompt, dialogueForMeta } from './minigames/settlement.js';
 import { SpeechBubbles } from './ui/speech.js';
 import { BehaviorRuntime } from './behavior/runtime.js';
@@ -138,6 +139,98 @@ let stripReject = null;
 let stripTargetKey = '';
 /** Brief "abandoned" line after a board closes, since abandon has no end beat. */
 let stripFlash = null;
+/** Held directions for a full-view activity, fed by keyboard and touch alike. */
+const activityHolds = new Set();
+/** Throttle for the activity HUD text, so we do not touch the DOM every frame. */
+let activityHudAt = 0;
+
+/** True while a session has taken over the whole canvas. */
+function isActivitySession() {
+  return Boolean(host?.isOpen?.() && host.session?.meta?.render?.mode === 'fullview');
+}
+
+/** True while a full-view activity is actually taking input (not its end beat). */
+function activityAcceptsInput() {
+  if (!isActivitySession() || dialogue?.isOpen()) return false;
+  const phase = activityGame()?.phase;
+  return phase === 'ready' || phase === 'playing';
+}
+
+/** The active full-view game, or null. */
+function activityGame() {
+  return isActivitySession() ? host.session.game : null;
+}
+
+/**
+ * One hold path for keyboard and touch: update the set, then hand the shell's
+ * booleans to the activity. Edges (jump) are derived from set membership, so
+ * the d-pad's synthetic key repeats cannot re-trigger a jump.
+ */
+function setActivityHold(action, down) {
+  if (!action) return false;
+  const was = activityHolds.has(action);
+  if (down) activityHolds.add(action);
+  else activityHolds.delete(action);
+  if (!activityAcceptsInput()) return false;
+  host.handleInput({
+    type: 'hold',
+    left: activityHolds.has('left'),
+    right: activityHolds.has('right'),
+    jump: activityHolds.has('jump'),
+    jumpPressed: down && action === 'jump' && !was,
+    jumpReleased: !down && action === 'jump' && was
+  });
+  return true;
+}
+
+/** Map a key name to a side-scroller hold. Up/down are deliberately ignored. */
+function activityActionForKey(key) {
+  const name = String(key || '').toLowerCase();
+  if (name === 'a' || name === 'arrowleft') return 'left';
+  if (name === 'd' || name === 'arrowright') return 'right';
+  if (name === ' ' || name === 'enter') return 'jump';
+  return null;
+}
+
+function clearActivityHolds() {
+  activityHolds.clear();
+}
+
+/** Ask the activity for its HUD snapshot and paint it; hide it when idle. */
+function updateActivityHud(force = false) {
+  const hud = $('activity-hud');
+  if (!hud) return;
+  const active = isActivitySession();
+  hud.hidden = !active;
+  document.body.classList.toggle('activity-open', active);
+  if (!active) {
+    if (activityHudAt) activityHudAt = 0;
+    return;
+  }
+  const now = performance.now();
+  if (!force && now - activityHudAt < 100) return;
+  activityHudAt = now;
+
+  const snapshot = activityGame()?.getHud?.() || null;
+  if (!snapshot) return;
+  const name = $('activity-name');
+  const time = $('activity-time');
+  const par = $('activity-par');
+  const ghost = $('activity-ghost');
+  const delta = $('activity-delta');
+  if (name) name.textContent = snapshot.title || 'Jungle gym';
+  if (time) time.textContent = snapshot.time.toFixed(2);
+  if (par) par.textContent = snapshot.par.toFixed(2);
+  if (ghost) ghost.textContent = snapshot.ghostName ? `vs ${snapshot.ghostName}` : 'solo run';
+  if (delta) {
+    const behind = snapshot.delta > 0;
+    delta.textContent = snapshot.state === 'finished'
+      ? `${behind ? '+' : '−'}${Math.abs(snapshot.delta).toFixed(2)}s`
+      : (snapshot.state === 'ready' ? 'ready' : 'running');
+    delta.classList.toggle('ahead', snapshot.state === 'finished' && !behind);
+    delta.classList.toggle('behind', snapshot.state === 'finished' && behind);
+  }
+}
 
 /** Voice engine is built on the first gesture, never at module load. */
 function ensureVoice() {
@@ -486,6 +579,8 @@ function liveForageOccupied() {
 function updateForageGround(nowMs = Date.now()) {
   const player = game?.player;
   if (!forageEnabled) return;
+  // The Park is frozen while an activity owns the frame; pickups wait too.
+  if (game?.worldSuspended) return;
   if (!game?.forage || !game.terrain || !player) return;
   growForage(game.forage, {
     grid: game.terrain,
@@ -618,6 +713,11 @@ function onPlayGame(gameId, opponent) {
     }
   }
 
+  if (meta.render?.mode === 'fullview') {
+    startActivity(gameId, opponent);
+    return;
+  }
+
   const friend = opponent || friendNpcs()[0] || null;
   if (!friend) {
     showToast('Make a friend first — table games are for friends.');
@@ -644,6 +744,86 @@ function onPlayGame(gameId, opponent) {
   speakVoiceLine(friend, 'minigame.invite');
   refreshMiniGameFlags();
   panels?.updateDebugUI?.();
+}
+
+/** The competitor for a full-view activity: a buddy first, then any neighbour. */
+function activityRival(opponent = null) {
+  if (opponent && opponent !== game?.player) return opponent;
+  const buddy = (game?.companions || []).find(companion => companion.buddyId === 'player');
+  return buddy || (game?.npcs || [])[0] || null;
+}
+
+/**
+ * Start a full-view activity session. The Park freezes on the next frame (the
+ * shell syncs suspend from the session's render mode), and the activity owns
+ * the canvas, the clock, and input until it settles or the player leaves.
+ */
+function startActivity(activityId, opponent = null) {
+  if (!host || !game?.player) return false;
+  const meta = host.getMeta(activityId);
+  if (!meta) {
+    showToast('That activity is not unpacked yet.');
+    return false;
+  }
+  if (!isActivityEnabled(meta.activityId || activityId)) {
+    showToast('That activity is closed for now.');
+    return false;
+  }
+  if (host.isOpen()) {
+    if (npcOwnsSession()) packUpNpcSession('activity-start');
+    else {
+      showToast(`${host.session.meta.title || 'A game'} is already open. Pack it up first.`);
+      return false;
+    }
+  }
+
+  const rival = activityRival(opponent);
+  const seats = [
+    { character: game.player, controller: 'human', role: 'player' },
+    rival ? { character: rival, controller: 'ai', role: 'opponent' } : null
+  ].filter(Boolean);
+
+  if (dialogue?.isOpen()) dialogue.close();
+  panels?.closeAllPanels();
+  bubbles?.clear();
+  clearActivityHolds();
+
+  const result = host.start(activityId, {
+    seats,
+    controllers: seats.map(seat => seat.controller),
+    options: { opponent: rival }
+  });
+  if (!result.ok) {
+    showToast(result.message || `${meta.title} could not start here.`);
+    return false;
+  }
+
+  syncActivitySuspend();
+  updateActivityHud(true);
+  refreshMiniGameFlags();
+  if (rival?.voice) speakVoiceLine(rival, 'minigame.invite');
+  panels?.updateDebugUI?.();
+  return true;
+}
+
+/** Freeze or thaw the Park to match whether a full-view session is open. */
+function syncActivitySuspend() {
+  if (!game) return;
+  if (isActivitySession()) game.suspendWorld?.('activity');
+  else game.resumeWorld?.();
+}
+
+/** Leave a full-view activity without a result (Escape, or a menu exit). */
+function packUpActivity() {
+  if (!isActivitySession()) return false;
+  const title = host.session.meta.title || 'activity';
+  host.close({ reason: 'left-activity', settle: false, record: false, reward: false });
+  clearActivityHolds();
+  syncActivitySuspend();
+  updateActivityHud(true);
+  refreshMiniGameFlags();
+  showToast(`Left the ${String(title).toLowerCase()}.`);
+  return true;
 }
 
 function facingTile(character, distance = 3) {
@@ -722,6 +902,12 @@ function handleGameEnd(payload) {
   const speaker = pickNonPlayerSeat(session?.seats, game?.player);
 
   let text = beat?.text || `${meta?.title || 'Game'} finished.`;
+  if (session?.meta?.render?.mode === 'fullview') {
+    const hud = session.game?.getHud?.();
+    if (hud) {
+      text += `\n${hud.time.toFixed(2)}s · par ${hud.par.toFixed(2)}s · ${hud.outcome === 'win' ? 'under par' : 'over par'}`;
+    }
+  }
   const notices = Array.isArray(settlement?.notifications) ? settlement.notifications : [];
   if (notices.length) {
     text += `\nRewards: ${notices.join(' · ')}`;
@@ -825,7 +1011,10 @@ function openPlayerMenu() {
   if (!game?.player) return;
   const player = game.player;
 
-  const choices = dialogueData.playerMenu.items.map(item => ({
+  const items = dialogueData.playerMenu.items.filter(item => (
+    item.id !== 'jungle-gym' || isActivityEnabled('jungle-gym')
+  ));
+  const choices = items.map(item => ({
     label: item.label,
     className: item.className,
     onClick: () => {
@@ -835,6 +1024,8 @@ function openPlayerMenu() {
         const playerComp = game.companions?.find(c => c.buddyId === 'player');
         if (playerComp) panels?.showCard(playerComp);
         else showToast('No companions following you right now.');
+      } else if (item.id === 'jungle-gym') {
+        startActivity('jungle-gym');
       } else if (item.id === 'friends') panels?.toggleFriendsPanel();
       else if (item.id === 'stats') panels?.toggleStatsPanel();
       else if (item.id === 'debug') openDebugMenu();
@@ -871,6 +1062,19 @@ function openDebugMenu() {
 }
 
 function handleActionKey(character) {
+  if (isActivitySession()) {
+    // The end beat and any dialogue own Enter; a settled run leaves on the
+    // next action press rather than trapping the player on a frozen course.
+    if (dialogue?.isOpen()) return;
+    const activity = activityGame();
+    if (activity?.phase === 'ending' || host.session?.settled) {
+      packUpActivity();
+      return;
+    }
+    host.handleInput({ type: 'action', action: 'primary' });
+    updateActivityHud(true);
+    return;
+  }
   if (host?.isOpen()) {
     const result = host.handleAction(character);
     if (result?.changed) {
@@ -1293,6 +1497,14 @@ function ensureGame() {
     bubbles = new SpeechBubbles({ getActor: resolveCharacter });
     host = new MiniGameHost({ game, hooks: hostHooks() });
     registerContractGames(host, miniGamesData.miniGames);
+    // The jungle gym is door-driven, not item-driven, and only registers while
+    // its data flag is on, so a half-built activity is never reachable.
+    if (isActivityEnabled('jungle-gym') && miniGamesData.miniGames['jungle-gym']) {
+      host.register({
+        meta: miniGamesData.miniGames['jungle-gym'],
+        create: context => createJungleGym(context)
+      });
+    }
 
     delegated = {
       host: typeof game.setMiniGameHost === 'function',
@@ -1320,6 +1532,8 @@ function ensureGame() {
       npcGameAdapter?.activeToken?.();
 
       completeContinuousActivity();
+      syncActivitySuspend();
+      updateActivityHud();
       refreshGameStrip();
       updateForageGround();
       prefetchNearbyGreetings();
@@ -1777,8 +1991,7 @@ function applyState(state) {
   });
   game.homeOverflow = homeSelection.overflow;
   // Doors are per location, so they are set after setWorld resets them.
-  const door = doorFor(locationId, { terrain, spawn: rawPlayer });
-  game.doors = door ? [door] : [];
+  game.doors = doorsFor(locationId, { terrain, spawn: rawPlayer });
 
   const knownFriendIds = knownNpcIds(state, npcs);
   locationStates = isObjectMap(state.locations)
@@ -1947,6 +2160,15 @@ function doorNearPlayer() {
 /** Ask before swapping worlds; door bumps and Enter on a door both land here. */
 function openTravelPrompt(door) {
   if (!door || !game?.player || !dialogue) return;
+  // Activity entrances start a session instead of swapping worlds.
+  if (door.kind === 'activity') {
+    if (!isActivityEnabled(door.activityId)) {
+      showToast('That activity is closed for now.');
+      return;
+    }
+    startActivity(door.activityId);
+    return;
+  }
   if (!isLocationEnabled(door.to)) return;
   if (dialogue.isOpen() || host?.isOpen()) return;
   panels?.closeAllPanels();
@@ -2398,11 +2620,16 @@ function bindEvents() {
     if (!btn) return;
     let isDown = false;
     let repeatTimer = null;
+    const action = activityActionForKey(key);
 
     const start = e => {
       e.preventDefault();
       if (isDown) return;
       isDown = true;
+      btn.setPointerCapture?.(e.pointerId);
+      // A full-view activity reads held state directly; Park movement keeps
+      // the synthetic key events it has always used.
+      if (setActivityHold(action, true)) return;
       simulateKey(key, 'keydown');
       // For movement keys, auto-repeat while held
       if (key.startsWith('Arrow')) {
@@ -2420,12 +2647,14 @@ function bindEvents() {
         window.clearInterval(repeatTimer);
         repeatTimer = null;
       }
+      if (setActivityHold(action, false)) return;
       simulateKey(key, 'keyup');
     };
 
     btn.addEventListener('pointerdown', start);
     btn.addEventListener('pointerup', stop);
     btn.addEventListener('pointercancel', stop);
+    btn.addEventListener('lostpointercapture', stop);
     btn.addEventListener('contextmenu', e => e.preventDefault());
   };
 
@@ -2435,6 +2664,49 @@ function bindEvents() {
   bindTouchButton('touch-right', 'ArrowRight');
   bindTouchButton('touch-enter', 'Enter');
   bindTouchButton('touch-esc', 'Escape');
+
+  // Full-view activity input. Real keys feed the same held booleans as the
+  // touch pad, so there is exactly one control scheme.
+  window.addEventListener('keydown', event => {
+    if (!activityAcceptsInput()) return;
+    if (event.target instanceof HTMLElement
+      && event.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+    if (event.key.toLowerCase() === 'r') {
+      event.preventDefault();
+      host.handleInput({ type: 'restart' });
+      clearActivityHolds();
+      updateActivityHud(true);
+      return;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      packUpActivity();
+      return;
+    }
+    const action = activityActionForKey(event.key);
+    if (!action) return;
+    event.preventDefault();
+    setActivityHold(action, true);
+  });
+
+  window.addEventListener('keyup', event => {
+    if (!isActivitySession()) return;
+    const action = activityActionForKey(event.key);
+    if (!action) return;
+    event.preventDefault();
+    setActivityHold(action, false);
+  });
+  window.addEventListener('blur', () => {
+    if (isActivitySession()) clearActivityHolds();
+  });
+
+  $('activity-restart')?.addEventListener('click', event => {
+    event.currentTarget.blur();
+    if (!isActivitySession()) return;
+    host.handleInput({ type: 'restart' });
+    clearActivityHolds();
+    updateActivityHud(true);
+  });
 
   document.addEventListener('pointerdown', event => {
     if (!isVoiceVolumeOpen()) return;

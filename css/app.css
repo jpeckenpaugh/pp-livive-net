@@ -365,11 +365,93 @@ body.dialogue-open #hud .topbar #voice-hint * {
   pointer-events: none;
 }
 
+/* Full-view activity HUD (jungle gym). Sits above the canvas, below dialogue. */
+.activity-hud {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 14px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: min(92vw, 560px);
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(9, 15, 11, 0.82);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow);
+  pointer-events: none;
+}
+
+.activity-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.activity-head strong {
+  color: var(--accent-strong);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.activity-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.activity-stat b {
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.activity-stat b.ahead {
+  color: var(--accent);
+}
+
+.activity-stat b.behind {
+  color: var(--danger);
+}
+
+#activity-restart {
+  pointer-events: auto;
+  margin-left: auto;
+  padding: 3px 10px;
+  font-size: 10.5px;
+}
+
+.activity-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.01em;
+}
+
+/* The Park's own HUD steps aside while an activity owns the canvas. */
+body.activity-open #hint,
+body.activity-open .topbar,
+body.activity-open .minimap-wrap,
+body.activity-open #npc-card,
+body.activity-open #home-note {
+  display: none !important;
+}
+
 .home-note {
   position: fixed;
   left: 16px;
-  bottom: 52px;
-  margin: 0;
+  bottom: 52px;  margin: 0;
   padding: 5px 12px;
   border: 1px solid rgba(229, 244, 165, 0.2);
   border-radius: 999px;

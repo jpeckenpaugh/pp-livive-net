@@ -265,6 +265,8 @@ export class Game {
     this.selected = null;
     this.dialogueNpc = null;
     this.paused = false;
+    this.worldSuspended = false;
+    this.suspendReason = null;
     this.destination = null;
     this.pointer = { x: -1, y: -1 };
     this.heldKeys = [];
@@ -614,7 +616,7 @@ export class Game {
   }
 
   tryPlayerStep(dx, dy) {
-    if (!this.player || !this.interactive || this.paused) return false;
+    if (!this.player || !this.interactive || this.paused || this.worldSuspended) return false;
     const nx = this.player.x + dx;
     const ny = this.player.y + dy;
     this.player.direction = directionForStep(dx, dy);
@@ -692,6 +694,34 @@ export class Game {
     this.dialogueNpc = null;
     this.paused = false;
     this.interactive = true;
+  }
+
+  /**
+   * Freeze Park simulation while a full-view activity owns the canvas. The
+   * player, neighbours, companions, and behaviours all stop; the mini-game
+   * host keeps stepping so the activity's own clock advances. Distinct from
+   * `paused`, which is dialogue's freeze and stops the host too.
+   */
+  suspendWorld(reason = 'activity') {
+    if (this.worldSuspended) return { ok: true, suspended: true, alreadySuspended: true };
+    this.worldSuspended = true;
+    this.suspendReason = reason;
+    this.heldKeys = [];
+    this.destination = null;
+    this.hovered = null;
+    if (this.player) this.player.path = [];
+    return { ok: true, suspended: true };
+  }
+
+  /** Hand control back to the Park exactly where it was frozen. */
+  resumeWorld() {
+    if (!this.worldSuspended) return { ok: true, suspended: false, alreadyRunning: true };
+    this.worldSuspended = false;
+    this.suspendReason = null;
+    this.heldKeys = [];
+    this.destination = null;
+    if (this.player) this.player.path = [];
+    return { ok: true, suspended: false };
   }
 
   /**
@@ -1330,6 +1360,12 @@ export class Game {
 
   update(dt) {
     this.time += dt;
+    if (this.worldSuspended) {
+      // A full-view activity owns the frame: only its session steps.
+      if (this.miniGameHost) this.miniGameHost.update(dt * 1000);
+      if (this.destination && this.time > this.destination.until) this.destination = null;
+      return;
+    }
     if (!this.paused) {
       this.updatePlayer(dt);
       for (const npc of this.npcs) this.updateNpc(npc, dt);
@@ -1400,7 +1436,7 @@ export class Game {
   }
 
   handlePointerDown(event) {
-    if (!this.interactive || event.button !== 0) return;
+    if (!this.interactive || this.worldSuspended || event.button !== 0) return;
     const { sx, sy, x, y } = this.pointerWorld(event);
     const character = this.characterAtScreen(sx, sy);
     if (character) {

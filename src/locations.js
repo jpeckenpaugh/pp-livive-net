@@ -6,6 +6,7 @@
  * the DOM, so the gating and arrival rules can be tested in Node.
  */
 import worldData from '../data/world.json' with { type: 'json' };
+import activitiesData from '../data/activities.json' with { type: 'json' };
 import {
   generateWorld,
   generateHome,
@@ -75,9 +76,33 @@ export function worldFor(id, seed) {
 }
 
 /**
- * The door the player can bump in `id`, or null when its destination is off.
- * Park terrain is generated from a seed, so a declared door tile that landed in
- * water falls back to the nearest open tile instead of stranding the player.
+ * Activity entrances are opt-in per location and per activity: a door whose
+ * activity is disabled is not built at all, so production never shows an
+ * entrance that cannot start anything.
+ */
+export function isActivityEnabled(id, data = activitiesData.activities || {}) {
+  return Boolean(id && data?.[id]?.enabled === true);
+}
+
+/** Snap a declared door tile onto walkable ground, near the spawn. */
+function doorTile(def, door, terrain, spawn, occupied = new Set()) {
+  const origin = spawn || def.spawn || { x: 32, y: 32 };
+  const taken = new Set(occupied);
+  taken.add(`${origin.x},${origin.y}`);
+  const x = Number(door.x);
+  const y = Number(door.y);
+  if (Number.isFinite(x) && Number.isFinite(y) && isWalkable(typeAt(terrain, x, y)) && !taken.has(`${x},${y}`)) {
+    return { x, y };
+  }
+  const open = findOpenTile(terrain, origin, taken, 2);
+  return { x: open.x, y: open.y };
+}
+
+/**
+ * The travel door the player can bump in `id`, or null when its destination is
+ * off. Park terrain is generated from a seed, so a declared door tile that
+ * landed in water falls back to the nearest open tile instead of stranding the
+ * player.
  */
 export function doorFor(id, { terrain, spawn, isEnabled = isLocationEnabled } = {}) {
   const def = locationDef(id);
@@ -86,20 +111,7 @@ export function doorFor(id, { terrain, spawn, isEnabled = isLocationEnabled } = 
   const target = locationDef(door.to);
   if (!target) return null;
 
-  let x = Number(door.x);
-  let y = Number(door.y);
-  if (!Number.isFinite(x) || !Number.isFinite(y)) {
-    const origin = spawn || def.spawn || { x: 32, y: 32 };
-    const open = findOpenTile(terrain, origin, new Set([`${origin.x},${origin.y}`]), 2);
-    x = open.x;
-    y = open.y;
-  } else if (!isWalkable(typeAt(terrain, x, y))) {
-    const origin = spawn || def.spawn || { x: 32, y: 32 };
-    const open = findOpenTile(terrain, origin, new Set([`${origin.x},${origin.y}`]), 2);
-    x = open.x;
-    y = open.y;
-  }
-
+  const { x, y } = doorTile(def, door, terrain, spawn);
   return {
     x,
     y,
@@ -108,6 +120,47 @@ export function doorFor(id, { terrain, spawn, isEnabled = isLocationEnabled } = 
     confirm: TRAVEL_CONFIRM,
     cancel: TRAVEL_CANCEL
   };
+}
+
+/**
+ * Every bumpable door in `id`: the travel door plus any activity entrances
+ * declared under `doors`. Activity doors carry `kind: 'activity'` and an
+ * `activityId`; the shell starts a session instead of swapping locations.
+ */
+export function doorsFor(id, {
+  terrain,
+  spawn,
+  isEnabled = isLocationEnabled,
+  isActivity = isActivityEnabled
+} = {}) {
+  const def = locationDef(id);
+  if (!def) return [];
+  const doors = [];
+  const used = new Set();
+  const travel = doorFor(id, { terrain, spawn, isEnabled });
+  if (travel) {
+    doors.push({ ...travel, kind: 'travel', id: travel.to });
+    used.add(`${travel.x},${travel.y}`);
+  }
+
+  for (const extra of Array.isArray(def.doors) ? def.doors : []) {
+    if (!extra || extra.kind !== 'activity') continue;
+    if (!isActivity(extra.activityId)) continue;
+    const { x, y } = doorTile(def, extra, terrain, spawn, used);
+    used.add(`${x},${y}`);
+    doors.push({
+      x,
+      y,
+      kind: 'activity',
+      id: extra.id || extra.activityId,
+      activityId: extra.activityId,
+      prompt: extra.prompt || `Try the ${extra.activityId}?`,
+      confirm: extra.confirm || 'Go',
+      cancel: TRAVEL_CANCEL
+    });
+  }
+
+  return doors;
 }
 
 /** Last known position in a location, falling back to its declared spawn. */

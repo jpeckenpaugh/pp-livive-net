@@ -23,7 +23,17 @@
         "y": 34,
         "to": "home",
         "prompt": "Go home?"
-      }
+      },
+      "doors": [
+        {
+          "id": "jungle-gym",
+          "kind": "activity",
+          "activityId": "jungle-gym",
+          "x": 28,
+          "y": 30,
+          "prompt": "Run the jungle gym?"
+        }
+      ]
     },
     "home": {
       "id": "home",

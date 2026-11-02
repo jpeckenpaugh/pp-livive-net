@@ -36,6 +36,16 @@
     </header>
 
     <p id="hint" aria-live="polite">WASD or arrow keys to walk · click the ground to move · bump into a neighbour to talk</p>
+    <div id="activity-hud" class="activity-hud" hidden>
+      <div class="activity-head">
+        <strong id="activity-name">Jungle gym</strong>
+        <span class="activity-stat"><span>time</span><b id="activity-time">0.00</b></span>
+        <span class="activity-stat"><span>par</span><b id="activity-par">30.09</b></span>
+        <span class="activity-stat"><span id="activity-ghost">ghost</span><b id="activity-delta">ready</b></span>
+        <button id="activity-restart" class="pill quiet" type="button">Restart</button>
+      </div>
+      <p class="activity-hint">hold A / D or ◀ ▶ to run · space or X to jump · R restarts · Esc leaves</p>
+    </div>
     <p id="home-note" class="home-note" role="status" aria-live="polite" hidden></p>
 
     <aside id="npc-card" class="npc-card" hidden aria-live="polite">

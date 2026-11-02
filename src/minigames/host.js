@@ -41,6 +41,7 @@ function freezeMeta(meta) {
       })
       : null,
     input: meta.input ? Object.freeze({ ...meta.input }) : null,
+    render: meta.render ? Object.freeze({ ...meta.render }) : null,
     renderLayers: Object.freeze([...(meta.renderLayers || [])]),
     timing: meta.timing ? Object.freeze({ ...meta.timing }) : null
   });
@@ -382,6 +383,18 @@ export class MiniGameHost {
     return result;
   }
 
+  /**
+   * Route raw activity input (held directions, jump edge, restart) to the
+   * active session. Board games simply ignore input they do not understand.
+   */
+  handleInput(input) {
+    const session = this.session;
+    if (!session || session.paused) return emptyStepResult();
+    const result = createStepResult(session.game.handleInput?.(input) ?? {});
+    this._processEvents(result.events, session);
+    return result;
+  }
+
   isParticipant(character) {
     const session = this.session;
     if (!session || !character) return false;
@@ -481,6 +494,16 @@ export class MiniGameHost {
     return true;
   }
 
+  /**
+   * Full-view render pass. Returns false unless the active session declares
+   * `render.mode: "fullview"`; the shell then paints the Park as usual.
+   */
+  renderView(ctx, view) {
+    const session = this.session;
+    if (!session || session.meta.render?.mode !== 'fullview') return false;
+    return Boolean(session.game.renderView?.(ctx, view));
+  }
+
   pause(reason = 'paused') {
     const session = this.session;
     if (!session) return { ok: false, reason: 'no-session' };
@@ -508,6 +531,7 @@ export class MiniGameHost {
       gameId: session.meta.id,
       title: session.meta.title,
       kind: session.meta.kind || null,
+      mode: session.meta.render?.mode || 'inline',
       phase: session.game.phase || null,
       paused: session.paused,
       settled: session.settled,

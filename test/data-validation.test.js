@@ -17,6 +17,8 @@ function readJson(name) {
 const items = readJson('items.json');
 const effects = readJson('effects.json');
 const minigames = readJson('minigames.json');
+const activities = readJson('activities.json');
+const world = readJson('world.json');
 const rewards = readJson('rewards.json');
 const dialogues = readJson('dialogues.json');
 const behaviors = readJson('behaviors.json');
@@ -76,13 +78,50 @@ test('every effects.json itemId exists and points back to the same effect', () =
   }
 });
 
+test('every full-view activity resolves its definition and every entrance names one', () => {
+  const defined = activities.activities || {};
+  const fullview = Object.values(minigames.miniGames).filter(meta => meta.render?.mode === 'fullview');
+  assert.ok(fullview.length >= 1, 'the jungle gym should be the first full-view activity');
+
+  for (const meta of fullview) {
+    assert.equal(typeof meta.activityId, 'string', `${meta.id} needs an activityId`);
+    const definition = defined[meta.activityId];
+    assert.ok(definition, `${meta.id} activityId ${meta.activityId} does not resolve`);
+    assert.equal(definition.id, meta.activityId);
+    assert.equal(definition.title, meta.title);
+    assert.equal(typeof definition.enabled, 'boolean');
+    assert.ok(Number.isFinite(definition.par) && definition.par > 0, `${meta.id} needs a par time`);
+
+    const derived = (definition.course.finishX - definition.course.startX) / definition.physics.ghostSpeed;
+    assert.ok(Math.abs(definition.par - derived) < 0.02, `${meta.id} par must match the ghost's pace`);
+    assert.ok(definition.course.ground.length > 1, `${meta.id} needs real gaps`);
+    assert.ok(definition.course.platforms.length > 0, `${meta.id} needs one-way platforms`);
+    assert.ok(definition.ghost.legs.length > 0, `${meta.id} needs an authored ghost line`);
+  }
+
+  for (const [locationId, location] of Object.entries(world.locations || {})) {
+    for (const door of Array.isArray(location.doors) ? location.doors : []) {
+      if (door.kind !== 'activity') continue;
+      assert.ok(
+        defined[door.activityId],
+        `${locationId} entrance references missing activity ${door.activityId}`
+      );
+      assert.ok(Number.isInteger(door.x) && Number.isInteger(door.y), `${locationId} entrance needs a tile`);
+      assert.equal(typeof door.prompt, 'string');
+    }
+  }
+});
+
 test('every mini-game metadata record resolves items, dialogue, rewards, board, seats, input, and layers', () => {
   for (const [id, meta] of Object.entries(minigames.miniGames)) {
     assert.equal(meta.id, id, `miniGames.${id} id must match its key`);
     const report = validateMeta(meta);
     assert.equal(report.ok, true, `${id}: ${report.errors.join('; ')}`);
 
-    assert.ok(catalogIds.has(meta.itemId), `${id} references missing item ${meta.itemId}`);
+    // Door-driven activities declare itemId: null; everything else must resolve.
+    if (meta.itemId !== null) {
+      assert.ok(catalogIds.has(meta.itemId), `${id} references missing item ${meta.itemId}`);
+    }
     if (meta.dialogueKey !== null && meta.dialogueKey !== undefined) {
       assert.ok(dialogues.dialogues[meta.dialogueKey], `${id} missing dialogue ${meta.dialogueKey}`);
     }

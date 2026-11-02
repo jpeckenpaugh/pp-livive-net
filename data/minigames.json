@@ -186,6 +186,37 @@
       },
       "persist": false,
       "activity": "continuous"
+    },
+    "jungle-gym": {
+      "id": "jungle-gym",
+      "title": "Jungle Gym",
+      "kind": "activity",
+      "activityId": "jungle-gym",
+      "itemId": null,
+      "dialogueKey": "jungle-gym",
+      "rewardKey": null,
+      "players": 2,
+      "seats": 2,
+      "board": null,
+      "input": {
+        "mode": "action",
+        "actionLabel": "jump"
+      },
+      "strip": {
+        "instruction": "hold left or right, {key} to jump",
+        "ready": "sizing up the course"
+      },
+      "render": {
+        "mode": "fullview"
+      },
+      "renderLayers": ["hud"],
+      "timing": {
+        "openMs": 0,
+        "closeMs": 0,
+        "turnMs": 0
+      },
+      "persist": false,
+      "activity": "continuous"
     }
   },
   "strip": {
