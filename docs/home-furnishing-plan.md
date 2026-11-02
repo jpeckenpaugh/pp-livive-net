@@ -238,8 +238,8 @@ item menu, so the menu and placement must ship together. 7b absorbs the core Use
 | **7b** | Item menu (click/tap + keyboard), Move into Furnish mode, placement/rotate/variant, core Use: sleep, sit, bake pie, radio tune, TV/lamp toggles | You tap a bed, sleep, wake, tap Move, rearrange, reload |
 | **7c** | Flavour lines for the remaining items, pie item polish, 360 px pass, edge cases | Every item has a response; touch and keyboard agree |
 
-Two remaining waves, roughly **3–4 dev days**, one human check each, committed to `main` at
-each gate. No new dependencies or binary assets.
+**Status (2026-11-01):** 7a live (`73be877`), 7b live (`929c78f`), 7c pending. The
+grey-box spike has been deleted. 546 tests.
 
 **New data this adds:** `use: { verb, kind, line?, recipe?, cue? }` on each item;
 `apple-pie` in `data/items.json` (value 6, tradeable, icon 🥧); a `radio-tune` cue in
