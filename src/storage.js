@@ -332,7 +332,8 @@ export function captureLocationRecord({
   player = null,
   npcs = null,
   forage = null,
-  decor = null
+  decor = null,
+  items = null
 } = {}, previous = null) {
   const base = isObject(previous) ? previous : {};
   const encodedTerrain = Array.isArray(terrain) ? encodeTerrain(terrain) : terrain;
@@ -340,11 +341,15 @@ export function captureLocationRecord({
   const nextNpcs = Array.isArray(npcs)
     ? npcs.filter(isObject).map(serializeNpcRecord)
     : (Array.isArray(base.npcs) ? base.npcs : []);
-  // `decor` is Home-only today. Capture it when passed, otherwise keep whatever
-  // the previous record held so travelling away cannot erase a placed item.
+  // `decor` is legacy Home-only data. It is captured when passed (older callers)
+  // and otherwise preserved verbatim as a downgrade hedge; Wave 7a never writes
+  // it again. `items` is the live Home furniture list.
   const nextDecor = Array.isArray(decor)
     ? decor.filter(isObject).map(entry => ({ ...entry }))
     : (Array.isArray(base.decor) ? base.decor.filter(isObject).map(entry => ({ ...entry })) : null);
+  const nextItems = Array.isArray(items)
+    ? items.filter(isObject).map(entry => ({ ...entry }))
+    : (Array.isArray(base.items) ? base.items.filter(isObject).map(entry => ({ ...entry })) : null);
 
   return {
     ...base,
@@ -353,16 +358,9 @@ export function captureLocationRecord({
     ...(nextPlayer ? { player: nextPlayer } : {}),
     npcs: nextNpcs,
     forage: normalizeForage(forage ?? base.forage),
-    ...(nextDecor ? { decor: nextDecor } : {})
+    ...(nextDecor ? { decor: nextDecor } : {}),
+    ...(nextItems ? { items: nextItems } : {})
   };
-}
-
-/** The current location's Home decoration, or an empty list for other maps. */
-export function activeDecor(state) {
-  if (!isObject(state) || !isObject(state.locations)) return [];
-  const current = typeof state.currentLocation === 'string' ? state.currentLocation : 'park';
-  const record = isObject(state.locations[current]) ? state.locations[current] : null;
-  return Array.isArray(record?.decor) ? record.decor.filter(isObject).map(entry => ({ ...entry })) : [];
 }
 
 function migrateCharacterRecord(record) {

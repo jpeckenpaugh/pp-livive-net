@@ -19,6 +19,7 @@ import {
 import { resolveFx } from './effects.js';
 import { focusOptionsFor, focusPointFor } from './camera-focus.js';
 import { tickHomeBuddy } from './home.js';
+import { blockedTiles as homeFurnitureBlockedTiles } from './home_items.js';
 import engineConfig from '../data/engine_config.json' with { type: 'json' };
 
 export {
@@ -253,8 +254,9 @@ export class Game {
     this.homeMode = false;
     this.homeRoomTiles = [];
     this.homeRugTiles = [];
+    this.homeItems = [];
+    this.homeBlockedTiles = new Set();
     this.homeOverflow = 0;
-    this.decor = [];
     this.miniGames = [];
     this.miniGameHost = null;
     this.behaviorRuntime = null;
@@ -464,7 +466,7 @@ export class Game {
     scenery = [],
     forage = null,
     wander = true,
-    decor = [],
+    homeItems = [],
     homeMode = false,
     homeBuddies = [],
     homeRoomTiles = [],
@@ -475,8 +477,11 @@ export class Game {
     this.scenery = scenery;
     this.doors = [];
     this.forage = forage;
-    this.decor = Array.isArray(decor) ? decor : [];
     this.homeMode = Boolean(homeMode);
+    this.homeItems = Array.isArray(homeItems) ? homeItems : [];
+    this.homeBlockedTiles = this.homeMode
+      ? homeFurnitureBlockedTiles(this.homeItems)
+      : new Set();
     this.homeRoomTiles = Array.isArray(homeRoomTiles) ? homeRoomTiles : [];
     this.homeRugTiles = Array.isArray(homeRugTiles) ? homeRugTiles : [];
     this.homeOverflow = 0;
@@ -534,8 +539,9 @@ export class Game {
     this.homeMode = false;
     this.homeRoomTiles = [];
     this.homeRugTiles = [];
+    this.homeItems = [];
+    this.homeBlockedTiles = new Set();
     this.homeOverflow = 0;
-    this.decor = [];
     this.selected = null;
     this.hovered = null;
     this.dialogueNpc = null;
@@ -843,6 +849,12 @@ export class Game {
     // Flying lets a character cross water; solid board footprints and other
     // characters still block below.
 
+    // Solid Home furniture blocks every walker, flyer, and teleport landing.
+    // The set is empty outside Home, so Park collision is untouched.
+    if (this.homeBlockedTiles.size && this.homeBlockedTiles.has(`${nx},${ny}`)) {
+      return false;
+    }
+
     // Strict occupancy and reservation collision with collision exclusion rule:
     // Filter other characters using canCollide(character, other)
     // (e.g. Walking NPCs are not blocked by companions, but companions are blocked by NPCs)
@@ -909,6 +921,7 @@ export class Game {
       const tx = character.x + dx * distance;
       const ty = character.y + dy * distance;
       if (tx < 0 || tx >= WORLD_SIZE || ty < 0 || ty >= WORLD_SIZE) break;
+      if (this.homeBlockedTiles.size && this.homeBlockedTiles.has(`${tx},${ty}`)) continue;
       if (reservationAtTile(collidingObstacles, tx, ty)) continue;
       landing = { x: tx, y: ty, distance };
     }
@@ -1340,6 +1353,7 @@ export class Game {
         terrain: this.terrain,
         roomTiles: this.homeRoomTiles,
         rugTiles: this.homeRugTiles,
+        blockedTiles: this.homeBlockedTiles,
         occupied
       });
       if (!next || next === buddy) continue;

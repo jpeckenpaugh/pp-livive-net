@@ -340,30 +340,34 @@ test('board strip copy covers every rejection reason and instruction placeholder
   }
 });
 
-test('decor.json offers the swappable rug and plant with existing art', () => {
-  const decor = readJson('decor.json');
-  const scenery = readJson('nature_scenery.json');
-  assert.equal(decor.version, 1);
-  assert.ok(Array.isArray(decor.items));
-  assert.equal(decor.items.length, 2);
+test('home_items.json defines the furnished room and a testable default layout', () => {
+  const homeItems = readJson('home_items.json');
+  assert.equal(homeItems.version, 1);
+  assert.equal(typeof homeItems.items, 'object');
+  assert.ok(Object.keys(homeItems.items).length >= 15);
 
-  const ids = new Set(decor.items.map(item => item.id));
-  assert.equal(ids.size, 2);
-  assert.ok(ids.has(decor.default));
-  for (const item of decor.items) {
-    assert.equal(typeof item.id, 'string');
-    assert.ok(item.id);
+  for (const [id, item] of Object.entries(homeItems.items)) {
+    assert.equal(item.id, id);
     assert.equal(typeof item.label, 'string');
-    assert.ok(item.label);
-    assert.ok(['rug', 'plant'].includes(item.kind));
-    assert.equal(typeof item.icon, 'string');
-    if (item.kind === 'rug') {
-      assert.equal(typeof item.color, 'string');
-      assert.equal(typeof item.accent, 'string');
-    } else {
-      assert.ok(scenery[item.sprite], `${item.id} references missing scenery ${item.sprite}`);
-      assert.ok(Number(item.scale) > 0 && Number(item.scale) <= 1);
-    }
+    assert.ok(item.label.length > 0);
+    assert.ok(['living', 'kitchen', 'dining', 'bedroom'].includes(item.zone), `${id} zone`);
+    assert.ok(item.size && item.size.w >= 1 && item.size.h >= 1, `${id} size`);
+    assert.equal(typeof item.solid, 'boolean', `${id} solid`);
+    assert.equal(item.shape, id);
+    assert.ok(item.colors && typeof item.colors.base === 'string', `${id} palette`);
+    assert.ok(Array.isArray(item.variants) && item.variants.length >= 2, `${id} variants`);
+    assert.ok(item.interact === null || typeof item.interact?.kind === 'string', `${id} interact`);
+    assert.ok(item.tier >= 1, `${id} tier`);
+    assert.ok(Number(item.price) >= 0, `${id} price`);
+  }
+
+  assert.equal(homeItems.items.rug.solid, false);
+  assert.equal(homeItems.items.plant.solid, true);
+  assert.ok(Array.isArray(homeItems.layout) && homeItems.layout.length >= 15);
+  for (const entry of homeItems.layout) {
+    assert.ok(homeItems.items[entry.itemId], `layout references unknown ${entry.itemId}`);
+    assert.ok(Number.isInteger(entry.dx) && Number.isInteger(entry.dy));
+    assert.ok(Number.isInteger(entry.rot) && entry.rot >= 0 && entry.rot <= 3);
   }
 });
 

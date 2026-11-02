@@ -44,6 +44,7 @@ gate.
 | `data/sounds.json` | Oscillator recipes for synthesized game cues |
 | `data/dialogues.json` | Dialogue templates, prompts with `{name}` interpolation, and menu schemas |
 | `data/entities.json` | NPC names, player names, and vibes/flavour text |
+| `data/home_items.json` | Home furniture catalog, palettes/variants, and the default room layout |
 | `data/cubeworld_pets.json` | Pre-rendered offline sprite sheets for Cube World animal pets and creatures |
 | `data/voice.json` | Language weights, event → hook aliases, prefetch and chat limits |
 | `data/voice_bank.json` | Generated voice manifest: voices, phrases, hooks, hashes, durations |
@@ -51,6 +52,8 @@ gate.
 | `src/main.js` | App state, dialogue triggers, save loop, and event wiring |
 | `src/game.js` | Movement physics, tile collision, camera, character registry, wander AI |
 | `src/renderer.js` | Canvas WorldRenderer, viewport math, layer sorting, and minimap |
+| `src/home.js` | Home buddy roster, deterministic placement, and the wander/sit tick |
+| `src/home_items.js` | Home furniture lookup, rotated footprints, blocked tiles, placement validation, and decor migration |
 | `src/animation.js` | Family animation profiles, procedural locomotion, and cycle frame evaluators |
 | `src/dialogue.js` | Dialogue manager for bump-to-talk conversations and friendship updates |
 | `src/storage.js` | LocalStorage serialization, schema migrations, and match statistics |

@@ -186,7 +186,6 @@ export function createHomeLocation({ seed = locationDef('home')?.seed, basket = 
     terrain: encodeTerrain(world.grid),
     player: { x: world.spawn.x, y: world.spawn.y, direction: 0 },
     npcs: [],
-    decor: [],
     forage: {
       apples: [],
       basket: {

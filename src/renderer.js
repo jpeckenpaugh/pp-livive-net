@@ -10,7 +10,11 @@ import { shouldMirror, UP } from './facing.js';
 import { getAnimationProfile } from './animation.js';
 import { composeRenderTransform, resolveFx } from './effects.js';
 import { isMushroomHidden, isMushroomScenery } from './forage.js';
-import { decorItem } from './home.js';
+import {
+  homeItem,
+  homeItemSize,
+  itemColors
+} from './home_items.js';
 import sceneryAssets from '../data/nature_scenery.json' with { type: 'json' };
 
 export const TILE = 48;
@@ -183,6 +187,533 @@ export function makeTileTextures() {
   return textures;
 }
 
+/* ------------------------------------------------------------------------ *
+ * Home furniture shapes. Each helper draws inside a padded footprint box in
+ * world pixels, using the loaded item palette. The dispatcher keys on the
+ * data-file `shape` so a new item type is data plus one function.
+ * ------------------------------------------------------------------------ */
+
+const ITEM_SHADOW = 'rgba(8, 14, 9, 0.3)';
+
+function itemBounds(entry) {
+  const size = homeItemSize(entry?.itemId, entry?.rot);
+  if (!size) return null;
+  return {
+    left: entry.x * TILE,
+    top: entry.y * TILE,
+    right: (entry.x + size.w) * TILE,
+    bottom: (entry.y + size.h) * TILE,
+    width: size.w * TILE,
+    height: size.h * TILE
+  };
+}
+
+function itemPad(bounds) {
+  const inset = TILE * 0.1;
+  return {
+    left: bounds.left + inset,
+    right: bounds.right - inset,
+    top: bounds.top + inset,
+    bottom: bounds.bottom - inset,
+    width: Math.max(1, bounds.width - inset * 2),
+    height: Math.max(1, bounds.height - inset * 2),
+    baseY: bounds.bottom - TILE * 0.08
+  };
+}
+
+function roundRectPath(ctx, x, y, w, h, radius) {
+  const r = Math.max(0, Math.min(radius, w / 2, h / 2));
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
+  else ctx.rect(x, y, w, h);
+}
+
+function fillRoundRect(ctx, x, y, w, h, radius, color) {
+  roundRectPath(ctx, x, y, w, h, radius);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function strokeRoundRect(ctx, x, y, w, h, radius, color, lineWidth = 2) {
+  roundRectPath(ctx, x, y, w, h, radius);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth;
+  ctx.stroke();
+}
+
+function itemShadow(ctx, box) {
+  ctx.save();
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = ITEM_SHADOW;
+  ctx.beginPath();
+  ctx.ellipse(
+    (box.left + box.right) / 2,
+    box.baseY + TILE * 0.02,
+    box.width * 0.44,
+    TILE * 0.12,
+    0,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawCouch(ctx, box, colors) {
+  itemShadow(ctx, box);
+  const backHeight = TILE * 0.58;
+  const seatY = box.baseY - TILE * 0.36;
+  fillRoundRect(ctx, box.left, box.baseY - backHeight, box.width, backHeight, 6, colors.trim);
+  fillRoundRect(ctx, box.left + TILE * 0.02, box.baseY - TILE * 0.46, box.width - TILE * 0.04, TILE * 0.34, 5, colors.base);
+  const cushions = Math.max(2, Math.round(box.width / (TILE * 0.85)));
+  const cushionWidth = (box.width - TILE * 0.04) / cushions;
+  for (let index = 0; index < cushions; index += 1) {
+    fillRoundRect(
+      ctx,
+      box.left + TILE * 0.02 + index * cushionWidth + 2,
+      seatY,
+      cushionWidth - 4,
+      TILE * 0.26,
+      4,
+      colors.accent
+    );
+  }
+  fillRoundRect(ctx, box.left, box.baseY - TILE * 0.5, TILE * 0.13, TILE * 0.42, 4, colors.accent);
+  fillRoundRect(ctx, box.right - TILE * 0.13, box.baseY - TILE * 0.5, TILE * 0.13, TILE * 0.42, 4, colors.accent);
+  fillRoundRect(ctx, box.left + TILE * 0.1, box.baseY - TILE * 0.06, TILE * 0.1, TILE * 0.08, 2, colors.trim);
+  fillRoundRect(ctx, box.right - TILE * 0.2, box.baseY - TILE * 0.06, TILE * 0.1, TILE * 0.08, 2, colors.trim);
+}
+
+function drawArmchair(ctx, box, colors) {
+  itemShadow(ctx, box);
+  const backHeight = TILE * 0.5;
+  fillRoundRect(ctx, box.left, box.baseY - backHeight, box.width, backHeight, 6, colors.trim);
+  fillRoundRect(ctx, box.left + 2, box.baseY - TILE * 0.42, box.width - 4, TILE * 0.3, 5, colors.base);
+  fillRoundRect(ctx, box.left + TILE * 0.16, box.baseY - TILE * 0.38, box.width - TILE * 0.32, TILE * 0.2, 4, colors.accent);
+  fillRoundRect(ctx, box.left, box.baseY - TILE * 0.44, TILE * 0.12, TILE * 0.36, 4, colors.accent);
+  fillRoundRect(ctx, box.right - TILE * 0.12, box.baseY - TILE * 0.44, TILE * 0.12, TILE * 0.36, 4, colors.accent);
+  fillRoundRect(ctx, box.left + TILE * 0.12, box.baseY - TILE * 0.05, TILE * 0.08, TILE * 0.07, 2, colors.trim);
+  fillRoundRect(ctx, box.right - TILE * 0.2, box.baseY - TILE * 0.05, TILE * 0.08, TILE * 0.07, 2, colors.trim);
+}
+
+function drawCoffeeTable(ctx, box, colors) {
+  itemShadow(ctx, box);
+  const topY = box.baseY - TILE * 0.52;
+  fillRoundRect(ctx, box.left + TILE * 0.08, topY + TILE * 0.14, TILE * 0.07, TILE * 0.42, 2, colors.trim);
+  fillRoundRect(ctx, box.right - TILE * 0.15, topY + TILE * 0.14, TILE * 0.07, TILE * 0.42, 2, colors.trim);
+  fillRoundRect(ctx, box.left, topY, box.width, TILE * 0.16, 5, colors.accent);
+  fillRoundRect(ctx, box.left + 3, topY + TILE * 0.14, box.width - 6, TILE * 0.1, 3, colors.base);
+}
+
+function drawTv(ctx, box, colors) {
+  itemShadow(ctx, box);
+  const centerX = (box.left + box.right) / 2;
+  const bodyWidth = Math.min(box.width * 0.88, TILE * 0.9);
+  const bodyHeight = TILE * 0.76;
+  const bodyX = centerX - bodyWidth / 2;
+  const bodyY = box.baseY - TILE * 0.12 - bodyHeight;
+  fillRoundRect(ctx, centerX - TILE * 0.2, box.baseY - TILE * 0.14, TILE * 0.4, TILE * 0.1, 3, colors.trim);
+  fillRoundRect(ctx, bodyX, bodyY, bodyWidth, bodyHeight, 6, colors.base);
+  fillRoundRect(ctx, bodyX + 4, bodyY + 4, bodyWidth - 16, bodyHeight - 10, 4, colors.accent);
+  ctx.save();
+  ctx.globalAlpha = 0.22;
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = 1;
+  for (let line = 1; line <= 3; line += 1) {
+    const y = bodyY + 4 + ((bodyHeight - 10) * line) / 4;
+    ctx.beginPath();
+    ctx.moveTo(bodyX + 5, y);
+    ctx.lineTo(bodyX + bodyWidth - 13, y);
+    ctx.stroke();
+  }
+  ctx.restore();
+  ctx.beginPath();
+  ctx.arc(bodyX + bodyWidth - 7, bodyY + bodyHeight * 0.36, 1.8, 0, Math.PI * 2);
+  ctx.fillStyle = colors.trim;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(bodyX + bodyWidth - 7, bodyY + bodyHeight * 0.6, 1.8, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawRadio(ctx, box, colors) {
+  itemShadow(ctx, box);
+  const centerX = (box.left + box.right) / 2;
+  const bodyWidth = Math.min(box.width * 0.72, TILE * 0.66);
+  const bodyHeight = TILE * 0.46;
+  const bodyX = centerX - bodyWidth / 2;
+  const bodyY = box.baseY - TILE * 0.1 - bodyHeight;
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(bodyX + bodyWidth * 0.2, bodyY + 2);
+  ctx.lineTo(bodyX + bodyWidth * 0.05, bodyY - TILE * 0.28);
+  ctx.stroke();
+  fillRoundRect(ctx, bodyX, bodyY, bodyWidth, bodyHeight, 5, colors.base);
+  ctx.beginPath();
+  ctx.arc(bodyX + bodyWidth * 0.3, bodyY + bodyHeight * 0.52, bodyHeight * 0.28, 0, Math.PI * 2);
+  ctx.fillStyle = colors.trim;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(bodyX + bodyWidth * 0.3, bodyY + bodyHeight * 0.52, bodyHeight * 0.16, 0, Math.PI * 2);
+  ctx.fillStyle = colors.accent;
+  ctx.fill();
+  fillRoundRect(ctx, bodyX + bodyWidth * 0.62, bodyY + bodyHeight * 0.22, bodyWidth * 0.24, bodyHeight * 0.16, 2, colors.accent);
+  fillRoundRect(ctx, bodyX + bodyWidth * 0.62, bodyY + bodyHeight * 0.5, bodyWidth * 0.24, bodyHeight * 0.16, 2, colors.trim);
+}
+
+function drawFloorLamp(ctx, box, colors) {
+  itemShadow(ctx, box);
+  const centerX = (box.left + box.right) / 2;
+  const topY = box.baseY - TILE * 1.14;
+  ctx.save();
+  ctx.globalAlpha = 0.22;
+  ctx.fillStyle = colors.accent;
+  ctx.beginPath();
+  ctx.ellipse(centerX, topY + TILE * 0.18, TILE * 0.34, TILE * 0.3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = Math.max(2, TILE * 0.045);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(centerX, box.baseY - TILE * 0.02);
+  ctx.lineTo(centerX, topY + TILE * 0.26);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(centerX, box.baseY, TILE * 0.16, TILE * 0.05, 0, 0, Math.PI * 2);
+  ctx.fillStyle = colors.trim;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(centerX - TILE * 0.2, topY + TILE * 0.26);
+  ctx.lineTo(centerX + TILE * 0.2, topY + TILE * 0.26);
+  ctx.lineTo(centerX + TILE * 0.13, topY);
+  ctx.lineTo(centerX - TILE * 0.13, topY);
+  ctx.closePath();
+  ctx.fillStyle = colors.accent;
+  ctx.fill();
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function drawBookshelf(ctx, box, colors) {
+  itemShadow(ctx, box);
+  const top = box.baseY - Math.min(box.height * 0.92, TILE * 1.82);
+  fillRoundRect(ctx, box.left, top, box.width, box.baseY - top, 4, colors.trim);
+  fillRoundRect(ctx, box.left + 3, top + 3, box.width - 6, box.baseY - top - 6, 2, colors.base);
+  const shelves = 3;
+  const shelfHeight = (box.baseY - top - 8) / shelves;
+  for (let row = 0; row < shelves; row += 1) {
+    const shelfY = top + 4 + row * shelfHeight;
+    ctx.beginPath();
+    ctx.moveTo(box.left + 4, shelfY + shelfHeight - 2);
+    ctx.lineTo(box.right - 4, shelfY + shelfHeight - 2);
+    ctx.strokeStyle = colors.trim;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    const bookWidth = (box.width - 12) / 4;
+    for (let book = 0; book < 4; book += 1) {
+      const height = shelfHeight * (0.42 + ((row + book) % 3) * 0.12);
+      fillRoundRect(
+        ctx,
+        box.left + 6 + book * bookWidth,
+        shelfY + shelfHeight - 3 - height,
+        bookWidth - 2,
+        height,
+        1,
+        book % 2 ? colors.accent : colors.trim
+      );
+    }
+  }
+}
+
+function drawPlant(ctx, box, colors) {
+  itemShadow(ctx, box);
+  const centerX = (box.left + box.right) / 2;
+  const potTop = box.baseY - TILE * 0.34;
+  ctx.beginPath();
+  ctx.moveTo(centerX - TILE * 0.17, potTop);
+  ctx.lineTo(centerX + TILE * 0.17, potTop);
+  ctx.lineTo(centerX + TILE * 0.13, box.baseY - TILE * 0.02);
+  ctx.lineTo(centerX - TILE * 0.13, box.baseY - TILE * 0.02);
+  ctx.closePath();
+  ctx.fillStyle = colors.accent;
+  ctx.fill();
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.strokeStyle = colors.trim;
+  ctx.beginPath();
+  ctx.moveTo(centerX, potTop);
+  ctx.lineTo(centerX, potTop - TILE * 0.34);
+  ctx.stroke();
+  const leaves = [
+    { dx: -0.18, dy: -0.5, rx: 0.19, ry: 0.11, angle: -0.5, color: colors.base },
+    { dx: 0.17, dy: -0.44, rx: 0.19, ry: 0.11, angle: 0.5, color: colors.base },
+    { dx: -0.04, dy: -0.66, rx: 0.14, ry: 0.2, angle: -0.15, color: colors.trim },
+    { dx: 0.1, dy: -0.6, rx: 0.14, ry: 0.12, angle: 0.9, color: colors.base }
+  ];
+  for (const leaf of leaves) {
+    ctx.beginPath();
+    ctx.ellipse(
+      centerX + TILE * leaf.dx,
+      potTop + TILE * leaf.dy,
+      TILE * leaf.rx,
+      TILE * leaf.ry,
+      leaf.angle,
+      0,
+      Math.PI * 2
+    );
+    ctx.fillStyle = leaf.color;
+    ctx.fill();
+  }
+}
+
+function drawFridge(ctx, box, colors) {
+  itemShadow(ctx, box);
+  const width = Math.min(box.width * 0.72, TILE * 0.7);
+  const height = TILE * 1.36;
+  const x = (box.left + box.right) / 2 - width / 2;
+  const y = box.baseY - height;
+  fillRoundRect(ctx, x, y, width, height, 5, colors.base);
+  fillRoundRect(ctx, x + 2, y + 2, width - 4, height * 0.32, 3, colors.accent);
+  ctx.beginPath();
+  ctx.moveTo(x + 2, y + height * 0.36);
+  ctx.lineTo(x + width - 2, y + height * 0.36);
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  fillRoundRect(ctx, x + width - TILE * 0.09, y + TILE * 0.08, TILE * 0.035, TILE * 0.2, 2, colors.trim);
+  fillRoundRect(ctx, x + width - TILE * 0.09, y + height * 0.44, TILE * 0.035, TILE * 0.26, 2, colors.trim);
+}
+
+function drawStove(ctx, box, colors) {
+  itemShadow(ctx, box);
+  const width = Math.min(box.width * 0.8, TILE * 0.76);
+  const height = TILE * 0.82;
+  const x = (box.left + box.right) / 2 - width / 2;
+  const y = box.baseY - height;
+  fillRoundRect(ctx, x, y, width, height, 4, colors.base);
+  fillRoundRect(ctx, x + 2, y + 2, width - 4, TILE * 0.16, 3, colors.accent);
+  for (let index = 0; index < 4; index += 1) {
+    const cx = x + width * (0.3 + (index % 2) * 0.4);
+    const cy = y + TILE * 0.16 * (index < 2 ? 0.45 : 1.05);
+    ctx.beginPath();
+    ctx.arc(cx, cy, TILE * 0.06, 0, Math.PI * 2);
+    ctx.strokeStyle = colors.trim;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+  fillRoundRect(ctx, x + 4, y + TILE * 0.26, width - 8, height - TILE * 0.32, 3, colors.trim);
+  ctx.save();
+  ctx.globalAlpha = 0.35;
+  fillRoundRect(ctx, x + 7, y + TILE * 0.3, width - 14, height - TILE * 0.4, 2, colors.accent);
+  ctx.restore();
+  ctx.beginPath();
+  ctx.moveTo(x + 8, y + TILE * 0.26);
+  ctx.lineTo(x + width - 8, y + TILE * 0.26);
+  ctx.strokeStyle = colors.accent;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function drawCounter(ctx, box, colors) {
+  itemShadow(ctx, box);
+  const height = TILE * 0.76;
+  const y = box.baseY - height;
+  fillRoundRect(ctx, box.left, y, box.width, height, 3, colors.base);
+  fillRoundRect(ctx, box.left - 2, y - TILE * 0.04, box.width + 4, TILE * 0.14, 3, colors.accent);
+  const doors = Math.max(2, Math.round(box.width / TILE));
+  const doorWidth = box.width / doors;
+  for (let index = 0; index < doors; index += 1) {
+    strokeRoundRect(
+      ctx,
+      box.left + index * doorWidth + 3,
+      y + TILE * 0.16,
+      doorWidth - 6,
+      height - TILE * 0.2,
+      2,
+      colors.trim,
+      1.5
+    );
+    ctx.beginPath();
+    ctx.arc(box.left + (index + 1) * doorWidth - 6, y + height * 0.52, 1.6, 0, Math.PI * 2);
+    ctx.fillStyle = colors.trim;
+    ctx.fill();
+  }
+}
+
+function drawDiningTable(ctx, box, colors) {
+  itemShadow(ctx, box);
+  const topX = box.left + TILE * 0.1;
+  const topW = box.width - TILE * 0.2;
+  const topY = box.top + TILE * 0.1;
+  const topH = Math.max(TILE * 0.5, box.height - TILE * 0.5);
+  const legTop = topY + topH - TILE * 0.06;
+  const legHeight = Math.max(TILE * 0.12, box.baseY - legTop + TILE * 0.06);
+  fillRoundRect(ctx, topX + TILE * 0.12, legTop, TILE * 0.11, legHeight, 2, colors.trim);
+  fillRoundRect(ctx, topX + topW - TILE * 0.23, legTop, TILE * 0.11, legHeight, 2, colors.trim);
+  fillRoundRect(ctx, topX, topY, topW, topH, 8, colors.accent);
+  strokeRoundRect(ctx, topX, topY, topW, topH, 8, colors.trim, 2);
+  ctx.save();
+  ctx.globalAlpha = 0.22;
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = 1.5;
+  for (let line = 1; line <= 2; line += 1) {
+    const y = topY + (topH * line) / 3;
+    ctx.beginPath();
+    ctx.moveTo(topX + 6, y);
+    ctx.lineTo(topX + topW - 6, y);
+    ctx.stroke();
+  }
+  ctx.restore();
+  ctx.beginPath();
+  ctx.ellipse(
+    topX + topW / 2,
+    topY + topH / 2,
+    TILE * 0.26,
+    TILE * 0.12,
+    0,
+    0,
+    Math.PI * 2
+  );
+  ctx.fillStyle = colors.base;
+  ctx.fill();
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+function drawChair(ctx, box, colors) {
+  itemShadow(ctx, box);
+  const centerX = (box.left + box.right) / 2;
+  const seatWidth = Math.min(box.width * 0.62, TILE * 0.6);
+  const seatY = box.baseY - TILE * 0.42;
+  fillRoundRect(ctx, centerX - seatWidth / 2, box.baseY - TILE * 0.62, seatWidth, TILE * 0.2, 4, colors.trim);
+  fillRoundRect(ctx, centerX - seatWidth / 2, seatY, seatWidth, TILE * 0.2, 4, colors.base);
+  fillRoundRect(ctx, centerX - seatWidth / 2, box.baseY - TILE * 0.63, seatWidth, TILE * 0.1, 3, colors.accent);
+  fillRoundRect(ctx, centerX - seatWidth / 2 + 2, seatY + TILE * 0.18, TILE * 0.07, TILE * 0.2, 2, colors.trim);
+  fillRoundRect(ctx, centerX + seatWidth / 2 - TILE * 0.09, seatY + TILE * 0.18, TILE * 0.07, TILE * 0.2, 2, colors.trim);
+}
+
+function drawBed(ctx, box, colors) {
+  itemShadow(ctx, box);
+  fillRoundRect(ctx, box.left, box.top + TILE * 0.08, box.width, box.height - TILE * 0.16, 6, colors.trim);
+  fillRoundRect(ctx, box.left + 3, box.top + TILE * 0.16, box.width - 6, box.height - TILE * 0.3, 5, colors.accent);
+  fillRoundRect(ctx, box.left + 2, box.top + TILE * 0.14, box.width - 4, TILE * 0.16, 4, colors.trim);
+  const pillowWidth = (box.width - TILE * 0.42) / 2;
+  fillRoundRect(ctx, box.left + TILE * 0.16, box.top + TILE * 0.32, pillowWidth, TILE * 0.34, 6, colors.accent);
+  fillRoundRect(ctx, box.left + TILE * 0.26 + pillowWidth, box.top + TILE * 0.32, pillowWidth, TILE * 0.34, 6, colors.accent);
+  fillRoundRect(
+    ctx,
+    box.left + 3,
+    box.top + TILE * 0.78,
+    box.width - 6,
+    box.height - TILE * 0.92,
+    4,
+    colors.base
+  );
+  ctx.save();
+  ctx.globalAlpha = 0.25;
+  ctx.beginPath();
+  ctx.moveTo(box.left + 4, box.top + TILE * 0.8);
+  ctx.lineTo(box.right - 4, box.top + TILE * 0.8);
+  ctx.strokeStyle = colors.accent;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawNightstand(ctx, box, colors) {
+  itemShadow(ctx, box);
+  const width = Math.min(box.width * 0.72, TILE * 0.68);
+  const height = TILE * 0.56;
+  const x = (box.left + box.right) / 2 - width / 2;
+  const y = box.baseY - height;
+  fillRoundRect(ctx, x, y, width, height, 3, colors.base);
+  fillRoundRect(ctx, x - 1, y - TILE * 0.03, width + 2, TILE * 0.08, 2, colors.accent);
+  strokeRoundRect(ctx, x + 4, y + TILE * 0.12, width - 8, height - TILE * 0.18, 2, colors.trim, 1.5);
+  ctx.beginPath();
+  ctx.arc(x + width / 2, y + height * 0.52, 1.8, 0, Math.PI * 2);
+  ctx.fillStyle = colors.accent;
+  ctx.fill();
+}
+
+function drawDresser(ctx, box, colors) {
+  itemShadow(ctx, box);
+  const height = TILE * 0.62;
+  const y = box.baseY - height;
+  fillRoundRect(ctx, box.left, y, box.width, height, 3, colors.base);
+  fillRoundRect(ctx, box.left - 1, y - TILE * 0.04, box.width + 2, TILE * 0.1, 2, colors.accent);
+  const drawers = Math.max(2, Math.round(box.width / TILE));
+  const drawerWidth = box.width / drawers;
+  for (let index = 0; index < drawers; index += 1) {
+    strokeRoundRect(
+      ctx,
+      box.left + index * drawerWidth + 4,
+      y + TILE * 0.14,
+      drawerWidth - 8,
+      height - TILE * 0.2,
+      2,
+      colors.trim,
+      1.5
+    );
+    ctx.beginPath();
+    ctx.arc(box.left + (index + 0.5) * drawerWidth, y + height * 0.55, 1.8, 0, Math.PI * 2);
+    ctx.fillStyle = colors.accent;
+    ctx.fill();
+  }
+}
+
+function drawGenericFurniture(ctx, box, colors) {
+  itemShadow(ctx, box);
+  fillRoundRect(ctx, box.left, box.baseY - TILE * 0.6, box.width, TILE * 0.6, 4, colors.base);
+  fillRoundRect(ctx, box.left, box.baseY - TILE * 0.64, box.width, TILE * 0.12, 3, colors.accent);
+}
+
+function drawRugShape(ctx, bounds, colors) {
+  const inset = TILE * 0.08;
+  const x = bounds.left + inset;
+  const y = bounds.top + inset;
+  const w = bounds.width - inset * 2;
+  const h = bounds.height - inset * 2;
+  fillRoundRect(ctx, x, y, w, h, TILE * 0.26, colors.base);
+  strokeRoundRect(ctx, x + 2, y + 2, w - 4, h - 4, TILE * 0.24, colors.accent, Math.max(1.5, TILE * 0.035));
+  ctx.save();
+  ctx.globalAlpha = 0.5;
+  strokeRoundRect(
+    ctx,
+    x + TILE * 0.24,
+    y + TILE * 0.24,
+    w - TILE * 0.48,
+    h - TILE * 0.48,
+    TILE * 0.2,
+    colors.accent,
+    Math.max(1, TILE * 0.025)
+  );
+  ctx.restore();
+}
+
+const HOME_ITEM_SHAPES = {
+  couch: drawCouch,
+  armchair: drawArmchair,
+  'coffee-table': drawCoffeeTable,
+  tv: drawTv,
+  radio: drawRadio,
+  'floor-lamp': drawFloorLamp,
+  bookshelf: drawBookshelf,
+  plant: drawPlant,
+  fridge: drawFridge,
+  stove: drawStove,
+  counter: drawCounter,
+  'dining-table': drawDiningTable,
+  chair: drawChair,
+  bed: drawBed,
+  nightstand: drawNightstand,
+  dresser: drawDresser
+};
+
 export class WorldRenderer {
   constructor({ canvas, minimap } = {}) {
     this.canvas = canvas;
@@ -275,8 +806,8 @@ export class WorldRenderer {
       }
     }
 
-    // A rug is ground cover: above the floor, below doors and every actor.
-    this.drawDecorGround(ctx, game);
+    // Ground cover (the rug) sits above the floor and below doors and actors.
+    this.drawHomeItemsGround(ctx, game);
 
     // Travel doors sit above the ground and below every actor, so a character
     // standing in the doorway is drawn in front of it.
@@ -317,14 +848,18 @@ export class WorldRenderer {
     for (const buddy of game.homeBuddies || []) {
       renderables.push({ type: 'char', y: game.interpolated(buddy).y, entity: buddy });
     }
-    for (const entry of game.decor || []) {
-      const item = decorItem(entry.id);
-      if (!item || item.kind === 'rug') continue;
+    // Furniture sorts by its footprint's bottom row, so a tall bed occludes the
+    // player behind it and never the player in front. Ground cover is skipped:
+    // the rug already drew below every actor.
+    for (const entry of game.homeItems || []) {
+      const item = homeItem(entry.itemId);
+      const size = homeItemSize(entry.itemId, entry.rot);
+      if (!item || !size || item.ground) continue;
       renderables.push({
-        type: 'scenery',
-        y: entry.y,
-        entity: { type: item.sprite, x: entry.x, y: entry.y, scale: item.scale || 0.6 },
-        opacity: 1
+        type: 'home-item',
+        y: entry.y + size.h - 1,
+        x: entry.x,
+        entity: entry
       });
     }
 
@@ -392,13 +927,15 @@ export class WorldRenderer {
       renderables.push({ type: 'forage', y: apple.y, entity: apple });
     }
 
-    renderables.sort((a, b) => a.y - b.y);
+    renderables.sort((a, b) => (a.y - b.y) || ((a.x ?? 0) - (b.x ?? 0)));
 
     for (const item of renderables) {
       if (item.type === 'char') {
         this.drawCharacter(game, item.entity);
       } else if (item.type === 'forage') {
         this.drawForageItem(game, item.entity);
+      } else if (item.type === 'home-item') {
+        this.drawHomeItem(item.entity);
       } else {
         this.drawSceneryItem(ctx, item.entity, item.opacity);
       }
@@ -592,28 +1129,27 @@ export class WorldRenderer {
     ctx.restore();
   }
 
-  drawDecorGround(ctx, game) {
-    for (const entry of game.decor || []) {
-      const item = decorItem(entry.id);
-      if (!item || item.kind !== 'rug') continue;
-      const cx = (entry.x + 0.5) * TILE;
-      const cy = (entry.y + 0.62) * TILE;
+  drawHomeItemsGround(ctx, game) {
+    for (const entry of game.homeItems || []) {
+      const item = homeItem(entry.itemId);
+      if (!item?.ground) continue;
+      const bounds = itemBounds(entry);
+      if (!bounds) continue;
       ctx.save();
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, TILE * 0.46, TILE * 0.31, 0, 0, Math.PI * 2);
-      ctx.fillStyle = item.color || '#b9744f';
-      ctx.fill();
-      ctx.strokeStyle = item.accent || '#e8c7a0';
-      ctx.lineWidth = Math.max(1.5, TILE * 0.04);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, TILE * 0.31, TILE * 0.19, 0, 0, Math.PI * 2);
-      ctx.globalAlpha = 0.55;
-      ctx.strokeStyle = item.accent || '#e8c7a0';
-      ctx.lineWidth = Math.max(1, TILE * 0.03);
-      ctx.stroke();
+      drawRugShape(ctx, bounds, itemColors(entry.itemId, entry.variant));
       ctx.restore();
     }
+  }
+
+  drawHomeItem(entry) {
+    const { ctx } = this;
+    const item = homeItem(entry.itemId);
+    const bounds = itemBounds(entry);
+    if (!item || !bounds) return;
+    const draw = HOME_ITEM_SHAPES[item.shape] || drawGenericFurniture;
+    ctx.save();
+    draw(ctx, itemPad(bounds), itemColors(entry.itemId, entry.variant));
+    ctx.restore();
   }
 
   drawSceneryItem(ctx, item, opacity = 1) {

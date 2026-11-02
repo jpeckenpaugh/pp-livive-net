@@ -31,7 +31,6 @@ import { PLAYER_NAMES, COMPANION_NAMES, pickName, pickVibe } from './names.js';
 import {
   serializeSave,
   captureLocationRecord,
-  activeDecor,
   saveState,
   loadSave,
   clearSave,
@@ -39,16 +38,19 @@ import {
   activeLocation
 } from './storage.js';
 import {
-  DECOR_ITEMS,
-  canPlaceDecor,
-  decorItem,
   homeRoomTiles,
-  normalizeDecor,
-  placeDecor,
   placeHomeBuddies,
-  rugTiles,
   selectHomeRoster
 } from './home.js';
+import {
+  BACKPACK_ITEM_IDS,
+  blockedTiles,
+  canPlaceHomeItem,
+  doorLaneTiles,
+  homeItem,
+  loadHomeItems,
+  rugTiles
+} from './home_items.js';
 import { castVoice } from './voice/casting.js';
 import { VoiceEngine } from './voice/engine.js';
 import { DialogueManager } from './dialogue.js';
@@ -1868,6 +1870,28 @@ function applyState(state) {
     rawPlayer.y = spot.y;
   }
 
+  // Home furniture resolves once per arrival: saved items win, a legacy
+  // `decor` record converts on its first load, otherwise the default room is
+  // furnished. An old saved tile now under a couch is nudged to open floor.
+  const roomTiles = homeMode ? homeRoomTiles(terrain, worldData.house) : [];
+  const homeItems = homeMode
+    ? loadHomeItems(locationState, { house: worldData.house, door: worldData.door, roomTiles })
+    : [];
+  const homeBlocked = homeMode ? blockedTiles(homeItems) : new Set();
+  const homeDoorLane = homeMode
+    ? doorLaneTiles({ house: worldData.house, door: worldData.door })
+    : new Set();
+  if (homeMode && homeBlocked.has(`${rawPlayer.x},${rawPlayer.y}`)) {
+    const spot = findOpenTile(
+      terrain,
+      locationDef(locationId)?.spawn || worldData.spawn,
+      homeBlocked,
+      0
+    );
+    rawPlayer.x = spot.x;
+    rawPlayer.y = spot.y;
+  }
+
   const npcs = (Array.isArray(locationState.npcs) ? locationState.npcs : [])
     .filter(npc => npc && npc.recipe && npc.name)
     .map(npc => {
@@ -1958,9 +1982,7 @@ function applyState(state) {
     });
   }
 
-  const decor = homeMode ? normalizeDecor(activeDecor(state)) : [];
-  const homeRugTiles = homeMode ? rugTiles(decor) : [];
-  const roomTiles = homeMode ? homeRoomTiles(terrain, worldData.house) : [];
+  const homeRugTiles = homeMode ? rugTiles(homeItems) : [];
   const homeSelection = homeMode
     ? selectHomeRoster(companions, rawPlayer.stabledCompanions)
     : { buddies: [], total: 0, overflow: 0 };
@@ -1969,7 +1991,9 @@ function applyState(state) {
       terrain,
       house: worldData.house,
       spawn: { x: rawPlayer.x, y: rawPlayer.y },
-      rugTiles: homeRugTiles
+      rugTiles: homeRugTiles,
+      blockedTiles: homeBlocked,
+      doorLaneTiles: homeDoorLane
     })
     : [];
 
@@ -1998,7 +2022,7 @@ function applyState(state) {
     companions: homeMode ? [] : companions,
     scenery,
     forage,
-    decor,
+    homeItems,
     homeMode,
     homeBuddies,
     homeRoomTiles: roomTiles,
@@ -2128,7 +2152,7 @@ function captureLocation() {
     player: game.player,
     npcs: game.npcs,
     forage: game.forage,
-    decor: currentLocationId === 'home' ? game.decor : null
+    items: currentLocationId === 'home' ? game.homeItems : null
   }, locationStates[currentLocationId] || null);
 }
 
@@ -2274,42 +2298,95 @@ function travelTo(targetId) {
 /**
  * Home decor state for the backpack row. Null outside Home, so the row is
  * invisible in the Park and cannot collide with travel or a future activity HUD.
+ *
+ * The two legacy decor choices are ordinary `home.items` records now; this row
+ * simply points at the rug and plant records that the furniture layout owns.
  */
 function homeDecorState() {
   if (currentLocationId !== 'home' || !game?.player) return null;
-  const placed = Array.isArray(game.decor) ? game.decor[0] || null : null;
   const player = game.player;
+  const homeDef = locationDef('home');
+  const lane = doorLaneTiles({ house: homeDef?.house, door: homeDef?.door });
+  const onFloor = (game.homeRoomTiles || []).some(tile => tile.x === player.x && tile.y === player.y)
+    && !lane.has(`${player.x},${player.y}`);
+  const records = Array.isArray(game.homeItems) ? game.homeItems : [];
+  const placed = records.find(record => BACKPACK_ITEM_IDS.includes(record.itemId)) || null;
+
   return {
-    canPlace: canPlaceDecor({ roomTiles: game.homeRoomTiles || [], x: player.x, y: player.y }),
-    items: DECOR_ITEMS.map(item => ({
-      id: item.id,
-      label: item.label,
-      icon: item.icon || '•',
-      kind: item.kind,
-      active: placed?.id === item.id,
-      here: placed?.id === item.id && placed.x === player.x && placed.y === player.y
-    })),
-    placed: placed ? { ...placed } : null
+    canPlace: onFloor,
+    items: BACKPACK_ITEM_IDS.map(id => {
+      const item = homeItem(id);
+      const record = records.find(entry => entry.itemId === id) || null;
+      return {
+        id,
+        label: item?.label || id,
+        icon: item?.icon || '•',
+        kind: item?.shape || id,
+        active: Boolean(record),
+        here: Boolean(record && record.x === player.x && record.y === player.y)
+      };
+    }),
+    placed: placed ? { ...placed, id: placed.itemId } : null
   };
 }
 
-/** Place or swap the one Home decoration at the player's feet. */
+/** Place or move the rug/plant item at the player's feet. */
 function placeHomeDecor(itemId) {
   if (currentLocationId !== 'home' || !game?.player) return false;
-  const item = decorItem(itemId);
-  if (!item) return false;
+  const item = homeItem(itemId);
+  if (!item?.backpack) return false;
   const player = game.player;
-  if (!canPlaceDecor({ roomTiles: game.homeRoomTiles || [], x: player.x, y: player.y })) {
-    showToast('Stand on the floor inside the house to place that.');
-    return false;
-  }
-  const current = Array.isArray(game.decor) ? game.decor[0] : null;
-  if (current?.id === itemId && current.x === player.x && current.y === player.y) {
+  const homeDef = locationDef('home');
+  const records = Array.isArray(game.homeItems) ? game.homeItems : [];
+  const existing = records.find(record => record.itemId === itemId) || null;
+
+  if (existing && existing.x === player.x && existing.y === player.y) {
     showToast(`The ${item.label} is already here.`);
     return false;
   }
-  game.decor = placeDecor(game.decor, itemId, player.x, player.y);
-  game.homeRugTiles = rugTiles(game.decor);
+
+  const placement = canPlaceHomeItem({
+    items: records,
+    itemId,
+    x: player.x,
+    y: player.y,
+    rot: existing?.rot || 0,
+    roomTiles: game.homeRoomTiles || [],
+    house: homeDef?.house,
+    door: homeDef?.door,
+    terrain: game.terrain,
+    uid: existing?.uid || null,
+    player,
+    allowPlayer: true
+  });
+  if (!placement.ok) {
+    showToast(placement.reason === 'door-lane'
+      ? 'Keep the doorway clear.'
+      : 'Stand on open floor inside to place that.');
+    return false;
+  }
+
+  let nextItems;
+  if (existing) {
+    nextItems = records.map(record => (
+      record.uid === existing.uid ? { ...record, x: player.x, y: player.y } : record
+    ));
+  } else {
+    const count = records.filter(record => record.itemId === itemId).length;
+    nextItems = [...records, {
+      uid: `home_${itemId}_${count + 1}`,
+      itemId,
+      x: player.x,
+      y: player.y,
+      rot: 0,
+      variant: 0,
+      on: false
+    }];
+  }
+
+  game.homeItems = nextItems;
+  game.homeBlockedTiles = blockedTiles(nextItems);
+  game.homeRugTiles = rugTiles(nextItems);
   for (const buddy of game.homeBuddies || []) {
     if (buddy.pose !== 'sit') continue;
     buddy.pose = 'stand';

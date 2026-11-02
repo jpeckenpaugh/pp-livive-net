@@ -1,13 +1,15 @@
 /**
- * Pure Home-slice logic: buddy roster selection, deterministic placement, the
- * cheap wander/sit tick, and decor placement rules.
+ * Pure Home-slice logic: buddy roster selection, deterministic placement, and
+ * the cheap wander/sit tick.
  *
  * Nothing here touches the DOM or a live `Game`. The renderer owns the settled
  * pose; `Game.updateHomeBuddies` owns step animation. Tests drive these
  * functions with an injectable RNG so the two behaviours stay deterministic.
+ *
+ * Furniture lives in `src/home_items.js`; callers pass its blocked tiles in so
+ * this module never needs to know which shapes are solid.
  */
-import { WORLD_SIZE, isWalkable, typeAt } from './world.js';
-import decorData from '../data/decor.json' with { type: 'json' };
+import { isWalkable, typeAt } from './world.js';
 
 export const HOME_BUDDY_CAP = 12;
 export const HOME_SIT_RADIUS = 2;
@@ -28,21 +30,21 @@ const DIRS = [
   { dx: -1, dy: 0, direction: LEFT }
 ];
 
-export const DECOR_ITEMS = Array.isArray(decorData.items) ? decorData.items : [];
-export const DEFAULT_DECOR_ID = decorData.default || DECOR_ITEMS[0]?.id || null;
-
-const DECOR_BY_ID = new Map(DECOR_ITEMS.map(item => [item.id, item]));
-
-export function decorItem(id) {
-  return DECOR_BY_ID.get(id) || null;
-}
-
 export function tileKey(tile) {
   return `${tile?.x},${tile?.y}`;
 }
 
 function isRecord(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+/** Accept a Set of tile keys or a list of `{x,y}` tiles. */
+function addTileKeys(target, tiles) {
+  const list = tiles instanceof Set ? tiles : (Array.isArray(tiles) ? tiles : []);
+  for (const tile of list) {
+    target.add(typeof tile === 'string' ? tile : tileKey(tile));
+  }
+  return target;
 }
 
 function compareIds(a, b) {
@@ -163,12 +165,16 @@ export function placeHomeBuddies(selection = [], {
   house,
   spawn = null,
   rugTiles = [],
+  blockedTiles = [],
+  doorLaneTiles = [],
   cap = HOME_BUDDY_CAP
 } = {}) {
   const room = homeRoomTiles(terrain, house);
   if (!room.length) return [];
 
   const blocked = new Set((Array.isArray(rugTiles) ? rugTiles : []).map(tileKey));
+  addTileKeys(blocked, blockedTiles);
+  addTileKeys(blocked, doorLaneTiles);
   if (spawn) blocked.add(tileKey(spawn));
 
   const current = room.filter(tile => !blocked.has(tileKey(tile)));
@@ -269,6 +275,7 @@ export function tickHomeBuddy(state, {
   terrain = null,
   roomTiles = [],
   rugTiles = [],
+  blockedTiles = [],
   occupied = new Set(),
   rng = Math.random
 } = {}) {
@@ -303,6 +310,7 @@ export function tickHomeBuddy(state, {
 
   const room = new Set((Array.isArray(roomTiles) ? roomTiles : []).map(tileKey));
   const blocked = new Set((Array.isArray(rugTiles) ? rugTiles : []).map(tileKey));
+  addTileKeys(blocked, blockedTiles);
   const taken = occupied instanceof Set ? occupied : new Set(occupied || []);
   const options = wanderOptions(state, room, blocked, taken);
 
@@ -323,40 +331,3 @@ export function tickHomeBuddy(state, {
   };
 }
 
-/** The rug's occupied tiles. Home buddies stand beside it, never on it. */
-export function rugTiles(decor = []) {
-  return (Array.isArray(decor) ? decor : [])
-    .filter(entry => decorItem(entry?.id)?.kind === 'rug')
-    .map(entry => ({ x: Math.round(Number(entry.x)), y: Math.round(Number(entry.y)) }))
-    .filter(tile => Number.isFinite(tile.x) && Number.isFinite(tile.y));
-}
-
-/** Keep only the single known, in-bounds decoration the save format allows. */
-export function normalizeDecor(entries) {
-  if (!Array.isArray(entries)) return [];
-  for (const entry of entries) {
-    if (!isRecord(entry) || !decorItem(entry.id)) continue;
-    const x = Math.round(Number(entry.x));
-    const y = Math.round(Number(entry.y));
-    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-    if (x < 0 || x >= WORLD_SIZE || y < 0 || y >= WORLD_SIZE) continue;
-    return [{ id: entry.id, x, y }];
-  }
-  return [];
-}
-
-export function canPlaceDecor({ roomTiles = [], x, y } = {}) {
-  const tx = Number(x);
-  const ty = Number(y);
-  if (!Number.isFinite(tx) || !Number.isFinite(ty)) return false;
-  return (Array.isArray(roomTiles) ? roomTiles : []).some(tile => tile.x === tx && tile.y === ty);
-}
-
-/** Swap or move the single Home decoration. Returns a one-entry array. */
-export function placeDecor(current, id, x, y) {
-  if (!decorItem(id)) return normalizeDecor(current);
-  const tx = Math.round(Number(x));
-  const ty = Math.round(Number(y));
-  if (!Number.isFinite(tx) || !Number.isFinite(ty)) return normalizeDecor(current);
-  return [{ id, x: tx, y: ty }];
-}

@@ -8,15 +8,20 @@ import {
   HOME_BUDDY_CAP,
   HOME_SIT_MAX_SECONDS,
   HOME_SIT_MIN_SECONDS,
-  canPlaceDecor,
   homeRoomTiles,
-  normalizeDecor,
-  placeDecor,
   placeHomeBuddies,
-  rugTiles,
   selectHomeRoster,
   tickHomeBuddy
 } from '../src/home.js';
+import {
+  BACKPACK_ITEM_IDS,
+  blockedTiles,
+  canPlaceHomeItem,
+  doorLaneTiles,
+  expandDefaultLayout,
+  loadHomeItems,
+  rugTiles
+} from '../src/home_items.js';
 
 const HOME_SEED = locationDef('home').seed;
 
@@ -62,29 +67,30 @@ test('Home roster caps at twelve and reports the quiet overflow', () => {
   assert.equal(selection.buddies.at(-1).record.id, 's11');
 });
 
-test('Home placement is deterministic, unique, on the interior floor, and avoids spawn and rug', () => {
+test('Home placement is deterministic, unique, on the interior floor, and avoids spawn, rug, and furniture', () => {
   const home = homeWorld();
   const room = homeRoomTiles(home.grid, home.house);
   const roomKeys = keys(room);
   const rug = [{ x: home.spawn.x + 2, y: home.spawn.y }];
   const rugKeys = keys(rug);
+  const furniture = expandDefaultLayout(home.house);
+  const furnitureKeys = blockedTiles(furniture);
+  const lane = doorLaneTiles({ house: home.house, door: home.door });
   const selection = selectHomeRoster(
     Array.from({ length: 12 }, (_, index) => buddy(`c${String(index).padStart(2, '0')}`)),
     []
   );
 
-  const first = placeHomeBuddies(selection.buddies, {
+  const options = {
     terrain: home.grid,
     house: home.house,
     spawn: home.spawn,
-    rugTiles: rug
-  });
-  const second = placeHomeBuddies(selection.buddies, {
-    terrain: home.grid,
-    house: home.house,
-    spawn: home.spawn,
-    rugTiles: rug
-  });
+    rugTiles: rug,
+    blockedTiles: furnitureKeys,
+    doorLaneTiles: lane
+  };
+  const first = placeHomeBuddies(selection.buddies, options);
+  const second = placeHomeBuddies(selection.buddies, options);
 
   assert.equal(first.length, 12);
   assert.deepEqual(
@@ -97,6 +103,8 @@ test('Home placement is deterministic, unique, on the interior floor, and avoids
     const key = `${entry.x},${entry.y}`;
     assert.ok(roomKeys.has(key), `${entry.id} is outside the room`);
     assert.ok(!rugKeys.has(key), `${entry.id} stands on the rug`);
+    assert.ok(!furnitureKeys.has(key), `${entry.id} stands inside furniture`);
+    assert.ok(!lane.has(key), `${entry.id} blocks the doorway`);
     assert.notDeepEqual({ x: entry.x, y: entry.y }, home.spawn);
     assert.equal(occupied.has(key), false, `${entry.id} shares a tile`);
     occupied.add(key);
@@ -105,12 +113,13 @@ test('Home placement is deterministic, unique, on the interior floor, and avoids
   }
 });
 
-test('Home wander stays inside the room and never steps onto the rug or another buddy', () => {
+test('Home wander stays inside the room and never steps onto the rug, furniture, or another buddy', () => {
   const home = homeWorld();
   const room = homeRoomTiles(home.grid, home.house);
   const roomKeys = keys(room);
   const rug = [{ x: home.spawn.x + 2, y: home.spawn.y }];
   const rugKeys = keys(rug);
+  const furnitureKeys = blockedTiles(expandDefaultLayout(home.house));
   let state = {
     ...buddy('wanderer'),
     x: home.spawn.x,
@@ -129,12 +138,14 @@ test('Home wander stays inside the room and never steps onto the rug or another 
       terrain: home.grid,
       roomTiles: room,
       rugTiles: rug,
+      blockedTiles: furnitureKeys,
       occupied: new Set(),
       rng
     });
     const key = `${state.x},${state.y}`;
     assert.ok(roomKeys.has(key), `left the room at tick ${tick}`);
     assert.ok(!rugKeys.has(key), `stepped on the rug at tick ${tick}`);
+    assert.ok(!furnitureKeys.has(key), `stepped into furniture at tick ${tick}`);
     assert.equal(state.pose, 'stand');
   }
 
@@ -235,26 +246,50 @@ test('a buddy more than two tiles from the rug does not settle', () => {
   assert.equal(next.pose, 'stand');
 });
 
-test('decor is one known item, only on the interior floor, and survives a location round-trip', () => {
+test('the rug and plant are ordinary Home items that survive a location round-trip', () => {
   const home = homeWorld();
   const room = homeRoomTiles(home.grid, home.house);
+  const items = expandDefaultLayout(home.house);
 
-  assert.deepEqual(normalizeDecor([{ id: 'rug', x: 10, y: 10 }]), [{ id: 'rug', x: 10, y: 10 }]);
-  assert.deepEqual(normalizeDecor([{ id: 'unknown', x: 10, y: 10 }]), []);
-  assert.deepEqual(normalizeDecor([{ id: 'rug' }]), []);
-  assert.deepEqual(
-    normalizeDecor([{ id: 'rug', x: 10, y: 10 }, { id: 'plant', x: 11, y: 10 }]),
-    [{ id: 'rug', x: 10, y: 10 }]
+  assert.deepEqual(BACKPACK_ITEM_IDS, ['rug', 'plant']);
+  assert.equal(items.length, 18);
+  assert.equal(items.filter(record => record.itemId === 'rug').length, 1);
+  assert.equal(items.filter(record => record.itemId === 'plant').length, 1);
+
+  const rug = items.find(record => record.itemId === 'rug');
+  assert.equal(rugTiles(items).length, 4);
+  assert.equal(blockedTiles(items).has(`${rug.x},${rug.y}`), false, 'the rug stays walkable');
+
+  const inside = room.find(tile => (
+    !blockedTiles(items).has(`${tile.x},${tile.y}`)
+    && !doorLaneTiles({ house: home.house, door: home.door }).has(`${tile.x},${tile.y}`)
+  ));
+  assert.ok(inside);
+  assert.equal(
+    canPlaceHomeItem({
+      items,
+      itemId: 'plant',
+      x: inside.x,
+      y: inside.y,
+      roomTiles: room,
+      house: home.house,
+      door: home.door,
+      terrain: home.grid
+    }).ok,
+    true
   );
-
-  const inside = room[0];
-  assert.equal(canPlaceDecor({ roomTiles: room, x: inside.x, y: inside.y }), true);
-  assert.equal(canPlaceDecor({ roomTiles: room, x: home.door.x, y: home.door.y }), false);
-  assert.deepEqual(placeDecor([], 'rug', inside.x, inside.y), [{ id: 'rug', x: inside.x, y: inside.y }]);
-  assert.deepEqual(placeDecor([{ id: 'rug', x: 1, y: 1 }], 'plant', inside.x, inside.y), [
-    { id: 'plant', x: inside.x, y: inside.y }
-  ]);
-  assert.deepEqual(rugTiles([{ id: 'rug', x: 3, y: 4 }, { id: 'plant', x: 5, y: 6 }]), [{ x: 3, y: 4 }]);
+  assert.equal(
+    canPlaceHomeItem({
+      items,
+      itemId: 'plant',
+      x: home.spawn.x,
+      y: home.spawn.y,
+      roomTiles: room,
+      house: home.house,
+      door: home.door
+    }).reason,
+    'door-lane'
+  );
 
   const terrain = encodeTerrain(home.grid);
   const record = captureLocationRecord({
@@ -263,13 +298,14 @@ test('decor is one known item, only on the interior floor, and survives a locati
     player: { x: inside.x, y: inside.y, direction: 0 },
     npcs: [],
     forage: createHomeLocation().forage,
-    decor: [{ id: 'rug', x: inside.x, y: inside.y }]
+    items
   }, null);
-  assert.deepEqual(record.decor, [{ id: 'rug', x: inside.x, y: inside.y }]);
+  assert.deepEqual(record.items, items);
 
-  // Capture with no decor argument keeps the previous placement (travel + save).
+  // Capture with no items argument keeps the previous list (travel + save).
   const again = captureLocationRecord(record, record);
-  assert.deepEqual(again.decor, record.decor);
+  assert.deepEqual(again.items, items);
+  assert.deepEqual(loadHomeItems(again, { house: home.house, door: home.door }), items);
 });
 
 test('Game keeps Home buddies in the display list, never the party', () => {
