@@ -17,6 +17,14 @@ import { findItemByUid, getItemDefinition } from './inventory.js';
 
 export const TRADE_TEMPLATES = tradesConfig.templates;
 
+/** Coins offered for an item stay inside this multiple of its catalog value. */
+export const TRADE_PRICE_BAND = Object.freeze({ min: 0.8, max: 1.2 });
+
+/** Two items may swap when the cheaper one is at least this share of the dearer. */
+export const TRADE_SWAP_RATIO = 0.75;
+
+export const TRADE_OFFER_LIMIT = 3;
+
 export const TRADE_REJECT_REASONS = Object.freeze([
   'invalid-offer',
   'missing-item',
@@ -263,6 +271,197 @@ export function pickTradeOffer(player, npc, templates = TRADE_TEMPLATES) {
     }
   }
   return null;
+}
+
+/** Stable FNV-1a hash so a default seed is reproducible across runs. */
+function hashSeed(text) {
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+/** A small deterministic PRNG; an injected `rng` function wins over a seed. */
+function createTradeRng(source, fallback) {
+  if (typeof source === 'function') {
+    return () => {
+      const value = Number(source());
+      if (!Number.isFinite(value)) return 0;
+      return Math.min(Math.max(value, 0), 0.999999999);
+    };
+  }
+
+  let state = hashSeed(String(source == null ? fallback : source));
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function tradeSeed(player, npc) {
+  const part = character => {
+    const ids = inventoryOf(character)
+      .filter(item => isObject(item) && typeof item.id === 'string')
+      .map(item => item.id)
+      .sort();
+    return `${characterId(character) || '?'}|${ids.join(',')}`;
+  };
+  return `${part(player)}::${part(npc)}`;
+}
+
+function shuffle(list, rng) {
+  const out = [...list];
+  for (let index = out.length - 1; index > 0; index -= 1) {
+    const swap = Math.floor(rng() * (index + 1));
+    [out[index], out[swap]] = [out[swap], out[index]];
+  }
+  return out;
+}
+
+/** Item ids this character can actually hand over right now. */
+function availableItemIds(character) {
+  const ids = [];
+  for (const item of inventoryOf(character)) {
+    if (!isObject(item) || typeof item.id !== 'string' || !item.id) continue;
+    if (ids.includes(item.id)) continue;
+    if (!isTradeableItem(item.id)) continue;
+    if (!resolveTradeItem(character, item.id).ok) continue;
+    ids.push(item.id);
+  }
+  return ids;
+}
+
+function itemValue(itemId) {
+  const value = getItemDefinition(itemId)?.value;
+  return Number.isFinite(value) && value > 0 ? value : 1;
+}
+
+/**
+ * Integer coins inside the fairness band. Rounding is inward (`ceil`/`floor`)
+ * so every price really is between 0.8x and 1.2x of value, and at least 1.
+ */
+export function fairPrice(value, rng) {
+  const base = Number.isFinite(value) && value > 0 ? value : 1;
+  const low = Math.max(1, Math.ceil(base * TRADE_PRICE_BAND.min));
+  const high = Math.max(low, Math.floor(base * TRADE_PRICE_BAND.max));
+  const roll = typeof rng === 'function' ? Number(rng()) : 0.5;
+  const step = Number.isFinite(roll) ? Math.min(Math.max(roll, 0), 0.999999) : 0;
+  return low + Math.floor(step * (high - low + 1));
+}
+
+/** Swaps only appear when the two catalog values are reasonably close. */
+export function valuesAreClose(left, right) {
+  const high = Math.max(left, right);
+  const low = Math.min(left, right);
+  return high > 0 && (low / high) >= TRADE_SWAP_RATIO;
+}
+
+/**
+ * Direction-and-item identity shared by generated offers and fixed templates,
+ * so a completed `buy-park-postcard` retires `npc-sells:park-postcard` too.
+ */
+export function tradeDealKey(offer) {
+  if (Number.isFinite(offer?.give?.coins) && typeof offer?.get?.itemId === 'string') {
+    return `buy:${offer.get.itemId}`;
+  }
+  if (typeof offer?.give?.itemId === 'string' && Number.isFinite(offer?.get?.coins)) {
+    return `sell:${offer.give.itemId}`;
+  }
+  if (typeof offer?.give?.itemId === 'string' && typeof offer?.get?.itemId === 'string') {
+    const pair = [offer.give.itemId, offer.get.itemId].sort();
+    return `swap:${pair[0]}:${pair[1]}`;
+  }
+  return '';
+}
+
+/**
+ * Build up to `max` deterministic offers from what each side owns and can
+ * afford: the NPC sells an item, the NPC buys a player item, and close-value
+ * item swaps. Offer ids are stable and semantic (`npc-sells:park-postcard`) so
+ * callers can pass completed ids back through `exclude` and never repeat one.
+ */
+export function generateTradeOffers(player, npc, options = {}) {
+  const { max = TRADE_OFFER_LIMIT, rng = null, exclude = [] } = options || {};
+  if (!isObject(player) || !isObject(npc) || player === npc) return [];
+
+  const limit = Number.isInteger(max) ? Math.max(0, max) : TRADE_OFFER_LIMIT;
+  if (limit === 0) return [];
+
+  const random = createTradeRng(rng, tradeSeed(player, npc));
+  const skip = new Set(Array.isArray(exclude) ? exclude.filter(id => typeof id === 'string') : []);
+  const playerCoins = coinsOf(player);
+  const npcCoins = coinsOf(npc);
+  const playerStock = availableItemIds(player);
+  const npcStock = availableItemIds(npc);
+
+  const sells = shuffle(npcStock, random)
+    .map(itemId => ({ itemId, price: fairPrice(itemValue(itemId), random) }))
+    .filter(({ price }) => price > 0 && playerCoins >= price)
+    .map(({ itemId, price }) => ({
+      id: `npc-sells:${itemId}`,
+      dealKey: `buy:${itemId}`,
+      kind: 'buy',
+      offer: { give: { coins: price }, get: { itemId, qty: SUPPORTED_QTY } }
+    }))
+    .filter(entry => canTrade(player, npc, entry.offer).ok);
+
+  const buys = shuffle(playerStock, random)
+    .map(itemId => ({ itemId, price: fairPrice(itemValue(itemId), random) }))
+    .filter(({ price }) => price > 0 && npcCoins >= price)
+    .map(({ itemId, price }) => ({
+      id: `npc-buys:${itemId}`,
+      dealKey: `sell:${itemId}`,
+      kind: 'sell',
+      offer: { give: { itemId, qty: SUPPORTED_QTY }, get: { coins: price } }
+    }))
+    .filter(entry => canTrade(player, npc, entry.offer).ok);
+
+  const swaps = [];
+  for (const giveId of shuffle(playerStock, random)) {
+    for (const getId of shuffle(npcStock, random)) {
+      if (giveId === getId) continue;
+      if (!valuesAreClose(itemValue(giveId), itemValue(getId))) continue;
+      const id = `npc-swap:${giveId}:${getId}`;
+      const offer = {
+        give: { itemId: giveId, qty: SUPPORTED_QTY },
+        get: { itemId: getId, qty: SUPPORTED_QTY }
+      };
+      const dealKey = tradeDealKey(offer);
+      if (swaps.some(entry => entry.id === id)) continue;
+      if (canTrade(player, npc, offer).ok) swaps.push({ id, dealKey, kind: 'swap', offer });
+    }
+  }
+
+  // Round-robin the three shapes and keep each item in at most one offer, so
+  // the list reads as three distinct ideas instead of a reversed duplicate.
+  const pools = [sells, buys, swaps];
+  const offers = [];
+  const usedItems = new Set();
+  while (offers.length < limit) {
+    let added = false;
+    for (const pool of pools) {
+      while (pool.length) {
+        const candidate = pool.shift();
+        if (skip.has(candidate.id)) continue;
+        if (candidate.dealKey && skip.has(candidate.dealKey)) continue;
+        if (offers.some(entry => entry.id === candidate.id)) continue;
+        const itemIds = [candidate.offer.give?.itemId, candidate.offer.get?.itemId].filter(Boolean);
+        if (itemIds.some(itemId => usedItems.has(itemId))) continue;
+        offers.push(candidate);
+        for (const itemId of itemIds) usedItems.add(itemId);
+        added = true;
+        break;
+      }
+      if (offers.length >= limit) break;
+    }
+    if (!added) break;
+  }
+  return offers;
 }
 
 /** Return a uid not already used by a different entry in the destination. */

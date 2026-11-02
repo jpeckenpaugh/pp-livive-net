@@ -5,7 +5,12 @@ import { activeEntries, equip, getEffectForItem, unequip } from '../effects.js';
 import { basketSummary } from '../forage.js';
 import { COMPANION_CAPS } from '../game.js';
 import { getItemDefinition } from '../inventory.js';
-import { canTrade, pickTradeOffer } from '../trade.js';
+import {
+  TRADE_TEMPLATES,
+  generateTradeOffers,
+  pickTradeOffer,
+  tradeDealKey
+} from '../trade.js';
 
 const $ = id => document.getElementById(id);
 
@@ -491,6 +496,10 @@ export class PanelsUI {
     this.cardCharacter = null;
     this.lastNpcCharacter = null;
     this.tradeOffer = null;
+    this.tradeOffers = [];
+    this.tradeOfferIndex = 0;
+    this.tradeCompleted = new Set();
+    this.tradeCompletedFor = null;
     this.tradeResult = '';
     this.tradeRejection = '';
     this.tradeSettled = false;
@@ -1214,6 +1223,8 @@ export class PanelsUI {
 
   resetTradeOffer() {
     this.tradeOffer = null;
+    this.tradeOffers = [];
+    this.tradeOfferIndex = 0;
     this.tradeResult = '';
     this.tradeRejection = '';
     this.tradeSettled = false;
@@ -1241,7 +1252,44 @@ export class PanelsUI {
     this.openTradeOffer(character);
   }
 
-  /** Offer the first template this neighbour can actually complete, or the hint. */
+  /**
+   * Generate the current offer list from both bags. The fixed templates stay as
+   * a fallback when generation finds nothing the pair can complete.
+   */
+  loadTradeOffers(player, character) {
+    if (this.tradeCompletedFor !== character.id) {
+      this.tradeCompleted = new Set();
+      this.tradeCompletedFor = character.id;
+    }
+
+    const exclude = [...this.tradeCompleted];
+    const offers = generateTradeOffers(player, character, { exclude });
+
+    if (!offers.length) {
+      const templates = Object.fromEntries(
+        Object.entries(TRADE_TEMPLATES).filter(([key, template]) => {
+          const id = typeof template?.id === 'string' && template.id ? template.id : key;
+          const dealKey = tradeDealKey(template);
+          return !this.tradeCompleted.has(id)
+            && !(dealKey && this.tradeCompleted.has(dealKey));
+        })
+      );
+      const picked = pickTradeOffer(player, character, templates);
+      if (picked) {
+        offers.push({
+          id: picked.id,
+          dealKey: tradeDealKey(picked.offer),
+          kind: 'template',
+          offer: picked.offer
+        });
+      }
+    }
+
+    this.tradeOffers = offers;
+    this.tradeOfferIndex = offers.length ? 0 : -1;
+    this.tradeOffer = offers[0] || null;
+  }
+
   openTradeOffer(character) {
     const player = this.getGame()?.player || null;
     if (!player || !shouldShowNpcRoster(character)) return;
@@ -1250,10 +1298,27 @@ export class PanelsUI {
     this.tradeRejection = '';
     this.tradeSettled = false;
     this.applying = false;
-    this.tradeOffer = pickTradeOffer(player, character);
+    this.loadTradeOffers(player, character);
     this.renderTradeSection(character);
     this.tradeActionButton()?.setAttribute('aria-expanded', 'true');
     $('npc-trade')?.scrollIntoView?.({ block: 'nearest' });
+  }
+
+  /** Pick one of the visible rows; Confirm/Cancel then act on that offer. */
+  selectTradeOffer(index) {
+    const entry = this.tradeOffers[index];
+    if (!entry) return;
+    const keepFocus = Boolean(document.activeElement?.closest?.('#npc-trade-offers'));
+    this.tradeOfferIndex = index;
+    this.tradeOffer = entry;
+    this.tradeResult = '';
+    this.tradeRejection = '';
+    this.tradeSettled = false;
+    this.renderTradeSection(this.cardCharacter);
+    if (keepFocus) {
+      document.querySelector(`#npc-trade-offers [data-offer-index="${index}"]`)
+        ?.focus?.({ preventScroll: true });
+    }
   }
 
   tradeDirection(offer) {
@@ -1262,21 +1327,10 @@ export class PanelsUI {
     return 'a swap';
   }
 
-  setTradeSide(host, side) {
-    if (!host) return;
-    host.replaceChildren();
-    if (side && Number.isFinite(side.coins)) {
-      host.textContent = `🪙 ${side.coins}`;
-      return;
-    }
+  tradeSideCompact(side) {
+    if (side && Number.isFinite(side.coins)) return `🪙 ${side.coins}`;
     const def = typeof side?.itemId === 'string' ? getItemDefinition(side.itemId) : null;
-    const icon = document.createElement('span');
-    icon.className = 'npc-trade-icon';
-    icon.setAttribute('aria-hidden', 'true');
-    icon.textContent = def?.icon || '📦';
-    const label = document.createElement('span');
-    label.textContent = def?.name || side?.itemId || 'item';
-    host.append(icon, label);
+    return `${def?.icon || '📦'} ${def?.name || side?.itemId || 'item'}`;
   }
 
   tradeBalanceLine(offer, player, npc, projected = true) {
@@ -1304,13 +1358,64 @@ export class PanelsUI {
     return `Traded — you gave ${this.tradeSidePhrase(offer.give)} and got ${this.tradeSidePhrase(offer.get)}.`;
   }
 
+  renderTradeOffers() {
+    const host = $('npc-trade-offers');
+    if (!host) return;
+    host.replaceChildren();
+    if (!this.tradeOffers.length) {
+      host.hidden = true;
+      return;
+    }
+
+    host.hidden = false;
+    this.tradeOffers.forEach((entry, index) => {
+      const selected = index === this.tradeOfferIndex;
+      const direction = this.tradeDirection(entry.offer);
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = selected ? 'npc-trade-row is-selected' : 'npc-trade-row';
+      button.dataset.offerIndex = String(index);
+      button.setAttribute('role', 'radio');
+      button.setAttribute('aria-checked', String(selected));
+      button.setAttribute(
+        'aria-label',
+        `${direction}: give ${this.tradeSidePhrase(entry.offer.give)}, get ${this.tradeSidePhrase(entry.offer.get)}`
+      );
+
+      const kind = document.createElement('span');
+      kind.className = 'npc-trade-row-kind';
+      kind.textContent = direction.replace(/^you /, '').replace(/^a /, '');
+
+      const line = document.createElement('span');
+      line.className = 'npc-trade-row-line';
+      const give = document.createElement('span');
+      give.className = 'npc-trade-row-side';
+      give.textContent = this.tradeSideCompact(entry.offer.give);
+      const arrow = document.createElement('span');
+      arrow.className = 'npc-trade-row-arrow';
+      arrow.setAttribute('aria-hidden', 'true');
+      arrow.textContent = '→';
+      const get = document.createElement('span');
+      get.className = 'npc-trade-row-side';
+      get.textContent = this.tradeSideCompact(entry.offer.get);
+      line.append(give, arrow, get);
+
+      const check = document.createElement('span');
+      check.className = 'npc-trade-row-check';
+      check.setAttribute('aria-hidden', 'true');
+      check.textContent = '✓';
+
+      button.append(kind, line, check);
+      host.append(button);
+    });
+  }
+
   renderTradeSection(character) {
     const section = $('npc-trade');
     if (!section) return;
 
     const player = this.getGame()?.player || null;
     const offer = this.tradeOffer?.offer || null;
-    const offerHost = $('npc-trade-offer');
     const meta = $('npc-trade-meta');
     const balance = $('npc-trade-balance');
     const resultLine = $('npc-trade-result');
@@ -1321,14 +1426,14 @@ export class PanelsUI {
 
     section.hidden = false;
     section.setAttribute('aria-busy', String(this.applying));
+    this.renderTradeOffers();
 
     if (!offer || !player || !character) {
-      if (offerHost) offerHost.hidden = true;
       if (meta) meta.textContent = '';
       if (balance) balance.textContent = 'Nothing to trade right now — neighbours earn coins in games.';
       if (resultLine) {
-        resultLine.hidden = true;
-        resultLine.textContent = '';
+        resultLine.textContent = this.tradeResult;
+        resultLine.hidden = !this.tradeResult;
       }
       if (rejectLine) {
         rejectLine.hidden = true;
@@ -1340,13 +1445,11 @@ export class PanelsUI {
         cancel.hidden = false;
         cancel.textContent = 'Close';
       }
+      if (document.activeElement === confirm) cancel?.focus?.({ preventScroll: true });
       return;
     }
 
-    if (offerHost) offerHost.hidden = false;
     if (meta) meta.textContent = this.tradeDirection(offer);
-    this.setTradeSide($('npc-trade-give'), offer.give);
-    this.setTradeSide($('npc-trade-get'), offer.get);
     const blocked = Boolean(this.tradeRejection);
     // Before a trade the line previews both wallets; afterwards it reports them.
     if (balance) {
@@ -1362,19 +1465,18 @@ export class PanelsUI {
       rejectLine.hidden = !blocked;
     }
 
-    const needsAnother = this.tradeSettled || blocked;
     if (confirm) {
-      confirm.hidden = needsAnother;
+      confirm.hidden = blocked;
       confirm.disabled = this.applying;
     }
-    if (again) again.hidden = !needsAnother;
+    if (again) again.hidden = !blocked;
     if (cancel) {
       cancel.hidden = false;
       cancel.textContent = 'Cancel';
     }
 
-    // A finished trade hides Confirm; keep keyboard focus in the panel.
-    if (needsAnother && document.activeElement === confirm) {
+    // A rejected offer hides Confirm; keep keyboard focus in the panel.
+    if (blocked && document.activeElement === confirm) {
       again?.focus?.({ preventScroll: true });
     }
   }
@@ -1388,7 +1490,8 @@ export class PanelsUI {
   /** Apply exactly once; the guard makes a held Enter or double click a no-op. */
   confirmTrade() {
     const character = this.cardCharacter;
-    const offer = this.tradeOffer?.offer || null;
+    const entry = this.tradeOffer;
+    const offer = entry?.offer || null;
     if (!character || !offer || this.applying || this.tradeSettled || this.tradeRejection) return;
 
     if (typeof this.onTrade !== 'function') {
@@ -1411,15 +1514,14 @@ export class PanelsUI {
     }
 
     if (result?.ok === true) {
+      if (entry.id) this.tradeCompleted.add(entry.id);
+      if (entry.dealKey) this.tradeCompleted.add(entry.dealKey);
       this.tradeResult = this.tradeOutcomeCopy(result);
-      this.tradeSettled = true;
+      this.tradeSettled = false;
       this.tradeRejection = '';
       this.refreshAfterTrade(character);
-      // Keep the same offer visible; if it no longer works, say why plainly.
-      const check = player ? canTrade(player, character, offer) : { ok: false, reason: 'invalid-offer' };
-      if (!check.ok) {
-        this.tradeRejection = describeTradeRejection(check, { player, npc: character });
-      }
+      // Bags and wallets moved, so replace the list and never repeat this deal.
+      this.loadTradeOffers(player, character);
       this.onSound?.('ui-click');
       this.notify(this.tradeResult);
     } else {
@@ -2228,6 +2330,8 @@ export class PanelsUI {
 
   closeCard() {
     this.cardCharacter = null;
+    this.tradeCompleted = new Set();
+    this.tradeCompletedFor = null;
     this.resetTradeOffer();
     if ($('npc-card')) $('npc-card').hidden = true;
     this.getGame()?.select(null);
@@ -2391,5 +2495,10 @@ export class PanelsUI {
     $('npc-trade-confirm')?.addEventListener('click', () => this.confirmTrade());
     $('npc-trade-cancel')?.addEventListener('click', () => this.removeTradeOffer());
     $('npc-trade-again')?.addEventListener('click', () => this.openTradeOffer(this.cardCharacter));
+    $('npc-trade-offers')?.addEventListener('click', event => {
+      const row = event.target?.closest?.('[data-offer-index]');
+      if (!row) return;
+      this.selectTradeOffer(Number(row.dataset.offerIndex));
+    });
   }
 }

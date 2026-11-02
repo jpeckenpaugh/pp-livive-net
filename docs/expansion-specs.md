@@ -2,6 +2,9 @@
 
 **Baseline:** Play Park `929c78f` + cleanup `a463949` · 546 tests · save v4
 **Status:** Specs for review · **Last updated:** 2026-11-01
+**Shipped (2026-11-01):** Shop location, shopkeeper, and 3 furniture purchases; Rooftops and
+Shoreline courses with best times and coin rewards; dynamic NPC offers. Deferred: Town,
+climb/slide, recorded ghosts, companion and player-to-player trading.
 
 ---
 

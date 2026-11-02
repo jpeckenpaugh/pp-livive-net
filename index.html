@@ -110,17 +110,7 @@
           <strong>Trade</strong>
           <span id="npc-trade-meta" class="npc-section-meta"></span>
         </div>
-        <div id="npc-trade-offer" class="npc-trade-offer" hidden>
-          <div class="npc-trade-side">
-            <span class="npc-trade-caption">you give</span>
-            <span id="npc-trade-give" class="npc-trade-value"></span>
-          </div>
-          <span class="npc-trade-arrow" aria-hidden="true">→</span>
-          <div class="npc-trade-side">
-            <span class="npc-trade-caption">you get</span>
-            <span id="npc-trade-get" class="npc-trade-value"></span>
-          </div>
-        </div>
+        <div id="npc-trade-offers" class="npc-trade-offers" role="radiogroup" aria-label="Available offers" hidden></div>
         <p id="npc-trade-balance" class="npc-section-note"></p>
         <p id="npc-trade-result" class="npc-trade-result" role="status" aria-live="polite" hidden></p>
         <p id="npc-trade-reject" class="npc-trade-reject" role="status" aria-live="polite" hidden></p>
