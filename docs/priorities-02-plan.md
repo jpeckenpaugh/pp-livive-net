@@ -135,6 +135,18 @@ catalogue, companion trading, Home NPCs, world-size refactor.
 - **Flag:** `data/world.json` → `locations.home.enabled` is read in `main.js` only. Flag off means no door, no menu row, and no travel path; Home generation remains callable but unreachable.
 - **Save writer:** writes every location plus `currentLocation`; the Wave 0 single-key guard test is replaced by one asserting both locations survive a round trip.
 
+**Wave 2 decisions (autopilot, 2026-11-01)**
+
+- **Owned roster:** player-active companions first, then player-stabled, both in stable id order; NPC-owned buddies excluded; cap the placed group at 12 with "and N more".
+- **Home buddies are a display list:** `game.homeBuddies`, never the party. Party records and Park positions are untouched; Home coordinates are not merged back on capture. Pure logic lives in `src/home.js`.
+- **No following in Home.** Active and stabled buddies both wander and sit.
+- **Bounds:** interior floor only. Home buddies are non-blocking to the player and to each other; destinations avoid walls, the rug, and occupied tiles.
+- **Sit:** a procedural settled pose (pause plus a small squash) exposed as `pose: 'sit'`; within 2 tiles of the rug, 4–8 seconds, with injectable RNG and timers for tests. No new animation frames.
+- **Decor:** one swappable rug/plant placed at the player's current tile from a backpack row below travel; persisted as `home.decor: [{ id, x, y }]`.
+- **Art:** canvas-drawn decor defined in `data/decor.json`; the plant reuses an existing bush/flower sprite. No new binary assets.
+- **Persistence:** buddy placement is derived deterministically from ids each visit; only decor is persisted.
+- **Flag:** `locations.home.enabled` flips to true last, in the same commit as the completed slice, with the data-validation assertion updated.
+
 **Acceptance (also the play-test checklist):**
 - Enter, return, and re-enter without losing player or companion state.
 - Park activities, friends, forage, and any active effects survive the round trip.
