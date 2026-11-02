@@ -256,18 +256,20 @@ course content.
 
 ---
 
-## 10. Open questions
+## 10. Decisions (autopilot, 2026-11-01)
 
-1. **Home scale:** 64×64 lot with a centred house (recommended), or generalise map size now?
-2. **Travel affordance:** a visible door in the Park only, a HUD "Home" row only, or both?
-   Recommendation: both — the door teaches, the menu rescues.
-3. **Companion cap in Home:** show all owned buddies, or cap the visible group and add a
-   "collection" wall past 12?
-4. **Side-scroller camera:** fixed horizontal follow with no zoom (recommended) or a
-   scrolling course with a vertical component?
-5. **Competitor:** a scripted timer ghost (recommended) or a simple AI on the same course?
-6. **Trading values:** add `value` to the item catalog (recommended) or a small barter table
-   per NPC?
-7. **Home NPCs:** none in v1 — confirm.
-8. **Feature flags:** a `data/world.json` enabled flag for Home during the slice, or rely on
-   "travel lands last"?
+The human authorized autopilot management for this cycle. These are settled; the PM will
+answer sub-agent questions against them and record any change here.
+
+1. **Home scale:** 64×64 lot with a centred house and small yard. No world-size refactor in this cycle.
+2. **Travel:** both — a visible door in the Park and a "Home" row in the player menu.
+3. **Companion presence:** show all owned buddies; cap the placed group at 12 and show a "and N more" note in Home. No collection wall.
+4. **Side-scroller camera:** fixed horizontal follow, no zoom, no vertical scroll.
+5. **Competitor:** scripted timer ghost, not an AI runner.
+6. **Trading values:** a numeric `value` on `data/items.json`, no per-NPC barter tables.
+7. **Home NPCs:** none in v1.
+8. **Feature flag:** `data/world.json` with `locations.home.enabled`, default `false`. It flips to `true` only when the Home slice is complete, so production never serves a half-built Home.
+
+**Cycle authorization:** commit per wave; push at each playable milestone; the human tests
+the deployed build at the Home-slice, side-scroller, and trading gates. Blockers are
+reported only when they are genuine scope or architecture conflicts.
