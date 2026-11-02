@@ -1272,6 +1272,45 @@ body.dialogue-open .topbar {
   transform: translate(-50%, 0);
 }
 
+.spectate-prompt {
+  position: fixed;
+  left: 50%;
+  bottom: 96px;
+  z-index: 32;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: max-content;
+  max-width: min(420px, calc(100vw - 24px));
+  padding: 8px 10px 8px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  background: rgba(13, 22, 16, 0.96);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  color: var(--text);
+  font-size: 11.5px;
+  transform: translateX(-50%);
+}
+
+.spectate-prompt[hidden] {
+  display: none;
+}
+
+#spectate-text {
+  flex: 1;
+  min-width: 0;
+}
+
+#spectate-dismiss {
+  flex: none;
+}
+
+@media (pointer: coarse), (max-width: 768px) {
+  .spectate-prompt {
+    bottom: 178px;
+  }
+}
+
 .overlay {
   position: fixed;
   inset: 0;

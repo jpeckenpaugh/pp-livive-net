@@ -148,6 +148,8 @@ let rosterCompanions = [];
 let forageEnabled = true;
 let lastFrameAt = 0;
 let npcWatchPrompt = null;
+/** Session the player explicitly chose to watch; only then does the camera leave the player. */
+let spectatingSession = null;
 let delegated = { host: false, runtime: false, bubbles: false };
 const sounds = new SoundBoard();
 let voice = null;
@@ -521,9 +523,12 @@ function usesTouchControls() {
 }
 
 /** Frame the active board and flag it for dialogue placement. */
-function syncBoardFraming(boardOpen) {
+function syncBoardFraming(boardOpen, frame = true) {
   document.body.classList.toggle('board-open', boardOpen);
   if (!boardOpen) {
+    spectatingSession = null;
+  }
+  if (!boardOpen || !frame) {
     game?.clearCameraTarget?.();
     return;
   }
@@ -539,8 +544,19 @@ function syncBoardFraming(boardOpen) {
  */
 function refreshGameStrip() {
   const state = host?.getState?.() || null;
-  const boardOpen = Boolean(state?.active && state.kind !== 'activity');
-  syncBoardFraming(boardOpen);
+  const sessionActive = Boolean(state?.active && state.kind !== 'activity');
+  if (npcWatchPrompt && !state?.active) dismissNpcWatchPrompt();
+  const session = host?.session || null;
+  if (spectatingSession && (!session || playerBoardDistance(spectatingSession) > 10)) {
+    spectatingSession = null;
+  }
+  const npcOnly = isNpcOnlySession(session);
+  const watching = Boolean(spectatingSession && spectatingSession === session);
+  // A far-away NPC game must not take over the strip or the camera. Only a
+  // player-owned session or an explicit Watch does that.
+  const boardOpen = sessionActive && (!npcOnly || watching);
+  const frameBoard = !npcOnly || watching;
+  syncBoardFraming(boardOpen, frameBoard);
   const hint = $('hint');
   if (!hint) return;
 
@@ -735,6 +751,7 @@ function openCardDialogue(npc) {
 
 /** Show a scripted beat, closing the volume popover so it cannot sit behind the dialogue. */
 function showDialogueBeat(npc, text, choices) {
+  dismissNpcWatchPrompt();
   setVoiceVolumeOpen(false);
   dialogue.openCustomBeat(npc, text, choices);
 }
@@ -3374,14 +3391,52 @@ function triggerNpcGame() {
 }
 
 function dismissNpcWatchPrompt() {
-  if (!npcWatchPrompt) return;
-  if (npcWatchPrompt.timer) clearInterval(npcWatchPrompt.timer);
+  if (npcWatchPrompt?.timer) clearTimeout(npcWatchPrompt.timer);
   npcWatchPrompt = null;
+  const prompt = $('spectate-prompt');
+  if (prompt) prompt.hidden = true;
 }
 
 function isNpcOnlySession(session) {
   if (!session || !Array.isArray(session.seats) || !session.seats.length) return false;
   return session.seats.every(seat => seat?.character && seat.character !== game?.player);
+}
+
+/** Board centre in tiles, from the session placement or its seats. */
+function sessionBoardCenter(session) {
+  const board = session?.game?.legacy?.activeBoard || null;
+  const meta = session?.meta?.board || {};
+  const originX = session?.placement?.originX ?? board?.originX;
+  const originY = session?.placement?.originY ?? board?.originY;
+  if (Number.isFinite(originX) && Number.isFinite(originY)) {
+    const width = Number.isFinite(Number(meta.width)) ? Number(meta.width) : 3;
+    const height = Number.isFinite(Number(meta.height)) ? Number(meta.height) : 3;
+    return { x: originX + (width - 1) / 2, y: originY + (height - 1) / 2 };
+  }
+  const seats = (session?.seats || []).map(seat => seat?.character).filter(Boolean);
+  if (!seats.length) return null;
+  return {
+    x: seats.reduce((sum, actor) => sum + actor.x, 0) / seats.length,
+    y: seats.reduce((sum, actor) => sum + actor.y, 0) / seats.length
+  };
+}
+
+/** Manhattan distance in tiles from the player to an NPC board, or Infinity. */
+function playerBoardDistance(session) {
+  const player = game?.player;
+  const center = sessionBoardCenter(session);
+  if (!player || !center) return Infinity;
+  return Math.abs(player.x - center.x) + Math.abs(player.y - center.y);
+}
+
+function watchNpcSession() {
+  const prompt = npcWatchPrompt;
+  const session = prompt?.session || host?.session || null;
+  dismissNpcWatchPrompt();
+  if (!session) return;
+  spectatingSession = session;
+  walkPlayerToSpectate(session);
+  showToast('Watching the game.');
 }
 
 function walkPlayerToSpectate(session) {
@@ -3420,8 +3475,10 @@ function promptNpcGameWatch(detail = {}, session = null) {
   const activeSession = session || host?.session || null;
   if (!isNpcOnlySession(activeSession)) return;
   if (dialogue?.isOpen() || npcWatchPrompt) return;
+  // Only offer to watch when the board is actually in view. A game across the
+  // park must not pull the camera or interrupt the player.
+  if (playerBoardDistance(activeSession) > 8) return;
 
-  panels?.closeMenu?.();
   const actor = resolveCharacter(detail.actorId) || activeSession.seats[0]?.character || null;
   const partner = resolveCharacter(detail.partnerId) || activeSession.seats[1]?.character || null;
   const gameId = detail.game || activeSession.meta?.id || 'tic-tac-toe';
@@ -3430,63 +3487,24 @@ function promptNpcGameWatch(detail = {}, session = null) {
     || 'a mini-game';
   const social = dialogueData.social || {};
   const template = social.npcGamePrompt
-    || '{a} and {b} are about to play a game of {game}. Want to watch?';
-  const baseText = template
+    || '{a} and {b} are about to play {game}. Want to watch?';
+  const text = template
     .replaceAll('{a}', actor?.name || 'A neighbour')
     .replaceAll('{b}', partner?.name || 'another neighbour')
     .replaceAll('{game}', gameName);
 
-  const prompt = { token: {}, timer: null };
+  const prompt = { token: {}, session: activeSession, timer: null };
   npcWatchPrompt = prompt;
-  let remaining = 5;
-  const textFor = seconds => `${baseText} (${seconds})`;
 
-  const dismiss = () => {
-    if (npcWatchPrompt?.token !== prompt.token) return false;
-    dismissNpcWatchPrompt();
-    return true;
-  };
+  const hostEl = $('spectate-prompt');
+  const textEl = $('spectate-text');
+  if (!hostEl || !textEl) return;
+  textEl.textContent = text;
+  hostEl.hidden = false;
 
-  const choices = [
-    {
-      label: social.npcGameWatch || 'Watch',
-      className: 'primary',
-      onClick: () => {
-        if (!dismiss()) return;
-        dialogue.close();
-        walkPlayerToSpectate(activeSession);
-      }
-    },
-    {
-      label: social.npcGameDecline || 'Maybe later',
-      className: 'pill quiet',
-      onClick: () => {
-        if (!dismiss()) return;
-        dialogue.close();
-      }
-    }
-  ];
-
-  showDialogueBeat(
-    game?.player || { name: 'Park' },
-    textFor(remaining),
-    choices
-  );
-
-  prompt.timer = setInterval(() => {
-    if (npcWatchPrompt?.token !== prompt.token) return;
-    if (!dialogue?.isOpen()) {
-      dismissNpcWatchPrompt();
-      return;
-    }
-    remaining -= 1;
-    if (remaining <= 0) {
-      dismissNpcWatchPrompt();
-      dialogue.close();
-      return;
-    }
-    dialogue.setText?.(textFor(remaining));
-  }, 1000);
+  prompt.timer = window.setTimeout(() => {
+    if (npcWatchPrompt?.token === prompt.token) dismissNpcWatchPrompt();
+  }, 6000);
 }
 
 function addNeighbour() {
@@ -3546,6 +3564,9 @@ function removeCardCharacter() {
 function bindEvents() {
   $('wander-toggle')?.addEventListener('click', toggleWander);
   $('add-npc')?.addEventListener('click', addNeighbour);
+  $('spectate-watch')?.addEventListener('click', watchNpcSession);
+  $('spectate-dismiss')?.addEventListener('click', dismissNpcWatchPrompt);
+
   $('sound-toggle')?.addEventListener('click', () => {
     const on = sounds.toggle();
     updateSoundButton();
