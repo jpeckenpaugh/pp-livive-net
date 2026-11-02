@@ -93,7 +93,7 @@ test('Home is a forage-free location', () => {
   assert.deepEqual(record.npcs, []);
   assert.deepEqual(record.forage.apples, []);
   assert.equal(record.forage.seeded, true);
-  assert.deepEqual(record.forage.basket, { apple: 2, mushroom: 1 });
+  assert.deepEqual(record.forage.basket, { apple: 2, mushroom: 1, shell: 0 });
   assert.equal(decodeTerrain(record.terrain).length, WORLD_SIZE);
   assert.deepEqual(record.player, { x: homeSpawn().x, y: homeSpawn().y, direction: 0 });
 });
@@ -114,19 +114,19 @@ test('the Home flag exposes the Town door and the menu row', () => {
   assert.ok(isWalkable(typeAt(park.grid, door.x, door.y)));
 
   const targets = travelTargets('park');
-  assert.deepEqual(targets.map(target => target.id), ['town', 'home', 'shop', 'library']);
+  assert.deepEqual(targets.map(target => target.id), ['town', 'home', 'shop', 'library', 'beach']);
   assert.equal(targets[0].label, 'Town');
   assert.equal(targets[1].label, 'Home');
   assert.equal(targets[2].label, 'Shop');
   // Home offers the Town (and the shop) as its way out.
   assert.deepEqual(
     travelTargets('home').map(target => target.id),
-    ['town', 'park', 'shop', 'library']
+    ['town', 'park', 'shop', 'library', 'beach']
   );
   // The shop is menu-only from the park, and its door returns outside.
   assert.deepEqual(
     travelTargets('shop').map(target => target.id),
-    ['town', 'park', 'home', 'library']
+    ['town', 'park', 'home', 'library', 'beach']
   );
 });
 

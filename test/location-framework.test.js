@@ -326,7 +326,7 @@ test('a fresh template location gets a terrain record without saved residents', 
     assert.equal(record.seed, 'fresh-town');
     assert.equal(record.terrain.length, 64 * 64);
     assert.deepEqual(record.npcs, []);
-    assert.deepEqual(record.forage.basket, { apple: 2, mushroom: 1 });
+    assert.deepEqual(record.forage.basket, { apple: 2, mushroom: 1, shell: 0 });
     assert.equal(record.forage.seeded, false, 'outdoor templates seed their first crop');
     assert.ok(Number.isInteger(record.player.x) && Number.isInteger(record.player.y));
   });
@@ -334,8 +334,8 @@ test('a fresh template location gets a terrain record without saved residents', 
 
 test('travelTargets marks door-reachable rows Nearby and sorts them first', () => {
   const park = travelTargets('park');
-  assert.deepEqual(park.map(target => target.id), ['town', 'home', 'shop', 'library']);
-  assert.deepEqual(park.map(target => target.nearby), [true, false, false, false]);
+  assert.deepEqual(park.map(target => target.id), ['town', 'home', 'shop', 'library', 'beach']);
+  assert.deepEqual(park.map(target => target.nearby), [true, false, false, false, false]);
 
   withLocations({
     'test-hub': baseDef('test-hub', {
@@ -348,8 +348,8 @@ test('travelTargets marks door-reachable rows Nearby and sorts them first', () =
       ['park', 'shop']
     );
     const targets = travelTargets('test-hub');
-    assert.deepEqual(targets.map(target => target.id), ['park', 'shop', 'home', 'town', 'library']);
-    assert.deepEqual(targets.map(target => target.nearby), [true, true, false, false, false]);
+    assert.deepEqual(targets.map(target => target.id), ['park', 'shop', 'home', 'town', 'library', 'beach']);
+    assert.deepEqual(targets.map(target => target.nearby), [true, true, false, false, false, false]);
   });
 });
 

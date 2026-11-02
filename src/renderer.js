@@ -1517,13 +1517,17 @@ export class WorldRenderer {
       renderables.push({ type: 'forage', y: apple.y, entity: apple });
     }
 
+    for (const shell of game.forage?.shells || []) {
+      renderables.push({ type: 'forage', y: shell.y, entity: shell, kind: 'shell' });
+    }
+
     renderables.sort((a, b) => (a.y - b.y) || ((a.x ?? 0) - (b.x ?? 0)));
 
     for (const item of renderables) {
       if (item.type === 'char') {
         this.drawCharacter(game, item.entity);
       } else if (item.type === 'forage') {
-        this.drawForageItem(game, item.entity);
+        this.drawForageItem(game, item.entity, item.kind);
       } else if (item.type === 'home-item') {
         this.drawHomeItem(item.entity, game, { draft: Boolean(item.draft) });
       } else if (item.type === 'location-prop') {
@@ -1665,9 +1669,14 @@ export class WorldRenderer {
     ctx.restore();
   }
 
-  drawForageItem(game, apple) {
+  drawForageItem(game, item, kind = 'apple') {
     const { ctx } = this;
-    if (!apple) return;
+    if (!item) return;
+    if (kind === 'shell') {
+      this.drawForageShell(game, item);
+      return;
+    }
+    const apple = item;
     const bob = Math.sin((game.time || 0) * 3 + apple.x * 0.7) * TILE * 0.04;
     const cx = (apple.x + 0.5) * TILE;
     const cy = (apple.y + 0.8) * TILE + bob;
@@ -1717,6 +1726,71 @@ export class WorldRenderer {
     ctx.fillStyle = '#5fae5f';
     ctx.beginPath();
     ctx.ellipse(r * 0.55, -r * 1.32, r * 0.5, r * 0.24, -0.55, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /** A small scallop shell on the sand: canvas only, no image assets. */
+  drawForageShell(game, shell) {
+    const { ctx } = this;
+    if (!shell) return;
+    const time = game.time || 0;
+    const bob = Math.sin(time * 2.4 + shell.x * 0.9) * TILE * 0.025;
+    const cx = (shell.x + 0.5) * TILE;
+    const cy = (shell.y + 0.82) * TILE + bob;
+    const r = TILE * 0.16;
+
+    // Soft collectible ring, tinted like sunlit shell.
+    const pulse = 0.5 + Math.sin(time * 2 + shell.y * 0.8) * 0.5;
+    ctx.save();
+    ctx.globalAlpha = 0.18 + pulse * 0.12;
+    ctx.strokeStyle = '#ffeccc';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(cx, (shell.y + 0.92) * TILE, r * 1.8, r * 0.72, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+    ctx.fillStyle = '#0b140d';
+    ctx.beginPath();
+    ctx.ellipse(cx, (shell.y + 0.94) * TILE, r * 1.05, r * 0.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(-0.24 + Math.sin(time * 0.8 + shell.y) * 0.05);
+
+    // Fan silhouette with a rounded hinge at the bottom.
+    ctx.beginPath();
+    ctx.moveTo(0, r * 0.85);
+    ctx.quadraticCurveTo(-r * 1.05, r * 0.15, -r * 0.95, -r * 0.55);
+    ctx.quadraticCurveTo(-r * 0.5, -r * 1.1, 0, -r * 1.05);
+    ctx.quadraticCurveTo(r * 0.5, -r * 1.1, r * 0.95, -r * 0.55);
+    ctx.quadraticCurveTo(r * 1.05, r * 0.15, 0, r * 0.85);
+    ctx.closePath();
+    ctx.fillStyle = '#f7e6cd';
+    ctx.fill();
+    ctx.strokeStyle = '#c8a27b';
+    ctx.lineWidth = Math.max(1, TILE * 0.025);
+    ctx.stroke();
+
+    // Radiating ridges.
+    ctx.strokeStyle = 'rgba(180, 135, 95, 0.65)';
+    ctx.lineWidth = Math.max(1, TILE * 0.02);
+    for (let i = -2; i <= 2; i += 1) {
+      const angle = -Math.PI / 2 + i * 0.3;
+      ctx.beginPath();
+      ctx.moveTo(0, r * 0.68);
+      ctx.lineTo(Math.cos(angle) * r * 0.86, Math.sin(angle) * r * 0.86);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = '#d8b088';
+    ctx.beginPath();
+    ctx.ellipse(0, r * 0.78, r * 0.28, r * 0.18, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
@@ -2347,6 +2421,19 @@ export class WorldRenderer {
         Math.PI * 2
       );
       mctx.fillStyle = 'rgba(217, 58, 58, 0.9)';
+      mctx.fill();
+    }
+
+    for (const shell of game.forage?.shells || []) {
+      mctx.beginPath();
+      mctx.arc(
+        (shell.x + 0.5) * (size / WORLD_SIZE),
+        (shell.y + 0.5) * (size / WORLD_SIZE),
+        Math.max(1.4, size / 240),
+        0,
+        Math.PI * 2
+      );
+      mctx.fillStyle = 'rgba(247, 230, 205, 0.95)';
       mctx.fill();
     }
 

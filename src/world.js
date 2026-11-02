@@ -511,8 +511,71 @@ export function generateTown(seed) {
   };
 }
 
+/* ------------------------------------------------------------------------ *
+ * Beach: a 64 × 64 shore. Land and a long boardwalk sit on the west; the sea
+ * curls across the east edge with a wet shallow band at the waterline. The
+ * pier and its sandy jetty are the only walkable ground in the water. Ground
+ * and spawn only: palms, umbrellas, benches, and the pier are props in
+ * `data/world.json`.
+ * ------------------------------------------------------------------------ */
+
+const BEACH = {
+  shoreBase: 46,
+  shoreAmpA: 4,
+  shoreFreqA: 0.16,
+  shoreAmpB: 2,
+  shoreFreqB: 0.09,
+  shorePhaseB: 1.1,
+  shallowBand: 2,
+  boardwalk: { x: 1, y: 30, w: 34, h: 2 },
+  jetty: { x: 38, y: 30, w: 11, h: 2 },
+  spawn: { x: 5, y: 31 }
+};
+
+/** The curved waterline for one row; land is west of it. */
+export function beachShoreline(y) {
+  return BEACH.shoreBase
+    + Math.sin(y * BEACH.shoreFreqA) * BEACH.shoreAmpA
+    + Math.sin(y * BEACH.shoreFreqB + BEACH.shorePhaseB) * BEACH.shoreAmpB;
+}
+
 export function generateBeach(seed) {
-  return { ...generateWorld(seed), template: 'beach' };
+  const beach = BEACH;
+  const grid = Array.from({ length: WORLD_SIZE }, () => Array(WORLD_SIZE).fill('sand'));
+
+  // Sand runs from the west edge to the curved waterline. The two tiles just
+  // past it are the wet shallow band; deep water starts beyond that.
+  for (let y = 0; y < WORLD_SIZE; y++) {
+    const edge = beachShoreline(y);
+    for (let x = 0; x < WORLD_SIZE; x++) {
+      if (x > edge + beach.shallowBand) grid[y][x] = 'water';
+    }
+  }
+
+  // Boardwalk from the Town gate out onto the sand.
+  paintRect(grid, beach.boardwalk, 'dirt', type => type === 'sand');
+  // A sandy jetty under the pier keeps the boards walkable over the water.
+  paintRect(grid, beach.jetty, 'sand', type => type === 'water' || type === 'sand');
+
+  const component = largestWalkableComponent(grid);
+  const componentKeys = new Set(component.map(cell => `${cell.x},${cell.y}`));
+  const requested = beach.spawn;
+  const spawn = isWalkable(grid[requested.y]?.[requested.x])
+    && componentKeys.has(`${requested.x},${requested.y}`)
+    ? requested
+    : nearestCell(component, requested.x, requested.y);
+
+  return {
+    seed,
+    grid,
+    spawn,
+    template: 'beach',
+    component,
+    componentKeys,
+    // Sand does not grow the Park's trees and flowers; the beach look lives in
+    // its location props instead.
+    scenery: []
+  };
 }
 
 export function generateScenery(grid, seed, spawn = { x: 32, y: 32 }) {

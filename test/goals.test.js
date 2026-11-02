@@ -42,10 +42,10 @@ function baseGame() {
   };
 }
 
-test('goals data is valid: nine unique goals with known events and rewards', () => {
+test('goals data is valid: ten unique goals with known events and rewards', () => {
   assert.deepEqual(validateGoalsData(goalsData), []);
-  assert.equal(goals.length, 9);
-  assert.equal(new Set(goals.map(goal => goal.id)).size, 9);
+  assert.equal(goals.length, 10);
+  assert.equal(new Set(goals.map(goal => goal.id)).size, 10);
 
   for (const goal of goals) {
     assert.ok(goal.title && goal.hint, `${goal.id} needs readable copy`);
@@ -126,10 +126,10 @@ test('goalSummary keeps data order and counts stamped goals', () => {
   const progress = { completed: { 'visit-home': 3000, 'say-hello': 1000 } };
   const summary = goalSummary(progress, goals);
 
-  assert.equal(summary.total, 9);
+  assert.equal(summary.total, 10);
   assert.equal(summary.completed, 2);
-  assert.equal(summary.open, 7);
-  assert.equal(summary.percent, 22);
+  assert.equal(summary.open, 8);
+  assert.equal(summary.percent, 20);
   assert.deepEqual(summary.items.map(item => item.id), goals.map(goal => goal.id));
   assert.deepEqual(summary.items.filter(item => item.done).map(item => item.id), ['say-hello', 'visit-home']);
   assert.equal(summary.next.id, 'make-a-friend');
@@ -143,7 +143,7 @@ test('nextGoal walks the remaining goals in order and ends null', () => {
     progress = applyGoalEvent(progress, goalEvents(goal)[0], goals, 1000).progress;
   }
   assert.equal(nextGoal(progress, goals), null);
-  assert.equal(goalSummary(progress, goals).completed, 9);
+  assert.equal(goalSummary(progress, goals).completed, 10);
 });
 
 test('saved goals round trip through serializeSave and migrateSave', () => {

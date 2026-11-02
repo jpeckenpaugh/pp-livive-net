@@ -72,6 +72,14 @@
       "event": "lesson.completed",
       "count": 1,
       "reward": 20
+    },
+    {
+      "id": "shell-collected",
+      "title": "collect a beach shell",
+      "hint": "walk over a shell on the beach sand.",
+      "event": "shell.collected",
+      "count": 1,
+      "reward": 15
     }
   ]
 }

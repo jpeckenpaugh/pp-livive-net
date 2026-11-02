@@ -57,14 +57,14 @@ test('normalizeForage keeps valid apples, basket counts, and harvest clocks', ()
     { id: 'apple:3,4', x: 3, y: 4 },
     { id: 'apple:5,5', x: 5, y: 5 }
   ]);
-  assert.deepEqual(block.basket, { apple: 4, mushroom: 2 });
+  assert.deepEqual(block.basket, { apple: 4, mushroom: 2, shell: 0 });
   assert.deepEqual(block.harvested, { 'scenery-1': 5000 });
   assert.equal(block.nextAppleAt, 12345);
   assert.equal(block.seeded, true);
 
   const empty = normalizeForage(null);
   assert.deepEqual(empty.apples, []);
-  assert.deepEqual(empty.basket, { apple: 0, mushroom: 0 });
+  assert.deepEqual(empty.basket, { apple: 0, mushroom: 0, shell: 0 });
   assert.equal(empty.seeded, false);
 });
 
@@ -114,7 +114,7 @@ test('walking onto an apple adds it to the basket exactly once', () => {
   const pickup = collectForageAt(state, { x: 4, y: 4, nowMs: 1000 });
   assert.equal(pickup.kind, 'apple');
   assert.equal(pickup.item.id, 'apple');
-  assert.deepEqual(state.basket, { apple: 1, mushroom: 0 });
+  assert.deepEqual(state.basket, { apple: 1, mushroom: 0, shell: 0 });
   assert.equal(state.apples.length, 0);
   assert.equal(collectForageAt(state, { x: 4, y: 4, nowMs: 1100 }), null);
 
@@ -139,7 +139,7 @@ test('mushroom scenery is harvestable and returns after its respawn clock', () =
   const pickup = collectForageAt(state, { x: 2, y: 3, scenery, nowMs: now });
   assert.equal(pickup.kind, 'mushroom');
   assert.equal(pickup.item.id, 'mushroom');
-  assert.deepEqual(state.basket, { apple: 0, mushroom: 1 });
+  assert.deepEqual(state.basket, { apple: 0, mushroom: 1, shell: 0 });
   assert.equal(isMushroomHidden(state, 'scenery-1', now + 1), true);
   assert.equal(isMushroomHidden(state, 'scenery-1', now + FORAGE_CONFIG.mushrooms.respawnMs), false);
   assert.equal(collectForageAt(state, { x: 2, y: 3, scenery, nowMs: now + 1 }), null);

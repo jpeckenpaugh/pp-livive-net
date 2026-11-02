@@ -503,12 +503,12 @@ test('forage basket, apples, and mushroom clocks round-trip through a save', () 
   });
   const save = serializeSave(game, {}, new Set());
   assert.deepEqual(save.locations.park.forage.apples, [{ id: 'apple:12,14', x: 12, y: 14 }]);
-  assert.deepEqual(save.locations.park.forage.basket, { apple: 6, mushroom: 3 });
+  assert.deepEqual(save.locations.park.forage.basket, { apple: 6, mushroom: 3, shell: 0 });
   assert.deepEqual(save.locations.park.forage.harvested, { 'scenery-4': 123456 });
   assert.equal(save.locations.park.forage.seeded, true);
 
   const migrated = migrateSave({ version: 2, player: { inventory: [], equipped: [] } });
-  assert.deepEqual(migrated.locations.park.forage.basket, { apple: 0, mushroom: 0 });
+  assert.deepEqual(migrated.locations.park.forage.basket, { apple: 0, mushroom: 0, shell: 0 });
   assert.deepEqual(migrated.locations.park.forage.apples, []);
   assert.equal(migrated.locations.park.forage.seeded, false);
 });

@@ -228,7 +228,7 @@ test('adversarial v3 re-casts a broken voice once and reloads identically', () =
   assert.deepEqual(thrice.locations.park.npcs[0].voice, once.locations.park.npcs[0].voice);
   assert.equal(once.locations.park.terrain, source.terrain);
   assert.deepEqual(once.locations.park.forage.apples, [{ id: 'apple:3,4', x: 3, y: 4 }]);
-  assert.deepEqual(once.locations.park.forage.basket, { apple: 2, mushroom: 1 });
+  assert.deepEqual(once.locations.park.forage.basket, { apple: 2, mushroom: 1, shell: 0 });
   assert.deepEqual(once.behavior.relations, { version: 1, pairs: [] });
   assert.deepEqual(once.player.equipped, [{ slot: 'charm', uid: 'ball-0' }]);
 });
@@ -251,7 +251,12 @@ test('realistic v3 Park state migrates unchanged', () => {
     park.npcs.map(npc => [npc.id, npc.x, npc.y, npc.direction, npc.voice]),
     source.npcs.map(npc => [npc.id, npc.x, npc.y, npc.direction, npc.voice])
   );
-  assert.deepEqual(park.forage, source.forage);
+  assert.deepEqual(park.forage, {
+    ...source.forage,
+    shells: [],
+    basket: { ...source.forage.basket, shell: 0 },
+    nextShellAt: 0
+  });
   assert.deepEqual(migrated.friends, source.friends);
   assert.deepEqual(migrated.companions, source.companions);
   assert.equal(migrated.player.coins, source.player.coins);
@@ -391,7 +396,7 @@ test('captureLocationRecord encodes terrain and preserves unknown location keys'
   assert.equal(record.npcs[0].x, 4);
   assert.equal('path' in record.npcs[0], false);
   assert.equal('moving' in record.npcs[0], false);
-  assert.deepEqual(record.forage.basket, { apple: 1, mushroom: 0 });
+  assert.deepEqual(record.forage.basket, { apple: 1, mushroom: 0, shell: 0 });
   assert.deepEqual(record.decor, [{ id: 'plant' }]);
   assert.deepEqual(record.buddies, []);
 

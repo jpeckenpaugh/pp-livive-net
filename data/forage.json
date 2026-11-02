@@ -10,6 +10,11 @@
       "id": "mushroom",
       "label": "Mushroom",
       "icon": "🍄"
+    },
+    "shell": {
+      "id": "shell",
+      "label": "Shell",
+      "icon": "🐚"
     }
   },
   "apples": {
@@ -21,5 +26,11 @@
   "mushrooms": {
     "respawnMs": 75000,
     "sceneryTypes": ["mushroom", "mushroom-cluster"]
+  },
+  "shells": {
+    "initial": 8,
+    "max": 12,
+    "respawnMs": 45000,
+    "tiles": ["sand"]
   }
 }

@@ -51,6 +51,11 @@ export function allowsForage(id) {
   return locationDef(id)?.forage !== false;
 }
 
+/** Shells are opt-in: only locations that declare `shells: true` seed them. */
+export function allowsShells(id) {
+  return locationDef(id)?.shells === true;
+}
+
 /**
  * Destinations the player menu may offer from `fromId`. A disabled location is
  * absent here, which is how the flag keeps Home unreachable. Targets directly
@@ -346,12 +351,15 @@ export function createLocationRecord(id, { basket = null } = {}) {
 function emptyForage(basket = null, { seeded = true } = {}) {
   return {
     apples: [],
+    shells: [],
     basket: {
       apple: Math.max(0, Math.floor(Number(basket?.apple) || 0)),
-      mushroom: Math.max(0, Math.floor(Number(basket?.mushroom) || 0))
+      mushroom: Math.max(0, Math.floor(Number(basket?.mushroom) || 0)),
+      shell: Math.max(0, Math.floor(Number(basket?.shell) || 0))
     },
     harvested: {},
     nextAppleAt: 0,
+    nextShellAt: 0,
     seeded
   };
 }

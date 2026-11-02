@@ -19,6 +19,7 @@ import {
   LOCATIONS,
   SHOPKEEPER_ID,
   allowsForage,
+  allowsShells,
   arrivalTile,
   createHomeLocation,
   createLocationRecord,
@@ -126,7 +127,7 @@ import {
   collectForageAt,
   createForageState,
   growForage,
-  seedApples
+  seedForage
 } from './forage.js';
 import { SoundBoard } from './audio.js';
 import { TILE } from './renderer.js';
@@ -673,8 +674,9 @@ function liveForageOccupied() {
 }
 
 /**
- * Grow and pick forage once per frame. Apples and mushrooms are collected by
- * standing on their tile, exactly like walking over a coin would feel.
+ * Grow and pick forage once per frame. Apples, mushrooms, and shells are
+ * collected by standing on their tile, exactly like walking over a coin would
+ * feel.
  */
 function updateForageGround(nowMs = Date.now()) {
   const player = game?.player;
@@ -698,6 +700,7 @@ function updateForageGround(nowMs = Date.now()) {
   showToast(`+1 ${pickup.item.icon} ${pickup.item.label} · basket ${basket.label}`);
   sounds.play('pickup');
   panels?.renderInventory?.();
+  if (pickup.kind === 'shell') completeGoalEvent('shell.collected');
   saveNow();
 }
 
@@ -2339,16 +2342,20 @@ function applyState(state) {
   const forage = createForageState(locationState.forage);
   forageEnabled = allowsForage(locationId);
   if (!forageEnabled) {
-    // Home is a place to rest: no apples, no mushrooms, no respawn clocks.
+    // Home is a place to rest: no apples, mushrooms, shells, or respawn clocks.
     forage.apples = [];
+    forage.shells = [];
     forage.harvested = {};
+    forage.nextShellAt = 0;
     forage.seeded = true;
   } else if (!forage.seeded) {
-    seedApples(forage, {
+    seedForage(forage, {
       grid: terrain,
+      shells: allowsShells(locationId),
       occupied: forageOccupiedTiles({
         scenery,
-        characters: [rawPlayer, ...npcs, ...companions]
+        characters: [rawPlayer, ...npcs, ...companions],
+        blocked: locationBlocked
       })
     });
   }

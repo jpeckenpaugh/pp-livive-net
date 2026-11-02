@@ -229,6 +229,14 @@
           "x": 40,
           "y": 28,
           "prompt": "Visit the library?"
+        },
+        {
+          "id": "beach-door",
+          "kind": "travel",
+          "to": "beach",
+          "x": 60,
+          "y": 31,
+          "prompt": "Walk down to the beach?"
         }
       ],
       "props": [
@@ -398,6 +406,88 @@
           "role": "librarian",
           "x": 32,
           "y": 28,
+          "direction": 2
+        }
+      ]
+    },
+    "beach": {
+      "id": "beach",
+      "label": "Beach",
+      "enabled": true,
+      "mapLabel": "Beach map",
+      "template": "beach",
+      "seed": "sunny-cove-01",
+      "shells": true,
+      "theme": {
+        "grass": "#6a8f5a",
+        "dirt": "#b08a5c",
+        "sand": "#e6d3a1",
+        "water": "#3f93b5",
+        "field": "#8a9a4f"
+      },
+      "spawn": {
+        "x": 5,
+        "y": 31
+      },
+      "menu": {
+        "label": "Beach",
+        "note": "Wander the sand and hunt for shells."
+      },
+      "door": {
+        "x": 3,
+        "y": 31,
+        "to": "town",
+        "prompt": "Head back to town?"
+      },
+      "props": [
+        { "type": "gate", "x": 2, "y": 29 },
+
+        { "type": "lamp", "x": 6, "y": 29 },
+        { "type": "lamp", "x": 15, "y": 29, "variant": 1 },
+        { "type": "lamp", "x": 24, "y": 29 },
+        { "type": "lamp", "x": 33, "y": 29, "variant": 1 },
+
+        { "type": "bench", "x": 8, "y": 33 },
+        { "type": "bench", "x": 17, "y": 33, "variant": 1 },
+        { "type": "bench", "x": 26, "y": 33 },
+        { "type": "bench", "x": 38, "y": 33, "variant": 1 },
+
+        { "type": "palm", "x": 8, "y": 20 },
+        { "type": "palm", "x": 18, "y": 19, "variant": 1 },
+        { "type": "palm", "x": 27, "y": 14 },
+        { "type": "palm", "x": 36, "y": 12, "variant": 1 },
+        { "type": "palm", "x": 14, "y": 50 },
+        { "type": "palm", "x": 24, "y": 54, "variant": 1 },
+        { "type": "palm", "x": 33, "y": 44 },
+        { "type": "palm", "x": 38, "y": 36, "variant": 1 },
+
+        { "type": "umbrella", "x": 16, "y": 24 },
+        { "type": "umbrella", "x": 34, "y": 20, "variant": 1 },
+        { "type": "umbrella", "x": 26, "y": 38 },
+        { "type": "umbrella", "x": 10, "y": 44, "variant": 1 },
+
+        { "type": "picnic-blanket", "x": 22, "y": 27 },
+        { "type": "picnic-blanket", "x": 38, "y": 24, "variant": 1 },
+        { "type": "picnic-blanket", "x": 20, "y": 42 },
+        { "type": "picnic-blanket", "x": 29, "y": 46, "variant": 1 },
+
+        { "type": "pier", "x": 43, "y": 30, "rot": 1 }
+      ],
+      "residents": [
+        {
+          "id": "resident-coral",
+          "name": "Coral",
+          "seed": "beach-coral",
+          "x": 24,
+          "y": 36,
+          "direction": 1
+        },
+        {
+          "id": "resident-finn",
+          "name": "Finn",
+          "seed": "beach-finn",
+          "x": 33,
+          "y": 25,
           "direction": 2
         }
       ]

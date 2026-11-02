@@ -135,7 +135,7 @@ test('the basket travels between locations and keeps other forage state', () => 
     }
   };
   const carried = carryBasket(park, { apple: 3, mushroom: 2 });
-  assert.deepEqual(carried.forage.basket, { apple: 3, mushroom: 2 });
+  assert.deepEqual(carried.forage.basket, { apple: 3, mushroom: 2, shell: 0 });
   assert.deepEqual(carried.forage.apples, park.forage.apples);
   assert.deepEqual(carried.forage.harvested, { mushroom: 5 });
   assert.deepEqual(park.forage.basket, { apple: 1, mushroom: 0 }, 'the source record is untouched');
