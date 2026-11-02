@@ -94,6 +94,15 @@ Rules:
 This is the only migration that needs doing before Phase 1. Trading needs no new top-level
 save shape; it mutates existing inventories and coins atomically.
 
+**Wave 0 decisions (autopilot, 2026-11-01)**
+
+- **No top-level mirror.** `locations.park` is the only home for world fields; every reader moves to a pure `activeLocation(state)` accessor exported from `storage.js`, with a legacy fallback so the wizard's hand-built v1 object keeps working.
+- The accessor returns `{ seed, terrain, player, npcs, forage }`; `worldSeed` is renamed `seed` inside a location, and the accessor maps the legacy name.
+- **Strict v4 validation:** a v4 save must have a `locations` object with a `park` entry carrying `seed` and a decodable terrain, or `loadSave` returns null. `locations: {}`, a non-object, and an undecodable park all get tests.
+- `serializeSave` writes only `park` in this wave and asserts no other location keys appear. Wave 1 must extend it without dropping Home; a test will guard that.
+- Shared fields stay top-level: `savedAt`, `playerName`, `playerRecipe`, gear, coins, friends, companions, stabled companions, behaviour. `wander` stays top-level for now and is revisited when travel lands.
+- Fixtures: one adversarial save per version (v1, v2, v3) plus one realistically shaped v3 that migrates with byte-stable Park state.
+
 ---
 
 ## 4. Milestone 1 — the Home slice (Phases 1 + 2)
