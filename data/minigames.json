@@ -164,6 +164,39 @@
       "persist": false,
       "activity": "turn-based"
     },
+    "snakes-ladders": {
+      "id": "snakes-ladders",
+      "title": "Snakes and Ladders",
+      "kind": "board",
+      "itemId": "snakes-ladders",
+      "dialogueKey": "snakes-ladders",
+      "rewardKey": "snakes-ladders",
+      "players": 2,
+      "seats": 2,
+      "board": {
+        "width": 10,
+        "height": 10,
+        "margin": 1,
+        "blocksMovement": true,
+        "hiddenZones": []
+      },
+      "input": {
+        "mode": "action",
+        "actionLabel": "roll"
+      },
+      "strip": {
+        "instruction": "{key} to roll the dice",
+        "ready": "unfolding the race board"
+      },
+      "renderLayers": ["ground"],
+      "timing": {
+        "openMs": 700,
+        "closeMs": 600,
+        "turnMs": 900
+      },
+      "persist": false,
+      "activity": "turn-based"
+    },
     "fetch": {
       "id": "fetch",
       "title": "Fetch",

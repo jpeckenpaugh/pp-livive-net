@@ -101,6 +101,20 @@
         { "label": "Pack up", "className": "pill quiet", "action": "pack_up" }
       ]
     },
+    "snakes-ladders": {
+      "win": "One hundred exactly! You won the race up the snakes and ladders. Another climb?",
+      "loss": "I got to one hundred first! Good race. Rematch?",
+      "draw": "A photo finish! That snakes and ladders race is a draw. Rematch?",
+      "abandonPrompt": "{name}: Leaving the board? Abandon Snakes and Ladders and pack up?",
+      "abandonChoices": [
+        { "label": "Abandon & Pack up", "className": "danger", "action": "abandon" },
+        { "label": "Keep Playing", "className": "pill", "action": "keep_playing" }
+      ],
+      "endChoices": [
+        { "label": "Play again", "className": "primary", "action": "play_again" },
+        { "label": "Pack up", "className": "pill quiet", "action": "pack_up" }
+      ]
+    },
     "fetch": {
       "win": "What a throw! Good fetch.",
       "loss": "Good try! One more throw?",

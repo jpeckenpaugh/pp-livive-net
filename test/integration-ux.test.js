@@ -79,14 +79,14 @@ test('social bubble lines exist for behavior events', () => {
   }
 });
 
-test('host registers all six metadata-backed adapters', () => {
+test('host registers all seven metadata-backed adapters', () => {
   const host = new MiniGameHost({ game: { terrain: null } });
   const results = registerContractGames(host, miniGamesData.miniGames);
-  assert.equal(results.length, 6);
+  assert.equal(results.length, 7);
   assert.ok(results.every(result => result.ok));
   assert.deepEqual(
     results.map(result => result.id).sort(),
-    ['checkers', 'chess', 'connect-four', 'fetch', 'memory-grid', 'tic-tac-toe']
+    ['checkers', 'chess', 'connect-four', 'fetch', 'memory-grid', 'snakes-ladders', 'tic-tac-toe']
   );
   assert.equal(host.getMeta('fetch').itemId, 'ball');
   assert.equal(host.getMeta('chess').dialogueKey, 'chess');

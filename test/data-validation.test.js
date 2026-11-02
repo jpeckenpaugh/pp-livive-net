@@ -24,6 +24,7 @@ const engineConfig = readJson('engine_config.json');
 const rewards = readJson('rewards.json');
 const dialogues = readJson('dialogues.json');
 const behaviors = readJson('behaviors.json');
+const snakesLadders = readJson('snakes-ladders.json');
 const voicePolicy = readJson('voice.json');
 const voiceBank = readJson('voice_bank.json');
 const voicePools = readJson('voice_pools.json');
@@ -333,11 +334,40 @@ test('board strip copy covers every rejection reason and instruction placeholder
   assert.equal(typeof strip.keyHint, 'string');
   assert.equal(typeof strip.touchHint, 'string');
 
-  for (const id of ['tic-tac-toe', 'checkers', 'chess', 'memory-grid', 'connect-four']) {
+  for (const id of ['tic-tac-toe', 'checkers', 'chess', 'memory-grid', 'connect-four', 'snakes-ladders']) {
     const instruction = minigames.miniGames[id].strip?.instruction;
     assert.match(instruction, /\{key\}/, `${id} instruction needs the {key} placeholder`);
     assert.equal(minigames.miniGames[id].kind, 'board', id);
   }
+});
+
+test('snakes-ladders.json defines a complete 10×10 race board', () => {
+  assert.equal(snakesLadders.version, 1);
+  assert.equal(snakesLadders.board.size, 10);
+  assert.equal(snakesLadders.board.squares, 100);
+  assert.equal(snakesLadders.dice.sides, 6);
+  assert.equal(snakesLadders.start, 0);
+  assert.ok(Number(snakesLadders.timing.stepMs) > 0);
+  assert.ok(Number(snakesLadders.timing.aiDelayMs) > 0);
+
+  const starts = new Set();
+  for (const snake of snakesLadders.snakes) {
+    assert.ok(Number.isInteger(snake.from) && Number.isInteger(snake.to));
+    assert.ok(snake.from > snake.to, `snake ${snake.from} must slide down`);
+    assert.ok(snake.to >= 1 && snake.from <= 100);
+    assert.ok(!starts.has(snake.from), `duplicate snake/ladder start ${snake.from}`);
+    starts.add(snake.from);
+  }
+  for (const ladder of snakesLadders.ladders) {
+    assert.ok(Number.isInteger(ladder.from) && Number.isInteger(ladder.to));
+    assert.ok(ladder.to > ladder.from, `ladder ${ladder.from} must climb up`);
+    assert.ok(ladder.from >= 1 && ladder.to <= 100);
+    assert.ok(!starts.has(ladder.from), `duplicate snake/ladder start ${ladder.from}`);
+    starts.add(ladder.from);
+  }
+  assert.ok(snakesLadders.snakes.length >= 5);
+  assert.ok(snakesLadders.ladders.length >= 5);
+  assert.ok(starts.has(80) || starts.has(100), 'the map should offer a late climb or finish');
 });
 
 test('home_items.json defines the furnished room and a testable default layout', () => {

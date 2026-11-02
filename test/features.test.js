@@ -11,19 +11,21 @@ import { rollReward, applyReward } from '../src/rewards.js';
 
 test('createStarterInventory yields the starter toys and the headline effects', () => {
   const inv = createStarterInventory();
-  assert.equal(inv.length, 11);
+  assert.equal(inv.length, 12);
   const ball = inv.find(i => i.id === 'ball');
   const ttt = inv.find(i => i.id === 'tic-tac-toe');
   const checkers = inv.find(i => i.id === 'checkers');
   const chess = inv.find(i => i.id === 'chess');
   const memoryGrid = inv.find(i => i.id === 'memory-grid');
   const connectFour = inv.find(i => i.id === 'connect-four');
+  const snakesLadders = inv.find(i => i.id === 'snakes-ladders');
   assert.ok(ball);
   assert.ok(ttt);
   assert.ok(checkers);
   assert.ok(chess);
   assert.ok(memoryGrid);
   assert.ok(connectFour);
+  assert.ok(snakesLadders);
   assert.ok(BALL_COLORS.includes(ball.color));
   assert.ok(inv.some(i => i.id === 'park-postcard'), 'starter grants a tradeable postcard');
 

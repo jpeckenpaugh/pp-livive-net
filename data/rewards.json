@@ -67,6 +67,17 @@
         "coins": 2
       }
     },
+    "snakes-ladders": {
+      "win": {
+        "coins": 18
+      },
+      "draw": {
+        "coins": 5
+      },
+      "loss": {
+        "coins": 2
+      }
+    },
     "fetch": {
       "rewardCoins": 2
     }

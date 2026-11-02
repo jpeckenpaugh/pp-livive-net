@@ -66,6 +66,12 @@ export function formatGameStrip({
     parts.push(copy?.phase?.[state.phase] || state.phase || 'in play');
   }
 
+  // Optional live readout (a die value, score, or square). Games without one
+  // keep the exact same strip as before.
+  if (!state.settled && typeof state.detail === 'string' && state.detail.trim()) {
+    parts.push(state.detail.trim());
+  }
+
   const rejection = state.settled ? null : reasonLine(copy, reject?.reason);
   if (rejection) {
     parts.push(rejection);

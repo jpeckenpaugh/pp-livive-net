@@ -523,7 +523,7 @@ export class MiniGameHost {
   getState() {
     const session = this.session;
     if (!session) {
-      return { active: false, gameId: null, kind: null, turnSeat: null, instruction: null };
+      return { active: false, gameId: null, kind: null, turnSeat: null, instruction: null, detail: null };
     }
     const status = this._describeStatus();
     return {
@@ -538,6 +538,7 @@ export class MiniGameHost {
       outcome: session.settlement?.outcome || null,
       turnSeat: Number.isInteger(status?.turnSeat) ? status.turnSeat : null,
       instruction: typeof status?.instruction === 'string' ? status.instruction : null,
+      detail: typeof status?.detail === 'string' ? status.detail : null,
       participants: session.participants.map(character => character.id || null),
       companions: session.companions.map(character => character.id || null)
     };

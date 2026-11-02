@@ -52,6 +52,26 @@ test("the opponent's turn names the seat", () => {
   assert.equal(line, "Tic-Tac-Toe · Fern's turn");
 });
 
+test('an optional detail reads out live state without changing old strips', () => {
+  assert.equal(
+    formatGameStrip({
+      state: state({ detail: '🎲 4 · you 12 · Fern 9' }),
+      copy,
+      keyLabel: 'press Enter'
+    }),
+    'Tic-Tac-Toe · your turn · 🎲 4 · you 12 · Fern 9 · step onto an empty square and press Enter to claim it'
+  );
+
+  assert.equal(
+    formatGameStrip({
+      state: state({ turnSeat: 1, instruction: null, detail: '🎲 4 · you 12 · Fern 9' }),
+      copy,
+      turnName: 'Fern'
+    }),
+    "Tic-Tac-Toe · Fern's turn · 🎲 4 · you 12 · Fern 9"
+  );
+});
+
 test('a finished match reports the terse outcome word', () => {
   for (const [outcome, word] of Object.entries(copy.outcome)) {
     const line = formatGameStrip({

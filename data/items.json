@@ -55,6 +55,15 @@
       "description": "Unfurl a 7x6 disc-dropping board on the grass.",
       "icon": "🔴"
     },
+    "snakes-ladders": {
+      "id": "snakes-ladders",
+      "name": "Snakes and Ladders",
+      "value": 20,
+      "tradeable": false,
+      "action": "unfurl",
+      "description": "Unfurl a 10x10 race board with snakes, ladders, and one little die.",
+      "icon": "🐍"
+    },
     "big-o-bracelet": {
       "id": "big-o-bracelet",
       "name": "Big-O Bracelet",
@@ -248,6 +257,9 @@
     },
     {
       "id": "connect-four"
+    },
+    {
+      "id": "snakes-ladders"
     },
     {
       "id": "big-o-bracelet"

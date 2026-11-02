@@ -14,7 +14,7 @@ const V1_STARTER_EFFECTS = ['big-o-bracelet', 'chamo-clip', 'teleport-tricorder'
 
 // Starter games and gear added after a save was created should still appear in
 // that player's bag. Idempotent: matching ids are skipped.
-const EXTRA_STARTER_ITEMS = ['memory-grid', 'connect-four', 'wings'];
+const EXTRA_STARTER_ITEMS = ['memory-grid', 'connect-four', 'snakes-ladders', 'wings'];
 
 // Fields that belong to a live frame (paths, staging, fetch AI, timers) and must
 // never leak into a save. Profit: reloads start with clean, deterministic actors.

@@ -24,6 +24,7 @@ import { ChessMiniGame } from './chess.js';
 import { FetchMiniGame } from './fetch.js';
 import { createMemoryGridGame } from './memory-grid.js';
 import { createConnectFourGame } from './connect-four.js';
+import { createSnakesLaddersGame } from './snakes-ladders.js';
 import { findPath } from '../world.js';
 import miniGamesData from '../../data/minigames.json' with { type: 'json' };
 
@@ -581,6 +582,7 @@ export const ADAPTER_FACTORIES = Object.freeze({
   chess: createChessAdapter,
   'memory-grid': createMemoryGridGame,
   'connect-four': createConnectFourGame,
+  'snakes-ladders': createSnakesLaddersGame,
   fetch: createFetchAdapter
 });
 

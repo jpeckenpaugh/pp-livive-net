@@ -20,7 +20,7 @@ const metas = miniGamesData.miniGames;
 const metaList = Object.values(metas);
 const catalog = itemsData.catalog;
 const starterIds = itemsData.starter.map(spec => spec.id);
-const ALL_GAME_IDS = ['checkers', 'chess', 'connect-four', 'fetch', 'memory-grid', 'tic-tac-toe'];
+const ALL_GAME_IDS = ['checkers', 'chess', 'connect-four', 'fetch', 'memory-grid', 'snakes-ladders', 'tic-tac-toe'];
 
 test('every mini-game item exists in the catalog and the starter backpack', () => {
   for (const meta of metaList) {
@@ -33,7 +33,7 @@ test('every mini-game item exists in the catalog and the starter backpack', () =
     );
   }
 
-  for (const id of ['memory-grid', 'connect-four']) {
+  for (const id of ['memory-grid', 'connect-four', 'snakes-ladders']) {
     const item = catalog[id];
     assert.equal(item.action, 'unfurl', `${id} should unfurl from the backpack`);
     assert.equal(typeof item.icon, 'string');
@@ -100,8 +100,8 @@ test('every mini-game reward key resolves for each competitive outcome', () => {
   });
 });
 
-test('memory-grid and connect-four bag items unfurl by metadata id', () => {
-  for (const id of ['memory-grid', 'connect-four']) {
+test('memory-grid, connect-four, and snakes-ladders bag items unfurl by metadata id', () => {
+  for (const id of ['memory-grid', 'connect-four', 'snakes-ladders']) {
     const action = itemAction(catalog[id], metaList);
     assert.equal(action.type, 'unfurl', `${id} should dispatch as unfurl`);
     assert.equal(action.gameId, id);
@@ -116,11 +116,11 @@ test('memory-grid and connect-four bag items unfurl by metadata id', () => {
   );
 });
 
-test('host registry registers all six metadata-backed games without error', () => {
+test('host registry registers all seven metadata-backed games without error', () => {
   const host = new MiniGameHost({ game: { terrain: null } });
   const results = registerContractGames(host, metas);
 
-  assert.equal(results.length, 6);
+  assert.equal(results.length, 7);
   for (const result of results) {
     assert.equal(result.ok, true, `${result.id} failed to register: ${result.reason || result.message || ''}`);
   }
@@ -132,7 +132,7 @@ test('host registry registers all six metadata-backed games without error', () =
   }
 });
 
-test('host can start both new games on open ground with a friend seat', () => {
+test('host can start the new board games on open ground with a friend seat', () => {
   const terrain = Array.from({ length: 64 }, () => Array.from({ length: 64 }, () => 'grass'));
   const player = { id: 'player', name: 'You', x: 20, y: 20, direction: 0, moving: false, path: [] };
   const npc = { id: 'npc-1', name: 'Fern', x: 24, y: 20, direction: 0, moving: false, path: [] };
@@ -146,7 +146,7 @@ test('host can start both new games on open ground with a friend seat', () => {
     triggerCheer: () => {}
   };
 
-  for (const id of ['memory-grid', 'connect-four']) {
+  for (const id of ['memory-grid', 'connect-four', 'snakes-ladders']) {
     const host = new MiniGameHost({ game: world });
     registerContractGames(host, metas);
     const started = host.start(id, {
@@ -196,4 +196,22 @@ test('new board metadata matches the game classes and their contract shape', () 
     assert.equal(meta.persist, false);
     assert.equal(meta.activity, 'turn-based');
   }
+
+  const snakes = metas['snakes-ladders'];
+  assert.equal(snakes.title, 'Snakes and Ladders');
+  assert.equal(catalog[snakes.itemId].icon, '🐍');
+  assert.equal(snakes.kind, 'board');
+  assert.equal(snakes.players, 2);
+  assert.equal(snakes.seats, 2);
+  assert.equal(snakes.board.margin, 1);
+  assert.equal(snakes.board.blocksMovement, true);
+  assert.deepEqual(snakes.board.hiddenZones, []);
+  assert.equal(snakes.board.width, 10);
+  assert.equal(snakes.board.height, 10);
+  assert.equal(snakes.input.mode, 'action');
+  assert.equal(snakes.input.actionLabel, 'roll');
+  assert.deepEqual(snakes.renderLayers, ['ground']);
+  assert.deepEqual(snakes.timing, { openMs: 700, closeMs: 600, turnMs: 900 });
+  assert.equal(snakes.persist, false);
+  assert.equal(snakes.activity, 'turn-based');
 });

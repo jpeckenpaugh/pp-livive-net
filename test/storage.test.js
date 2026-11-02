@@ -469,6 +469,7 @@ test('migration grants newly added starter games to existing saves once', () => 
   const ids = migrated.player.inventory.map(item => item.id);
   assert.ok(ids.includes('memory-grid'));
   assert.ok(ids.includes('connect-four'));
+  assert.ok(ids.includes('snakes-ladders'));
   assert.ok(ids.includes('wings'));
 
   const again = migrateSave(JSON.parse(JSON.stringify(migrated)));
@@ -478,6 +479,10 @@ test('migration grants newly added starter games to existing saves once', () => 
   );
   assert.equal(
     again.player.inventory.filter(item => item.id === 'connect-four').length,
+    1
+  );
+  assert.equal(
+    again.player.inventory.filter(item => item.id === 'snakes-ladders').length,
     1
   );
   assert.equal(
