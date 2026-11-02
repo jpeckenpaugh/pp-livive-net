@@ -63,6 +63,31 @@
       <div id="npc-roster" class="npc-card-sections" hidden></div>
       <div id="npc-effects" class="effect-list" aria-label="Active effects"></div>
       <div id="npc-bag" class="npc-card-sections" hidden></div>
+      <div id="npc-trade" class="npc-card-sections npc-trade" hidden role="group" aria-label="Trade offer">
+        <div class="npc-trade-head">
+          <strong>Trade</strong>
+          <span id="npc-trade-meta" class="npc-section-meta"></span>
+        </div>
+        <div id="npc-trade-offer" class="npc-trade-offer" hidden>
+          <div class="npc-trade-side">
+            <span class="npc-trade-caption">you give</span>
+            <span id="npc-trade-give" class="npc-trade-value"></span>
+          </div>
+          <span class="npc-trade-arrow" aria-hidden="true">→</span>
+          <div class="npc-trade-side">
+            <span class="npc-trade-caption">you get</span>
+            <span id="npc-trade-get" class="npc-trade-value"></span>
+          </div>
+        </div>
+        <p id="npc-trade-balance" class="npc-section-note"></p>
+        <p id="npc-trade-result" class="npc-trade-result" role="status" aria-live="polite" hidden></p>
+        <p id="npc-trade-reject" class="npc-trade-reject" role="status" aria-live="polite" hidden></p>
+        <div class="npc-trade-actions">
+          <button id="npc-trade-confirm" class="pill primary" type="button">Confirm trade</button>
+          <button id="npc-trade-cancel" class="pill" type="button">Cancel</button>
+          <button id="npc-trade-again" class="pill" type="button" hidden>Trade again</button>
+        </div>
+      </div>
       <div class="npc-card-actions">
         <button id="npc-shuffle" class="pill" type="button">New look</button>
         <button id="npc-remove" class="pill danger" type="button">Remove</button>

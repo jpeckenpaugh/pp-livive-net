@@ -183,14 +183,16 @@ test('npcEconomySummary tolerates missing input', () => {
   assert.equal(economy.label, '0 followers · 0 in reserve · 0/0 NPCs stocked');
 });
 
-test('npcCardActions gives a stranger only the ask action and the reason play is closed', () => {
+test('npcCardActions gives a stranger the ask action, trade, and the reason play is closed', () => {
   const model = npcCardActions(npc(), { isFriend: false, boards: [] });
 
   assert.equal(model.badge, 'Not friends yet');
   assert.equal(model.isFriend, false);
-  assert.deepEqual(model.actions.map(a => a.id), ['ask-friend']);
-  assert.deepEqual(model.actions.map(a => a.label), ['Ask to be friends']);
+  assert.deepEqual(model.actions.map(a => a.id), ['ask-friend', 'trade']);
+  assert.deepEqual(model.actions.map(a => a.label), ['Ask to be friends', 'Trade']);
   assert.equal(model.actions[0].primary, true);
+  const trade = model.actions.find(a => a.id === 'trade');
+  assert.equal(trade.primary, false, 'trade is never the primary pill');
   assert.equal(model.note, 'Become friends to play board games');
 });
 
@@ -202,8 +204,8 @@ test('npcCardActions starts a friend\'s single board directly', () => {
 
   assert.equal(model.badge, 'Friend');
   assert.equal(model.note, null);
-  assert.deepEqual(model.actions.map(a => a.id), ['talk', 'invite']);
-  assert.deepEqual(model.actions.map(a => a.label), ['Talk', 'Play Chess']);
+  assert.deepEqual(model.actions.map(a => a.id), ['talk', 'invite', 'trade']);
+  assert.deepEqual(model.actions.map(a => a.label), ['Talk', 'Play Chess', 'Trade']);
   const invite = model.actions.find(a => a.id === 'invite');
   assert.equal(invite.mode, 'start');
   assert.equal(invite.gameId, 'chess');
@@ -217,7 +219,7 @@ test('npcCardActions sends a friend with several boards to the chooser', () => {
   });
   const invite = model.actions.find(a => a.id === 'invite');
 
-  assert.deepEqual(model.actions.map(a => a.id), ['talk', 'invite']);
+  assert.deepEqual(model.actions.map(a => a.id), ['talk', 'invite', 'trade']);
   assert.equal(invite.label, 'Invite to play');
   assert.equal(invite.mode, 'chooser');
   assert.equal(invite.gameId, null);
@@ -228,7 +230,7 @@ test('npcCardActions explains a friend with no boards instead of a disabled invi
   const model = npcCardActions(npc(), { isFriend: true, boards: [] });
 
   assert.equal(model.isFriend, true);
-  assert.deepEqual(model.actions.map(a => a.id), ['talk']);
+  assert.deepEqual(model.actions.map(a => a.id), ['talk', 'trade']);
   assert.equal(model.note, "You don't own a board yet");
 });
 

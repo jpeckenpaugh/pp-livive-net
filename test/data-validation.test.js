@@ -20,6 +20,7 @@ const effects = readJson('effects.json');
 const minigames = readJson('minigames.json');
 const activities = readJson('activities.json');
 const world = readJson('world.json');
+const engineConfig = readJson('engine_config.json');
 const rewards = readJson('rewards.json');
 const dialogues = readJson('dialogues.json');
 const behaviors = readJson('behaviors.json');
@@ -408,6 +409,15 @@ test('every catalog item carries a value and a tradeable flag in the agreed band
     assert.equal(typeof item.tradeable, 'boolean', `${item.id} needs a boolean tradeable flag`);
 
     const isEffect = item.kind === 'effect';
+    const isTrinket = item.kind === 'trinket';
+    if (isTrinket) {
+      // Trinkets are the small-change trade goods: tradeable, no action, tiny value.
+      assert.equal(item.tradeable, true, `${item.id} trinkets are tradeable`);
+      assert.equal(item.action, undefined, `${item.id} trinkets are not toys`);
+      assert.ok(item.value >= 1 && item.value <= 10, `${item.id} trinket value ${item.value} outside 1–10`);
+      continue;
+    }
+
     assert.equal(item.tradeable, isEffect, `${item.id} tradeability should follow its category`);
     if (isEffect) {
       assert.ok(item.value >= 20 && item.value <= 60, `${item.id} effect value ${item.value} outside 20–60`);
@@ -416,6 +426,14 @@ test('every catalog item carries a value and a tradeable flag in the agreed band
       assert.ok(['throw', 'unfurl'].includes(item.action), `${item.id} should be a toy`);
     }
   }
+
+  // The starter postcard gives a fresh park one affordable buy and one affordable sell.
+  assert.equal(catalog['park-postcard']?.kind, 'trinket');
+  assert.equal(catalog['park-postcard']?.value, 4);
+  assert.ok(items.starter.some(spec => spec.id === 'park-postcard'), 'starter grants the postcard');
+
+  const startingCoins = engineConfig.economy?.startingCoins;
+  assert.ok(Number.isInteger(startingCoins) && startingCoins > 0, 'economy.startingCoins must be a positive integer');
 });
 
 test('every trade template validates, matches its key, and names tradeable items', () => {

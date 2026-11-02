@@ -1938,6 +1938,119 @@ body.dialogue-open .topbar {
   white-space: nowrap;
 }
 
+/* --- Trade offer inside the NPC card --- */
+
+.npc-trade {
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid rgba(163, 210, 139, 0.16);
+  border-radius: 12px;
+  background: rgba(19, 31, 23, 0.72);
+}
+
+.npc-trade-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.npc-trade-head strong {
+  color: var(--accent-strong);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.npc-trade-offer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+}
+
+.npc-trade-side {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 6px 7px;
+  border: 1px solid rgba(163, 210, 139, 0.14);
+  border-radius: 9px;
+  background: rgba(25, 39, 29, 0.6);
+}
+
+.npc-trade-caption {
+  color: var(--muted);
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.npc-trade-value {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.npc-trade-icon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.npc-trade-arrow {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.npc-trade-result,
+.npc-trade-reject {
+  margin: 0;
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+.npc-trade-result {
+  color: var(--accent);
+}
+
+.npc-trade-reject {
+  color: var(--danger);
+}
+
+.npc-trade-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.npc-trade-actions .pill {
+  flex: 1 1 84px;
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: 10.5px;
+}
+
+.npc-trade-actions .pill:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+@media (max-width: 520px) {
+  .npc-trade-offer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .npc-trade-arrow {
+    justify-self: center;
+    transform: rotate(90deg);
+  }
+}
+
 .npc-buddy-list {
   display: grid;
   gap: 4px;

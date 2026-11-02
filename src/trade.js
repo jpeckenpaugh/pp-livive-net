@@ -241,6 +241,30 @@ export function canTrade(player, npc, offer) {
   return { ok: true, offer: validated.offer, plan: [give.leg, get.leg] };
 }
 
+/**
+ * The first template this pair can actually complete, in `data/trades.json`
+ * order. Returns `{ id, template, offer }` or `null` when nothing works, so a
+ * card never offers a trade the NPC cannot afford or does not own.
+ */
+export function pickTradeOffer(player, npc, templates = TRADE_TEMPLATES) {
+  const entries = templates && typeof templates === 'object'
+    ? Object.entries(templates)
+    : [];
+
+  for (const [key, template] of entries) {
+    if (!isObject(template)) continue;
+    const checked = canTrade(player, npc, template);
+    if (checked.ok) {
+      return {
+        id: typeof template.id === 'string' && template.id ? template.id : key,
+        template,
+        offer: checked.offer
+      };
+    }
+  }
+  return null;
+}
+
 /** Return a uid not already used by a different entry in the destination. */
 function uniqueUidFor(character, item, uid) {
   const inventory = inventoryOf(character);

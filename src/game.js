@@ -32,6 +32,13 @@ export const PLAYER_STEP = engineConfig.timings.playerStep;
 export const NPC_STEP = engineConfig.timings.npcStep;
 export const COMPANION_STEP = engineConfig.timings.companionStep;
 
+// Starting wallet for a brand-new character. Existing saves keep their balance;
+// only characters created without explicit coins read this.
+export const STARTING_COINS = Number.isInteger(engineConfig.economy?.startingCoins)
+  && engineConfig.economy.startingCoins >= 0
+  ? engineConfig.economy.startingCoins
+  : 0;
+
 const MOVE_KEYS = new Map([
   ['w', { dx: 0, dy: -1, dir: 2 }],
   ['arrowup', { dx: 0, dy: -1, dir: 2 }],
@@ -339,7 +346,7 @@ export class Game {
       vibe: input.vibe || '',
       inventory: Array.isArray(input.inventory) ? input.inventory : [],
       equipped: Array.isArray(input.equipped) ? input.equipped : [],
-      coins: Number.isFinite(input.coins) ? input.coins : 0,
+      coins: Number.isFinite(input.coins) ? input.coins : STARTING_COINS,
       stabledCompanions: Array.isArray(input.stabledCompanions) ? input.stabledCompanions : [],
       isPlayer,
       x,

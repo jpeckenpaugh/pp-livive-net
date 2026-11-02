@@ -97,6 +97,15 @@
       "description": "Blink up to 3 tiles, even through walls and water.",
       "ui": { "summary": "blink up to 3 tiles through obstacles.", "badge": "3-tile", "slotLabel": "Hand" }
     },
+    "park-postcard": {
+      "id": "park-postcard",
+      "name": "Park Postcard",
+      "value": 4,
+      "tradeable": true,
+      "kind": "trinket",
+      "icon": "🖼️",
+      "description": "A postcard of the park gate. Good for a small trade."
+    },
     "hover-halo": {
       "id": "hover-halo",
       "name": "Hover Halo",
@@ -241,6 +250,9 @@
     },
     {
       "id": "wings"
+    },
+    {
+      "id": "park-postcard"
     }
   ]
 }

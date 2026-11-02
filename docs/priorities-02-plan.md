@@ -297,6 +297,9 @@ Each wave is one agent, one human check, one commit. The grey-box spike in wave 
 cheapest way to find out whether the side-scroller is fun before committing to art or
 course content.
 
+**Status (2026-11-01):** Home slice done (`6ace6b5`), Jungle Gym live (`4f42bfb`), trading
+done. 531 tests. The side-scroller spike remains local until the activity is human-tested.
+
 ---
 
 ## 8. Risks

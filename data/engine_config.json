@@ -14,6 +14,9 @@
     "defaultCount": 10,
     "maxNpcs": 40
   },
+  "economy": {
+    "startingCoins": 10
+  },
   "companions": {
     "playerActiveMax": 3,
     "npcActiveMax": 2,

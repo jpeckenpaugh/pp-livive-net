@@ -1,4 +1,4 @@
-import { Game, COMPANION_CAPS } from './game.js';
+import { Game, COMPANION_CAPS, STARTING_COINS } from './game.js';
 import {
   createRecipe,
   createCompanionRecipe,
@@ -53,6 +53,7 @@ import { castVoice } from './voice/casting.js';
 import { VoiceEngine } from './voice/engine.js';
 import { DialogueManager } from './dialogue.js';
 import { createItemInstance, createStarterInventory, normalizeInventory } from './inventory.js';
+import { applyTrade } from './trade.js';
 import { SetupWizard } from './ui/wizard.js';
 import { PanelsUI } from './ui/panels.js';
 import { MiniGameHost } from './minigames/host.js';
@@ -1287,6 +1288,21 @@ function settleNpcWorld() {
   panels?.renderCompanion?.();
 }
 
+/**
+ * One atomic neighbour trade. `applyTrade` validates both sides before any
+ * mutation, so a rejection leaves coins and bags untouched; success saves at
+ * once and the panel owns the refreshed copy.
+ */
+function applyNpcTrade(character, offer) {
+  const player = game?.player;
+  if (!player || !character || character.isPlayer || character.isCompanion) {
+    return { ok: false, reason: 'invalid-offer' };
+  }
+  const result = applyTrade(player, character, offer);
+  if (result.ok) saveNow();
+  return result;
+}
+
 function toastNpcReward(winner, title, notices) {
   const summary = Array.isArray(notices) && notices.length
     ? `: ${notices.join(' · ')}`
@@ -1843,7 +1859,7 @@ function applyState(state) {
     inventory: normalizeInventory(sharedPlayer.inventory || createStarterInventory()),
     equipped: Array.isArray(sharedPlayer.equipped) ? sharedPlayer.equipped : [],
     effectGhosts: Array.isArray(sharedPlayer.effectGhosts) ? sharedPlayer.effectGhosts : [],
-    coins: Number.isFinite(sharedPlayer.coins) ? sharedPlayer.coins : 0,
+    coins: Number.isFinite(sharedPlayer.coins) ? sharedPlayer.coins : STARTING_COINS,
     stabledCompanions: Array.isArray(sharedPlayer.stabledCompanions) ? sharedPlayer.stabledCompanions : []
   };
   if (!isWalkable(terrain[rawPlayer.y]?.[rawPlayer.x])) {
@@ -1868,7 +1884,7 @@ function applyState(state) {
         x: hasPosition ? Math.round(Number(npc.x)) : -1,
         y: hasPosition ? Math.round(Number(npc.y)) : -1,
         direction: Number(npc.direction) || 0,
-        coins: Number.isFinite(npc.coins) ? npc.coins : 0,
+        coins: Number.isFinite(npc.coins) ? npc.coins : STARTING_COINS,
         stabledCompanions: Array.isArray(npc.stabledCompanions) ? npc.stabledCompanions : []
       };
       if (!isWalkable(terrain[entry.y]?.[entry.x])) {
@@ -2771,6 +2787,7 @@ function boot() {
     onPlayGame,
     onTalkNpc: openCardDialogue,
     getBoardGames: npc => tableGamesFor(npc),
+    onTrade: applyNpcTrade,
     onPackUpGame: gameId => packUpGame(gameId),
     isGameOpen: gameId => Boolean(host?.isOpen() && host.activeGameId === gameId),
     getGameMetas: () => (host ? [...host.registry.values()].map(entry => entry.meta) : []),

@@ -11,7 +11,7 @@ import { rollReward, applyReward } from '../src/rewards.js';
 
 test('createStarterInventory yields the starter toys and the headline effects', () => {
   const inv = createStarterInventory();
-  assert.equal(inv.length, 10);
+  assert.equal(inv.length, 11);
   const ball = inv.find(i => i.id === 'ball');
   const ttt = inv.find(i => i.id === 'tic-tac-toe');
   const checkers = inv.find(i => i.id === 'checkers');
@@ -25,6 +25,7 @@ test('createStarterInventory yields the starter toys and the headline effects', 
   assert.ok(memoryGrid);
   assert.ok(connectFour);
   assert.ok(BALL_COLORS.includes(ball.color));
+  assert.ok(inv.some(i => i.id === 'park-postcard'), 'starter grants a tradeable postcard');
 
   const effects = inv.filter(i => i.kind === 'effect');
   assert.deepEqual(
