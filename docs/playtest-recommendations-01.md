@@ -159,6 +159,15 @@ device.
 **Files:** `src/game.js` (focus), `src/main.js` (set/clear board focus), `css/app.css`
 (dialogue layering).
 
+**Wave D decisions (2026-11-01)**
+
+- `Game.setCameraTarget({x, y, w, h})` and `clearCameraTarget()`; `cameraFocus()` returns the blended point. Per-frame math stays in `game.js`.
+- Desktop: board weight 0.5, and the board rectangle is clamped into view first. The player may leave frame at extremes; every square wins.
+- ≤520 px: blend 0.25 and skip the board clamp, accepting a partially visible 8×8 board. No camera zoom in this wave.
+- Dialogue: a `body.board-open` class and the bubble is clamped outside the board's screen rectangle. No docking. The strip keeps its existing hide-during-dialogue behaviour.
+- Return: normal easing, no re-snap on close. Snap only when a session opens while the player is off-board.
+- The blend/clamp math is one new pure module, `src/camera-focus.js`, imported by `game.js` and tested directly. The host gets a public `getFootprint()`.
+
 ---
 
 ## 5. #4 — Lifecycle visibility and diagnostics
