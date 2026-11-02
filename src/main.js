@@ -351,6 +351,16 @@ function openDialogue(npc) {
   dialogue.open(npc, isFriend, { games: tableGamesFor(npc) });
 }
 
+/** Card actions take the bump path so pause, guards, and cleanup match. */
+function openCardDialogue(npc) {
+  if (!npc || !game) return;
+  if (host?.isOpen() && npc.inMiniGame) {
+    showToast('Finish the game first.');
+    return;
+  }
+  game.openDialogueWith(npc);
+}
+
 /** Show a scripted beat, closing the volume popover so it cannot sit behind the dialogue. */
 function showDialogueBeat(npc, text, choices) {
   setVoiceVolumeOpen(false);
@@ -1916,6 +1926,8 @@ function boot() {
     getFriends: () => friends,
     onThrowBall,
     onPlayGame,
+    onTalkNpc: openCardDialogue,
+    getBoardGames: npc => tableGamesFor(npc),
     onPackUpGame: gameId => packUpGame(gameId),
     isGameOpen: gameId => Boolean(host?.isOpen() && host.activeGameId === gameId),
     getGameMetas: () => (host ? [...host.registry.values()].map(entry => entry.meta) : []),

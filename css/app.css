@@ -389,11 +389,38 @@ body.wizard-open canvas#world {
   filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.35));
 }
 
-.npc-card > strong {
+.npc-card-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.npc-card-title strong {
   display: block;
   padding-right: 26px;
   font-size: 15px;
   letter-spacing: -0.01em;
+}
+
+.npc-friend-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 2px 8px;
+  border: 1px solid rgba(163, 210, 139, 0.34);
+  border-radius: 999px;
+  background: rgba(163, 210, 139, 0.14);
+  color: var(--accent-strong);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.npc-friend-badge[data-friend="false"] {
+  border-color: var(--line);
+  background: rgba(25, 39, 29, 0.55);
+  color: var(--muted);
 }
 
 #npc-vibe {
@@ -406,14 +433,35 @@ body.wizard-open canvas#world {
 
 .npc-card-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
 .npc-card-actions .pill {
-  flex: 1;
-  min-height: 32px;
-  padding: 7px 9px;
+  flex: 1 1 auto;
+  min-height: 36px;
+  padding: 8px 9px;
   font-size: 11px;
+}
+
+.npc-card-social {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+.npc-social-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.npc-social-actions .pill {
+  flex: 1 1 92px;
+  min-height: 36px;
+  padding: 8px 10px;
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 .friends-pill {

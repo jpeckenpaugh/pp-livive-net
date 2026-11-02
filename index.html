@@ -36,8 +36,15 @@
     <aside id="npc-card" class="npc-card" hidden aria-live="polite">
       <button id="npc-close" class="icon-button close" type="button" aria-label="Close character card">×</button>
       <div class="npc-card-preview"><img id="npc-avatar" alt=""></div>
-      <strong id="npc-name">Neighbour</strong>
+      <div class="npc-card-title">
+        <strong id="npc-name">Neighbour</strong>
+        <span id="npc-friend-badge" class="npc-friend-badge" hidden></span>
+      </div>
       <p id="npc-vibe">A park regular.</p>
+      <div id="npc-social" class="npc-card-social" role="group" aria-label="Neighbour actions" hidden>
+        <div id="npc-social-actions" class="npc-social-actions"></div>
+        <p id="npc-social-note" class="npc-section-note" hidden></p>
+      </div>
       <div id="npc-roster" class="npc-card-sections" hidden></div>
       <div id="npc-effects" class="effect-list" aria-label="Active effects"></div>
       <div id="npc-bag" class="npc-card-sections" hidden></div>

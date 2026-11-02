@@ -196,6 +196,56 @@ export function npcEconomySummary(npcs = [], companions = []) {
 }
 
 /**
+ * Pure NPC card social model: friendship badge, card actions, and the one-line
+ * eligibility note. Neighbours only — the player and companions return `null`,
+ * so their cards are unchanged.
+ *
+ * `boards` is the neighbour's owned board list (`{ id, label }`), the same shape
+ * `tableGamesFor` produces in `src/main.js`.
+ */
+export function npcCardActions(character, { isFriend = false, boards = [] } = {}) {
+  if (!shouldShowNpcRoster(character)) return null;
+
+  const friend = Boolean(isFriend);
+  const owned = (Array.isArray(boards) ? boards : [])
+    .filter(board => board && typeof board.id === 'string' && board.id);
+
+  // A stranger has nothing to discuss yet: asking is the conversation. A friend
+  // gets Talk, plus Invite when a board is owned.
+  const actions = [];
+  if (friend) {
+    actions.push({ id: 'talk', label: 'Talk', primary: false });
+  } else {
+    actions.push({ id: 'ask-friend', label: 'Ask to be friends', primary: true });
+  }
+
+  if (friend && owned.length === 1) {
+    const board = owned[0];
+    actions.push({
+      id: 'invite',
+      label: `Play ${board.label || board.id}`,
+      primary: true,
+      mode: 'start',
+      gameId: board.id
+    });
+  } else if (friend && owned.length > 1) {
+    actions.push({ id: 'invite', label: 'Invite to play', primary: true, mode: 'chooser', gameId: null });
+  }
+
+  let note = null;
+  if (!friend) note = 'Become friends to play board games';
+  else if (!owned.length) note = "You don't own a board yet";
+
+  return {
+    isNpc: true,
+    isFriend: friend,
+    badge: friend ? 'Friend' : 'Not friends yet',
+    actions,
+    note
+  };
+}
+
+/**
  * Resolve what clicking a bag item should do, without branching on item ids.
  * Mini-game metadata supplies the game id for `unfurl` toys.
  */
@@ -248,6 +298,8 @@ export class PanelsUI {
     onNewPark,
     onToggleWander,
     onPlayGame,
+    onTalkNpc,
+    getBoardGames,
     onPackUpGame,
     isGameOpen,
     getGameMetas,
@@ -281,6 +333,8 @@ export class PanelsUI {
     this.onNewPark = onNewPark;
     this.onToggleWander = onToggleWander;
     this.onPlayGame = onPlayGame;
+    this.onTalkNpc = onTalkNpc;
+    this.getBoardGames = getBoardGames;
     this.onPackUpGame = onPackUpGame;
     this.isGameOpen = isGameOpen;
     this.getGameMetas = getGameMetas;
@@ -810,6 +864,73 @@ export class PanelsUI {
       }
       host.append(chip);
     }
+  }
+
+  renderCardActions(character) {
+    const social = $('npc-social');
+    const row = $('npc-social-actions');
+    const note = $('npc-social-note');
+    const badge = $('npc-friend-badge');
+    if (!social || !row || !note || !badge) return;
+
+    const model = npcCardActions(character, {
+      isFriend: Boolean(character?.id && this.getFriends?.()?.has(character.id)),
+      boards: character && typeof this.getBoardGames === 'function'
+        ? this.getBoardGames(character)
+        : []
+    });
+
+    row.replaceChildren();
+    note.textContent = '';
+    note.hidden = true;
+    badge.textContent = '';
+    badge.hidden = true;
+    delete badge.dataset.friend;
+
+    // Player and companion cards keep their current layout.
+    if (!model) {
+      social.hidden = true;
+      return;
+    }
+
+    badge.textContent = model.badge;
+    badge.dataset.friend = String(model.isFriend);
+    badge.hidden = false;
+
+    for (const action of model.actions) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = action.primary ? 'pill primary' : 'pill';
+      button.textContent = action.label;
+      button.dataset.action = action.id;
+      button.addEventListener('click', () => this.handleCardAction(action, character));
+      row.append(button);
+    }
+
+    if (model.note) {
+      note.textContent = model.note;
+      note.hidden = false;
+    }
+    social.hidden = false;
+  }
+
+  /**
+   * Card actions reuse the bump path: `onTalkNpc` calls the public
+   * `game.openDialogueWith`, which pauses and closes panels exactly as a bump
+   * does. Starting a board closes the card first, like the dialogue beat does.
+   */
+  handleCardAction(action, character) {
+    if (!action || !character) return;
+    if (action.id === 'invite' && action.mode === 'start') {
+      this.closeAllPanels();
+      this.onPlayGame?.(action.gameId, character);
+      return;
+    }
+    if (typeof this.onTalkNpc === 'function') {
+      this.onTalkNpc(character);
+      return;
+    }
+    this.getGame()?.openDialogueWith?.(character);
   }
 
   cardNow() {
@@ -1502,6 +1623,7 @@ export class PanelsUI {
     if (shouldShowNpcRoster(character)) this.lastNpcCharacter = character;
     this.renderCardEffects(character);
     this.renderCardSections(character);
+    this.renderCardActions(character);
     $('npc-card').hidden = false;
   }
 
