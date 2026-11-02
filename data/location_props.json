@@ -181,6 +181,18 @@
         { "name": "gingham", "colors": { "base": "#d97f6a", "accent": "#f2e2bd" } },
         { "name": "meadow", "colors": { "base": "#6f9c74", "accent": "#eef0c9", "trim": "#3f6147" } }
       ]
+    },
+    "rug": {
+      "id": "rug",
+      "label": "Rug",
+      "size": { "w": 3, "h": 3 },
+      "solid": false,
+      "shape": "rug",
+      "colors": { "base": "#8e5a4c", "accent": "#d9b98c", "trim": "#4a2f28" },
+      "variants": [
+        { "name": "woven", "colors": { "base": "#8e5a4c", "accent": "#d9b98c" } },
+        { "name": "sage", "colors": { "base": "#5f7357", "accent": "#d9c08a", "trim": "#3d4b37" } }
+      ]
     }
   }
 }

@@ -64,6 +64,14 @@
       "events": ["home.upgrade", "trade.completed"],
       "count": 1,
       "reward": 25
+    },
+    {
+      "id": "take-a-library-lesson",
+      "title": "take a library lesson",
+      "hint": "finish a lesson with the librarian.",
+      "event": "lesson.completed",
+      "count": 1,
+      "reward": 20
     }
   ]
 }

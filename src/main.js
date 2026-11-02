@@ -34,6 +34,13 @@ import {
 } from './locations.js';
 import { PLAYER_NAMES, COMPANION_NAMES, pickName, pickVibe } from './names.js';
 import {
+  LESSONS_DATA,
+  drawLessonQuestions,
+  gradeLesson,
+  lessonCoinAward,
+  lessonTopicLabel
+} from './lessons.js';
+import {
   serializeSave,
   captureLocationRecord,
   saveState,
@@ -133,6 +140,7 @@ const $ = id => document.getElementById(id);
 let game = null;
 let draft = null;
 let dialogue = null;
+let lessonSession = null;
 let host = null;
 let bubbles = null;
 let behaviorRuntime = null;
@@ -703,6 +711,7 @@ function onFriendshipChanged(npcId, isFriend) {
 
 function onDialogueEnded(npc) {
   if (npc?.id) voice?.stopActor(npc.id);
+  lessonSession = null;
   game?.select(null);
   game?.resumeFromDialogue();
   behaviorRuntime?.setDialogue(false);
@@ -727,6 +736,11 @@ function tableGamesFor(opponent) {
 
 function openDialogue(npc) {
   if (!npc) return;
+  // The librarian runs the lesson flow instead of the neighbour conversation.
+  if (isLibrarian(npc)) {
+    openLibrarianBeat(npc);
+    return;
+  }
   // The keeper does not use the neighbour conversation flow: one short greeting
   // and a door into the shop panel.
   if (isShopkeeper(npc)) {
@@ -2164,8 +2178,13 @@ function applyState(state) {
     rawPlayer.y = spot.y;
   }
 
+  // Declared residents are rebuilt from data on every arrival. A save written
+  // before residents were excluded may still hold stale copies, so drop them.
+  const declaredResidents = residentsFor(locationId);
+  const declaredResidentIds = new Set(declaredResidents.map(resident => resident.id));
   const npcs = (Array.isArray(locationState.npcs) ? locationState.npcs : [])
     .filter(npc => npc && npc.recipe && npc.name)
+    .filter(npc => !declaredResidentIds.has(npc.id))
     .map(npc => {
       const hasPosition = Number.isFinite(Number(npc.x)) && Number.isFinite(Number(npc.y));
       const isKeeper = locationId === 'shop' && (npc.id === SHOPKEEPER_ID);
@@ -2205,7 +2224,7 @@ function applyState(state) {
   ]);
   for (const npc of npcs) residentBlocked.add(`${npc.x},${npc.y}`);
   const residentIds = new Set(npcs.map(npc => npc.id));
-  for (const resident of residentsFor(locationId)) {
+  for (const resident of declaredResidents) {
     if (residentIds.has(resident.id)) continue;
     const entry = {
       ...resident,
@@ -2333,6 +2352,7 @@ function applyState(state) {
       })
     });
   }
+  const npcFlags = new Map(npcs.map(npc => [npc.id, npc]));
   game.setWorld({
     terrain,
     worldSeed: locationState.seed ?? worldData.seed,
@@ -2350,6 +2370,20 @@ function applyState(state) {
     theme,
     wander: state.wander !== false
   });
+  // `makeCharacter` rebuilds every NPC, so reapply the flags that shape
+  // dialogue and wandering: the keeper stays put and residents stay residents.
+  for (const npc of game.npcs || []) {
+    const source = npcFlags.get(npc.id);
+    if (!source) continue;
+    for (const key of ['resident', 'stationary', 'shopkeeper', 'role']) {
+      if (source[key] !== undefined) npc[key] = source[key];
+    }
+    // The librarian stays at the desk rather than strolling the reading room.
+    if (npc.role === 'librarian') {
+      npc.stationary = true;
+      npc.wait = Number.POSITIVE_INFINITY;
+    }
+  }
   game.homeOverflow = homeSelection.overflow;
   game.homeStorage = homeStorage;
   // Doors are per location, so they are set after setWorld resets them.
@@ -3116,6 +3150,149 @@ function closeHomeItemCard() {
   const card = $('home-item-card');
   if (card) card.hidden = true;
   return true;
+}
+
+// --- Library lessons -------------------------------------------------------
+
+function isLibrarian(character) {
+  if (!character) return false;
+  if (character.role === 'librarian') return true;
+  // The character record is rebuilt on arrival, so the data role is the backstop.
+  const def = locationDef(currentLocationId);
+  return (Array.isArray(def?.residents) ? def.residents : [])
+    .some(resident => resident?.id === character.id && resident.role === 'librarian');
+}
+
+/** The librarian's greeting: one line, then a lesson or a friendly no. */
+function openLibrarianBeat(librarian) {
+  if (!librarian) return false;
+  closeHomeItemCard();
+  setVoiceVolumeOpen(false);
+  dismissNpcWatchPrompt();
+  panels?.closeAllPanels();
+  game?.select?.(librarian.id);
+  behaviorRuntime?.setDialogue(true);
+  sounds.play('ui-click');
+  showDialogueBeat(librarian, 'Welcome to the library. Want a lesson?', [
+    {
+      label: 'Start lesson',
+      className: 'primary',
+      onClick: () => startLesson(librarian)
+    },
+    {
+      label: 'Not now',
+      className: 'pill quiet',
+      onClick: () => dialogue.close()
+    }
+  ]);
+  return true;
+}
+
+function startLesson(librarian) {
+  const questions = drawLessonQuestions(LESSONS_DATA);
+  if (!questions.length) {
+    dialogue.close();
+    showToast('the library is still shelving its questions.');
+    return;
+  }
+  lessonSession = {
+    npc: librarian,
+    questions,
+    index: 0,
+    answers: [],
+    awarded: false,
+    result: null
+  };
+  sounds.play('ui-click');
+  showLessonQuestion();
+}
+
+function showLessonQuestion() {
+  const session = lessonSession;
+  if (!session) return;
+  const question = session.questions[session.index];
+  if (!question) return;
+  const topic = lessonTopicLabel(LESSONS_DATA, question.topic);
+  showDialogueBeat(
+    session.npc,
+    `${topic} · question ${session.index + 1} of ${session.questions.length}. ${question.prompt}`,
+    question.choices.map((choice, index) => ({
+      label: choice,
+      className: 'pill',
+      onClick: () => answerLessonQuestion(index)
+    }))
+  );
+}
+
+function answerLessonQuestion(choiceIndex) {
+  const session = lessonSession;
+  if (!session || session.result) return;
+  const question = session.questions[session.index];
+  if (!question) return;
+  session.answers[session.index] = choiceIndex;
+  const correct = choiceIndex === question.answer;
+  if (correct) sounds.play('pickup');
+  const last = session.index >= session.questions.length - 1;
+  const feedback = correct
+    ? 'yes!'
+    : `not quite — the answer is "${question.choices[question.answer]}".`;
+  showDialogueBeat(session.npc, `${feedback} ${question.explanation}`, [
+    {
+      label: last ? 'See results' : 'Next',
+      className: 'primary',
+      onClick: () => {
+        if (last) {
+          finishLesson();
+          return;
+        }
+        session.index += 1;
+        showLessonQuestion();
+      }
+    }
+  ]);
+}
+
+/**
+ * Pay the lesson exactly once, then show the score. The session keeps the
+ * result, so a double activation cannot award coins twice; the goal event is
+ * idempotent on its own.
+ */
+function finishLesson() {
+  const session = lessonSession;
+  if (!session) return;
+  if (session.result) {
+    showLessonResult(session);
+    return;
+  }
+  const result = gradeLesson(session.questions, session.answers);
+  session.result = result;
+  const award = lessonCoinAward({ coins: result.coins, awarded: session.awarded });
+  if (award > 0) {
+    session.awarded = true;
+    game.player.coins = Math.max(0, Math.floor(Number(game.player.coins) || 0)) + award;
+    saveNow();
+    sounds.play('pickup');
+  }
+  completeGoalEvent('lesson.completed');
+  showLessonResult(session);
+}
+
+function showLessonResult(session) {
+  const result = session.result;
+  if (!result) return;
+  const perfect = result.perfect ? ' perfect score!' : '';
+  const coins = result.coins > 0 ? ` +${result.coins}🪙` : '';
+  showDialogueBeat(
+    session.npc,
+    `you got ${result.correct} of ${result.total}.${perfect}${coins}`,
+    [
+      {
+        label: 'Done',
+        className: 'primary',
+        onClick: () => dialogue.close()
+      }
+    ]
+  );
 }
 
 // --- Shop ------------------------------------------------------------------

@@ -198,7 +198,7 @@ test('the location prop catalog covers the framework set with complete metadata'
   const expected = [
     'fountain', 'bench', 'lamp', 'gate', 'slide', 'swing-frame',
     'amphitheatre-tier', 'building', 'pier', 'palm', 'umbrella',
-    'desk', 'bookshelf', 'planter', 'picnic-blanket'
+    'desk', 'bookshelf', 'planter', 'picnic-blanket', 'rug'
   ];
   for (const id of expected) {
     const prop = locationProp(id);
@@ -334,8 +334,8 @@ test('a fresh template location gets a terrain record without saved residents', 
 
 test('travelTargets marks door-reachable rows Nearby and sorts them first', () => {
   const park = travelTargets('park');
-  assert.deepEqual(park.map(target => target.id), ['town', 'home', 'shop']);
-  assert.deepEqual(park.map(target => target.nearby), [true, false, false]);
+  assert.deepEqual(park.map(target => target.id), ['town', 'home', 'shop', 'library']);
+  assert.deepEqual(park.map(target => target.nearby), [true, false, false, false]);
 
   withLocations({
     'test-hub': baseDef('test-hub', {
@@ -348,8 +348,8 @@ test('travelTargets marks door-reachable rows Nearby and sorts them first', () =
       ['park', 'shop']
     );
     const targets = travelTargets('test-hub');
-    assert.deepEqual(targets.map(target => target.id), ['park', 'shop', 'home', 'town']);
-    assert.deepEqual(targets.map(target => target.nearby), [true, true, false, false]);
+    assert.deepEqual(targets.map(target => target.id), ['park', 'shop', 'home', 'town', 'library']);
+    assert.deepEqual(targets.map(target => target.nearby), [true, true, false, false, false]);
   });
 });
 

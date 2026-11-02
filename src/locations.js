@@ -271,6 +271,7 @@ export function residentsFor(id) {
       x,
       y,
       direction: Number.isFinite(Number(resident.direction)) ? Number(resident.direction) : 0,
+      ...(typeof resident.role === 'string' && resident.role ? { role: resident.role } : {}),
       resident: true
     });
   }

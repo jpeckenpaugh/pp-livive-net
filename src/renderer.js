@@ -1178,6 +1178,46 @@ function drawPicnicBlanket(ctx, box, colors) {
   ctx.strokeRect(box.left, box.top, box.width, box.height);
 }
 
+/** A flat woven rug: ground cover with a border and a simple diamond motif. */
+function drawRug(ctx, box, colors) {
+  const inset = TILE * 0.08;
+  fillRoundRect(
+    ctx,
+    box.left + inset,
+    box.top + inset,
+    box.width - inset * 2,
+    box.height - inset * 2,
+    TILE * 0.12,
+    colors.base
+  );
+  ctx.strokeStyle = colors.accent;
+  ctx.lineWidth = Math.max(2, TILE * 0.05);
+  ctx.strokeRect(
+    box.left + inset * 2,
+    box.top + inset * 2,
+    box.width - inset * 4,
+    box.height - inset * 4
+  );
+  const cx = (box.left + box.right) / 2;
+  const cy = (box.top + box.bottom) / 2;
+  ctx.fillStyle = colors.trim;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - box.height * 0.22);
+  ctx.lineTo(cx + box.width * 0.22, cy);
+  ctx.lineTo(cx, cy + box.height * 0.22);
+  ctx.lineTo(cx - box.width * 0.22, cy);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = colors.accent;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - box.height * 0.11);
+  ctx.lineTo(cx + box.width * 0.11, cy);
+  ctx.lineTo(cx, cy + box.height * 0.11);
+  ctx.lineTo(cx - box.width * 0.11, cy);
+  ctx.closePath();
+  ctx.fill();
+}
+
 function drawGenericProp(ctx, box, colors) {
   propShadow(ctx, box);
   fillRoundRect(ctx, box.left, box.top + TILE * 0.18, box.width, box.height - TILE * 0.24, 5, colors.base);
@@ -1200,7 +1240,8 @@ const LOCATION_PROP_SHAPES = {
   desk: drawDesk,
   bookshelf: drawPropBookshelf,
   planter: drawPlanter,
-  'picnic-blanket': drawPicnicBlanket
+  'picnic-blanket': drawPicnicBlanket,
+  rug: drawRug
 };
 
 export class WorldRenderer {
@@ -1405,7 +1446,8 @@ export class WorldRenderer {
       if (!meta) continue;
       renderables.push({
         type: 'location-prop',
-        y: meta.sortY,
+        // A rug is floor cover: draw it at its top row so actors stand on it.
+        y: meta.shape === 'rug' ? meta.y : meta.sortY,
         x: meta.x,
         entity: record
       });

@@ -103,27 +103,29 @@ test('Town declares the template, spawn, theme, menu row, and four facades', () 
   assert.equal(locationLayout('town'), 'town');
 });
 
-test('Town has doors to the Park, Home, and Shop but no Library door yet', () => {
+test('Town has doors to the Park, Home, Shop, and Library', () => {
   const world = generateTown(TOWN_SEED);
   const doors = doorsFor('town', { terrain: world.grid, spawn: world.spawn });
-  assert.deepEqual(doors.map(door => door.kind), ['travel', 'travel', 'travel']);
-  assert.deepEqual(doors.map(door => door.to), ['park', 'home', 'shop']);
+  assert.deepEqual(doors.map(door => door.kind), ['travel', 'travel', 'travel', 'travel']);
+  assert.deepEqual(doors.map(door => door.to), ['park', 'home', 'shop', 'library']);
   assert.deepEqual(doors.map(door => door.prompt), [
     'Head into the park?',
     'Go home?',
-    'Step into the shop?'
+    'Step into the shop?',
+    'Visit the library?'
   ]);
-  assert.equal(new Set(doors.map(door => `${door.x},${door.y}`)).size, 3);
+  assert.equal(new Set(doors.map(door => `${door.x},${door.y}`)).size, 4);
 
   const byTarget = new Map(doors.map(door => [door.to, door]));
   assert.deepEqual({ x: byTarget.get('park').x, y: byTarget.get('park').y }, { x: 3, y: 31 });
   assert.deepEqual({ x: byTarget.get('home').x, y: byTarget.get('home').y }, { x: 12, y: 28 });
   assert.deepEqual({ x: byTarget.get('shop').x, y: byTarget.get('shop').y }, { x: 26, y: 28 });
+  assert.deepEqual({ x: byTarget.get('library').x, y: byTarget.get('library').y }, { x: 40, y: 28 });
   for (const door of doors) {
     assert.ok(isWalkable(typeAt(world.grid, door.x, door.y)), `${door.to} door is walkable`);
     assert.ok(world.componentKeys.has(`${door.x},${door.y}`), `${door.to} door is reachable`);
   }
-  assert.equal(doors.some(door => door.to === 'library'), false);
+  assert.equal(doors.some(door => door.to === 'library'), true);
 });
 
 test('Park, Home, and Shop doors are reparented to Town', () => {
@@ -145,13 +147,13 @@ test('Park, Home, and Shop doors are reparented to Town', () => {
 
 test('Town is the nearby hub in the travel menu and still lists every destination', () => {
   const targets = travelTargets('town');
-  assert.deepEqual(targets.map(target => target.id), ['park', 'home', 'shop']);
-  assert.deepEqual(targets.map(target => target.nearby), [true, true, true]);
+  assert.deepEqual(targets.map(target => target.id), ['park', 'home', 'shop', 'library']);
+  assert.deepEqual(targets.map(target => target.nearby), [true, true, true, true]);
   assert.equal(targets[0].label, 'Park');
 
   const fromPark = travelTargets('park');
-  assert.deepEqual(fromPark.map(target => target.id), ['town', 'home', 'shop']);
-  assert.deepEqual(fromPark.map(target => target.nearby), [true, false, false]);
+  assert.deepEqual(fromPark.map(target => target.id), ['town', 'home', 'shop', 'library']);
+  assert.deepEqual(fromPark.map(target => target.nearby), [true, false, false, false]);
 
   for (const id of ['home', 'shop']) {
     const row = travelTargets(id).find(target => target.id === 'town');

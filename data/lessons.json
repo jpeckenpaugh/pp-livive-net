@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "questionsPerLesson": 3,
+  "coinsPerCorrect": 5,
+  "perfectBonus": 5,
+  "topics": [
+    { "id": "park-nature", "label": "park nature" },
+    { "id": "simple-maths", "label": "simple maths" },
+    { "id": "words", "label": "words" }
+  ],
+  "questions": [
+    {
+      "id": "nature-thirsty-trees",
+      "topic": "park-nature",
+      "prompt": "what do trees drink up from the soil?",
+      "choices": ["water", "sunshine", "pebbles"],
+      "answer": 0,
+      "explanation": "roots soak up water from the soil."
+    },
+    {
+      "id": "nature-pollinator",
+      "topic": "park-nature",
+      "prompt": "which of these helps flowers make seeds?",
+      "choices": ["a bee", "a bench", "a boot"],
+      "answer": 0,
+      "explanation": "bees carry pollen from flower to flower."
+    },
+    {
+      "id": "nature-leaf-food",
+      "topic": "park-nature",
+      "prompt": "what do green leaves use to make food?",
+      "choices": ["sunlight", "moonlight", "candlelight"],
+      "answer": 0,
+      "explanation": "leaves turn sunlight into food for the tree."
+    },
+    {
+      "id": "maths-add-seven-five",
+      "topic": "simple-maths",
+      "prompt": "what is 7 + 5?",
+      "choices": ["11", "12", "13"],
+      "answer": 1,
+      "explanation": "seven and five more make twelve."
+    },
+    {
+      "id": "maths-triangle-sides",
+      "topic": "simple-maths",
+      "prompt": "how many sides does a triangle have?",
+      "choices": ["3", "4", "5"],
+      "answer": 0,
+      "explanation": "a triangle always has three sides."
+    },
+    {
+      "id": "maths-four-times-three",
+      "topic": "simple-maths",
+      "prompt": "what is 4 × 3?",
+      "choices": ["7", "12", "16"],
+      "answer": 1,
+      "explanation": "four groups of three make twelve."
+    },
+    {
+      "id": "words-noun-apple",
+      "topic": "words",
+      "prompt": "which word names a thing?",
+      "choices": ["apple", "quickly", "jump"],
+      "answer": 0,
+      "explanation": "an apple is a thing, so it is a noun."
+    },
+    {
+      "id": "words-opposite-early",
+      "topic": "words",
+      "prompt": "which word means the opposite of early?",
+      "choices": ["late", "slow", "warm"],
+      "answer": 0,
+      "explanation": "early and late sit at opposite ends of the day."
+    },
+    {
+      "id": "words-full-stop",
+      "topic": "words",
+      "prompt": "which sentence has its full stop in the right place?",
+      "choices": ["The park is quiet.", "the park is quiet", "The park. is quiet"],
+      "answer": 0,
+      "explanation": "a sentence starts with a capital and ends with a full stop."
+    }
+  ]
+}

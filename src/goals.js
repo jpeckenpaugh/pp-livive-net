@@ -15,7 +15,8 @@ export const GOAL_EVENTS = [
   'activity.finish',
   'shop.buy',
   'home.upgrade',
-  'trade.completed'
+  'trade.completed',
+  'lesson.completed'
 ];
 
 const GOAL_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -142,7 +143,7 @@ export function validateGoalsData(data) {
   }
   if (data.version !== 1) errors.push('goals data version must be 1');
   if (!Array.isArray(data.goals)) return [...errors, 'goals must be an array'];
-  if (data.goals.length !== 8) errors.push(`expected 8 goals, found ${data.goals.length}`);
+  if (data.goals.length !== 9) errors.push(`expected 9 goals, found ${data.goals.length}`);
 
   const knownEvents = new Set(GOAL_EVENTS);
   const seen = new Set();

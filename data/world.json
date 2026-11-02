@@ -221,6 +221,14 @@
           "x": 26,
           "y": 28,
           "prompt": "Step into the shop?"
+        },
+        {
+          "id": "library-door",
+          "kind": "travel",
+          "to": "library",
+          "x": 40,
+          "y": 28,
+          "prompt": "Visit the library?"
         }
       ],
       "props": [
@@ -318,6 +326,78 @@
           "seed": "town-nia",
           "x": 35,
           "y": 42,
+          "direction": 2
+        }
+      ]
+    },
+    "library": {
+      "id": "library",
+      "label": "Library",
+      "enabled": true,
+      "mapLabel": "Library map",
+      "template": "interior",
+      "seed": "lantern-library-01",
+      "spawn": {
+        "x": 32,
+        "y": 33
+      },
+      "house": {
+        "x": 21,
+        "y": 18,
+        "width": 23,
+        "height": 19
+      },
+      "door": {
+        "x": 32,
+        "y": 36,
+        "to": "town",
+        "prompt": "Back to town?"
+      },
+      "forage": false,
+      "theme": {
+        "wall": "#6d513b",
+        "floor": "#b9976d"
+      },
+      "menu": {
+        "label": "Library",
+        "note": "Take a quiet lesson."
+      },
+      "props": [
+        { "type": "bookshelf", "x": 23, "y": 19 },
+        { "type": "bookshelf", "x": 27, "y": 19, "variant": 1 },
+        { "type": "bookshelf", "x": 31, "y": 19 },
+        { "type": "bookshelf", "x": 35, "y": 19, "variant": 1 },
+        { "type": "bookshelf", "x": 39, "y": 19 },
+
+        { "type": "bookshelf", "x": 22, "y": 22, "rot": 1 },
+        { "type": "bookshelf", "x": 22, "y": 29, "rot": 1, "variant": 1 },
+        { "type": "bookshelf", "x": 42, "y": 22, "rot": 1, "variant": 1 },
+        { "type": "bookshelf", "x": 42, "y": 29, "rot": 1 },
+
+        { "type": "desk", "x": 28, "y": 28 },
+        { "type": "desk", "x": 35, "y": 28, "variant": 1 },
+
+        { "type": "rug", "x": 30, "y": 24 },
+
+        { "type": "bench", "x": 24, "y": 33 },
+        { "type": "bench", "x": 39, "y": 33, "variant": 1 },
+
+        { "type": "lamp", "x": 26, "y": 23 },
+        { "type": "lamp", "x": 38, "y": 23, "variant": 1 },
+        { "type": "lamp", "x": 24, "y": 29 },
+        { "type": "lamp", "x": 40, "y": 29, "variant": 1 },
+
+        { "type": "planter", "x": 26, "y": 34, "variant": 1 },
+        { "type": "planter", "x": 38, "y": 34 }
+      ],
+      "residents": [
+        {
+          "id": "librarian-fern",
+          "name": "Fern",
+          "seed": "library-fern",
+          "role": "librarian",
+          "x": 32,
+          "y": 28,
           "direction": 2
         }
       ]
