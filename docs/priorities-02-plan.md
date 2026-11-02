@@ -196,6 +196,17 @@ course genuinely needs it; ladders are cheap, swinging is not.
 - Ghost is an authored constant-speed path with fixed jump timestamps, drawn as a hollow outline; it doubles as par time.
 - Evidence bar: at least five first-time runs on desktop and 360 px, finish rate, time spread, plus explicit answers to "did you restart unprompted?" and "what did you want to change first?"
 
+**Wave 4 integration decisions (autopilot, 2026-11-01)**
+
+- **Render takeover is data-declared:** the activity meta carries `render.mode: "fullview"`; `drawFrame` checks it once and hands the canvas to the activity instead of painting the Park.
+- **World suspend is distinct:** a `Game` suspend skips player, NPC, companion, and behaviour simulation while `host.update` keeps running. Dialogue pause semantics are untouched.
+- **Entrance:** a second door entry in `data/world.json` with `kind: "activity"` and `activityId`; `openTravelPrompt` routes it before the travel confirm. A menu row is the fallback.
+- **Ghost:** an existing buddy or NPC is seated as a non-controlling opponent and drawn as a semi-transparent DiceBear billboard at course scale. Full avatar, no silhouette.
+- **Settlement:** win/loss against par, `record: true`, `reward: false`; the existing end beat and voice cues are reused. No currency this wave.
+- **Touch:** `bindTouchButton` exposes held state so keyboard and touch feed the same left/right/jump booleans. No second control scheme.
+- **Data:** `data/activities.json` holds physics, course, ghost legs, par, and `enabled`; `data/minigames.json` holds the meta, id, timing, and dialogue reference.
+- **Flag and cleanup:** `enabled` flips to true in the Wave 4 commit so the human can test the deployed build; `spike/` stays until that confirmation, then is deleted in a cleanup commit.
+
 ---
 
 ## 6. Milestone 3 — NPC trading (Phase 4)
