@@ -10,17 +10,25 @@
       "label": "Park",
       "enabled": true,
       "mapLabel": "Park map",
+      "template": "central-park",
+      "theme": {
+        "grass": "#4b8750",
+        "dirt": "#a17a52",
+        "sand": "#d6bc7c",
+        "water": "#3a84a6",
+        "field": "#8a9a4f"
+      },
       "spawn": {
         "x": 32,
-        "y": 32
+        "y": 58
       },
       "menu": {
         "label": "Park",
         "note": "Step back outside."
       },
       "door": {
-        "x": 32,
-        "y": 34,
+        "x": 48,
+        "y": 52,
         "to": "home",
         "prompt": "Go home?"
       },
@@ -29,10 +37,76 @@
           "id": "jungle-gym",
           "kind": "activity",
           "activityId": "jungle-gym",
-          "x": 28,
-          "y": 30,
+          "x": 18,
+          "y": 19,
           "prompt": "Run the jungle gym?"
         }
+      ],
+      "props": [
+        { "type": "fountain", "x": 31, "y": 29 },
+
+        { "type": "planter", "x": 28, "y": 28 },
+        { "type": "planter", "x": 36, "y": 28, "variant": 1 },
+        { "type": "planter", "x": 28, "y": 32, "variant": 1 },
+        { "type": "planter", "x": 36, "y": 32 },
+
+        { "type": "bench", "x": 24, "y": 26 },
+        { "type": "bench", "x": 37, "y": 26, "variant": 1 },
+        { "type": "bench", "x": 24, "y": 34, "variant": 1 },
+        { "type": "bench", "x": 37, "y": 34 },
+
+        { "type": "lamp", "x": 32, "y": 20 },
+        { "type": "lamp", "x": 39, "y": 23 },
+        { "type": "lamp", "x": 42, "y": 30, "variant": 1 },
+        { "type": "lamp", "x": 39, "y": 37 },
+        { "type": "lamp", "x": 32, "y": 40, "variant": 1 },
+        { "type": "lamp", "x": 25, "y": 37 },
+        { "type": "lamp", "x": 22, "y": 30, "variant": 1 },
+        { "type": "lamp", "x": 25, "y": 23 },
+
+        { "type": "slide", "x": 10, "y": 12 },
+        { "type": "swing-frame", "x": 14, "y": 12, "variant": 1 },
+        { "type": "bench", "x": 9, "y": 20 },
+        { "type": "planter", "x": 9, "y": 10 },
+        { "type": "planter", "x": 19, "y": 10, "variant": 1 },
+        { "type": "lamp", "x": 9, "y": 17 },
+
+        { "type": "pier", "x": 47, "y": 18 },
+        { "type": "bench", "x": 56, "y": 25 },
+        { "type": "lamp", "x": 45, "y": 27, "variant": 1 },
+        { "type": "lamp", "x": 48, "y": 27 },
+
+        { "type": "amphitheatre-tier", "x": 10, "y": 47 },
+        { "type": "amphitheatre-tier", "x": 15, "y": 48 },
+        { "type": "amphitheatre-tier", "x": 20, "y": 47 },
+        { "type": "amphitheatre-tier", "x": 8, "y": 50 },
+        { "type": "amphitheatre-tier", "x": 13, "y": 51 },
+        { "type": "amphitheatre-tier", "x": 18, "y": 51 },
+        { "type": "amphitheatre-tier", "x": 23, "y": 50 },
+        { "type": "amphitheatre-tier", "x": 6, "y": 53 },
+        { "type": "amphitheatre-tier", "x": 11, "y": 54 },
+        { "type": "amphitheatre-tier", "x": 16, "y": 55 },
+        { "type": "amphitheatre-tier", "x": 21, "y": 54 },
+        { "type": "amphitheatre-tier", "x": 26, "y": 53 },
+
+        { "type": "lamp", "x": 10, "y": 44 },
+        { "type": "lamp", "x": 24, "y": 44, "variant": 1 },
+        { "type": "bench", "x": 16, "y": 38 },
+
+        { "type": "building", "x": 45, "y": 48 },
+        { "type": "planter", "x": 44, "y": 52, "variant": 1 },
+        { "type": "planter", "x": 51, "y": 52 },
+        { "type": "bench", "x": 41, "y": 57, "variant": 1 },
+        { "type": "lamp", "x": 36, "y": 54 },
+        { "type": "lamp", "x": 44, "y": 57, "variant": 1 },
+
+        { "type": "picnic-blanket", "x": 52, "y": 45 },
+        { "type": "picnic-blanket", "x": 55, "y": 49, "variant": 1 },
+        { "type": "picnic-blanket", "x": 24, "y": 56 },
+
+        { "type": "gate", "x": 30, "y": 62, "variant": 1 },
+        { "type": "planter", "x": 29, "y": 61 },
+        { "type": "planter", "x": 33, "y": 61, "variant": 1 }
       ]
     },
     "home": {

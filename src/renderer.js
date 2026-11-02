@@ -1157,6 +1157,27 @@ function drawPlanter(ctx, box, colors) {
   }
 }
 
+/** A flat gingham blanket: no shadow, no height, walkable ground cover. */
+function drawPicnicBlanket(ctx, box, colors) {
+  const cells = 4;
+  const cellW = box.width / cells;
+  const cellH = box.height / cells;
+  for (let row = 0; row < cells; row += 1) {
+    for (let col = 0; col < cells; col += 1) {
+      ctx.fillStyle = (row + col) % 2 === 0 ? colors.base : colors.accent;
+      ctx.fillRect(
+        box.left + col * cellW,
+        box.top + row * cellH,
+        cellW + 0.5,
+        cellH + 0.5
+      );
+    }
+  }
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = Math.max(1, TILE * 0.03);
+  ctx.strokeRect(box.left, box.top, box.width, box.height);
+}
+
 function drawGenericProp(ctx, box, colors) {
   propShadow(ctx, box);
   fillRoundRect(ctx, box.left, box.top + TILE * 0.18, box.width, box.height - TILE * 0.24, 5, colors.base);
@@ -1178,7 +1199,8 @@ const LOCATION_PROP_SHAPES = {
   umbrella: drawUmbrella,
   desk: drawDesk,
   bookshelf: drawPropBookshelf,
-  planter: drawPlanter
+  planter: drawPlanter,
+  'picnic-blanket': drawPicnicBlanket
 };
 
 export class WorldRenderer {

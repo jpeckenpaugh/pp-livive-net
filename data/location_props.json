@@ -169,6 +169,18 @@
         { "name": "terracotta", "colors": { "base": "#b0714d", "accent": "#77b36f" } },
         { "name": "wood", "colors": { "base": "#8a6a44", "accent": "#9fcf7a" } }
       ]
+    },
+    "picnic-blanket": {
+      "id": "picnic-blanket",
+      "label": "Picnic blanket",
+      "size": { "w": 2, "h": 2 },
+      "solid": false,
+      "shape": "picnic-blanket",
+      "colors": { "base": "#d97f6a", "accent": "#f2e2bd", "trim": "#8c4f42" },
+      "variants": [
+        { "name": "gingham", "colors": { "base": "#d97f6a", "accent": "#f2e2bd" } },
+        { "name": "meadow", "colors": { "base": "#6f9c74", "accent": "#eef0c9", "trim": "#3f6147" } }
+      ]
     }
   }
 }

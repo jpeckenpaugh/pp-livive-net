@@ -265,13 +265,167 @@ export function generateWorld(seed) {
   };
 }
 
-/**
- * Slice A template stubs. The real Central Park, Town, and Beach layouts land
- * in later slices; until then each template returns the seeded world so the
- * dispatch, location ids, and saves stay valid.
- */
+/* ------------------------------------------------------------------------ *
+ * Central Park: a designed 64 × 64 city park rather than a wild meadow.
+ * Geometry is algorithmic; the named zones and the amphitheatre rows below
+ * are the map. Props (fountain, benches, gate) stay in `data/world.json` so
+ * the layout only owns ground, paths, and spawn.
+ * ------------------------------------------------------------------------ */
+
+const CENTRAL_PARK = {
+  centre: { x: 32, y: 30 },
+  plazaRadius: 9.4,
+  ring: { inner: 12, outer: 14 },
+  lake: { x: 48, y: 16, rx: 8, ry: 6 },
+  lakeShore: 1.35,
+  playground: { x: 8, y: 10, w: 13, h: 13 },
+  stage: { x: 17, y: 42, radius: 3.4 },
+  // Lawn cleared for the tiered seating; the tiers themselves are props.
+  amphitheatre: { x: 4, y: 45, w: 28, h: 12 },
+  flowerBeds: [
+    { x: 27, y: 22, rx: 2.4, ry: 1.8 },
+    { x: 38, y: 47, rx: 2.6, ry: 2 },
+    { x: 53, y: 36, rx: 2.6, ry: 2.2 }
+  ],
+  picnicSpots: [{ x: 52, y: 45 }, { x: 55, y: 49 }, { x: 24, y: 56 }],
+  lodge: { x: 44, y: 47, w: 8, h: 6 },
+  spawn: { x: 32, y: 58 }
+};
+
+function paintTile(grid, x, y, type, allowed = null) {
+  if (!inBounds(x, y)) return;
+  if (allowed && !allowed(grid[y][x])) return;
+  grid[y][x] = type;
+}
+
+function paintRect(grid, { x, y, w, h }, type, allowed = null) {
+  for (let ty = y; ty < y + h; ty++) {
+    for (let tx = x; tx < x + w; tx++) paintTile(grid, tx, ty, type, allowed);
+  }
+}
+
+function paintEllipse(grid, shape, type, allowed = null) {
+  const rx = Math.max(0.5, shape.rx ?? shape.radius ?? 1);
+  const ry = Math.max(0.5, shape.ry ?? shape.radius ?? 1);
+  const minX = Math.max(0, Math.floor(shape.x - rx));
+  const maxX = Math.min(WORLD_SIZE - 1, Math.ceil(shape.x + rx));
+  const minY = Math.max(0, Math.floor(shape.y - ry));
+  const maxY = Math.min(WORLD_SIZE - 1, Math.ceil(shape.y + ry));
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      const distance = ((x - shape.x) / rx) ** 2 + ((y - shape.y) / ry) ** 2;
+      if (distance <= 1) paintTile(grid, x, y, type, allowed);
+    }
+  }
+}
+
+function paintRing(grid, { x, y, inner, outer }, type, allowed = null) {
+  for (let ty = 0; ty < WORLD_SIZE; ty++) {
+    for (let tx = 0; tx < WORLD_SIZE; tx++) {
+      const distance = Math.hypot(tx - x, ty - y);
+      if (distance >= inner && distance <= outer) paintTile(grid, tx, ty, type, allowed);
+    }
+  }
+}
+
+/** One-tile-wide gravel link between two path points. */
+function paintLine(grid, from, to, type, allowed = null) {
+  const steps = Math.max(Math.abs(to.x - from.x), Math.abs(to.y - from.y));
+  for (let step = 0; step <= steps; step++) {
+    const t = steps ? step / steps : 0;
+    paintTile(
+      grid,
+      Math.round(from.x + (to.x - from.x) * t),
+      Math.round(from.y + (to.y - from.y) * t),
+      type,
+      allowed
+    );
+  }
+}
+
 export function generateCentralPark(seed) {
-  return { ...generateWorld(seed), template: 'central-park' };
+  const park = CENTRAL_PARK;
+  const grid = Array.from({ length: WORLD_SIZE }, () => Array(WORLD_SIZE).fill('grass'));
+  // Gravel and lawn paint over open ground, never over water or walls.
+  const openGround = type => type === 'grass' || type === 'field' || type === 'sand';
+
+  // Flower beds under the paths: a radial cuts through a bed like a real path.
+  for (const bed of park.flowerBeds) paintEllipse(grid, bed, 'field', type => type === 'grass');
+
+  // Lake: a water bowl with a sand shoreline on the grass around it.
+  for (let y = 0; y < WORLD_SIZE; y++) {
+    for (let x = 0; x < WORLD_SIZE; x++) {
+      const distance = ((x - park.lake.x) / park.lake.rx) ** 2
+        + ((y - park.lake.y) / park.lake.ry) ** 2;
+      if (distance <= 1) grid[y][x] = 'water';
+      else if (distance <= park.lakeShore && grid[y][x] === 'grass') grid[y][x] = 'sand';
+    }
+  }
+
+  // Playground: a broad sand apron in the north-west lawn.
+  paintRect(grid, park.playground, 'sand', type => type === 'grass');
+
+  // Central plaza, ring path, and the four radial paths.
+  paintEllipse(grid, { ...park.centre, radius: park.plazaRadius }, 'dirt', openGround);
+  paintRing(grid, { ...park.centre, ...park.ring }, 'dirt', openGround);
+  paintRect(grid, { x: 31, y: 2, w: 2, h: 20 }, 'dirt', openGround); // north
+  paintRect(grid, { x: 31, y: 39, w: 2, h: 23 }, 'dirt', openGround); // south
+  paintRect(grid, { x: 41, y: 29, w: 23, h: 2 }, 'dirt', openGround); // east
+  paintRect(grid, { x: 1, y: 29, w: 23, h: 2 }, 'dirt', openGround); // west
+
+  // The lodge lane hooks off the south walk; the pier walk climbs from the
+  // east walk to the lake, and the jetty is shallow sand under the boards.
+  paintRect(grid, { x: 47, y: 52, w: 2, h: 5 }, 'dirt', openGround);
+  paintRect(grid, { x: 32, y: 55, w: 17, h: 2 }, 'dirt', openGround);
+  paintRect(grid, { x: 46, y: 23, w: 2, h: 7 }, 'dirt', openGround);
+  paintRect(grid, { x: 47, y: 18, w: 2, h: 5 }, 'sand', type => type === 'water' || type === 'sand');
+
+  // Short spurs tie the playground and the amphitheatre to the ring.
+  paintLine(grid, { x: 23, y: 21 }, { x: 20, y: 22 }, 'dirt', openGround);
+  paintLine(grid, { x: 23, y: 39 }, { x: 18, y: 42 }, 'dirt', openGround);
+  paintEllipse(grid, park.stage, 'dirt', openGround);
+
+  // The spawn is the first open tile inside the south gate; the component is
+  // the largest walkable region, exactly like the seeded park.
+  const component = largestWalkableComponent(grid);
+  const requested = park.spawn;
+  const componentKeys = new Set(component.map(cell => `${cell.x},${cell.y}`));
+  const spawn = isWalkable(grid[requested.y]?.[requested.x])
+    && componentKeys.has(`${requested.x},${requested.y}`)
+    ? requested
+    : nearestCell(component, requested.x, requested.y);
+
+  // Clear trees off the seating bowl, the lodge, and the picnic spots.
+  const keepClear = new Set();
+  const amphitheatre = park.amphitheatre;
+  for (let y = amphitheatre.y; y < amphitheatre.y + amphitheatre.h; y++) {
+    for (let x = amphitheatre.x; x < amphitheatre.x + amphitheatre.w; x++) {
+      keepClear.add(`${x},${y}`);
+    }
+  }
+  for (let y = park.lodge.y - 1; y < park.lodge.y + park.lodge.h + 1; y++) {
+    for (let x = park.lodge.x - 1; x < park.lodge.x + park.lodge.w + 1; x++) {
+      keepClear.add(`${x},${y}`);
+    }
+  }
+  for (const spot of park.picnicSpots) {
+    for (let dy = 0; dy < 2; dy++) {
+      for (let dx = 0; dx < 2; dx++) keepClear.add(`${spot.x + dx},${spot.y + dy}`);
+    }
+  }
+
+  const scenery = generateScenery(grid, seed, spawn)
+    .filter(item => !keepClear.has(`${item.x},${item.y}`));
+
+  return {
+    seed,
+    grid,
+    spawn,
+    template: 'central-park',
+    component,
+    componentKeys,
+    scenery
+  };
 }
 
 export function generateTown(seed) {

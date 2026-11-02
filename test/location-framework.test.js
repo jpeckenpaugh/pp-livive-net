@@ -69,10 +69,12 @@ function baseDef(id, overrides = {}) {
   };
 }
 
-test('worldFor dispatches templates and keeps the default park seeded', () => {
+test('worldFor dispatches templates and gives the park the Central Park layout', () => {
   const seed = 'framework-template';
   const baseline = generateWorld(seed);
-  assert.deepEqual(worldFor('park', seed).grid, baseline.grid);
+  const centralPark = generateCentralPark(seed);
+  assert.equal(worldFor('park', seed).template, 'central-park');
+  assert.deepEqual(worldFor('park', seed).grid, centralPark.grid);
 
   withLocations({
     'test-interior': baseDef('test-interior', { template: 'interior' }),
@@ -86,8 +88,11 @@ test('worldFor dispatches templates and keeps the default park seeded', () => {
     const interior = worldFor('test-interior', seed);
     assert.deepEqual(interior.grid, generateHome(seed, LOCATIONS['test-interior']).grid);
 
+    const templateWorld = worldFor('test-central-park', seed);
+    assert.equal(templateWorld.template, 'central-park');
+    assert.deepEqual(templateWorld.grid, centralPark.grid);
+
     for (const [id, template] of [
-      ['test-central-park', 'central-park'],
       ['test-town', 'town'],
       ['test-beach', 'beach']
     ]) {
@@ -190,7 +195,7 @@ test('the location prop catalog covers the framework set with complete metadata'
   const expected = [
     'fountain', 'bench', 'lamp', 'gate', 'slide', 'swing-frame',
     'amphitheatre-tier', 'building', 'pier', 'palm', 'umbrella',
-    'desk', 'bookshelf', 'planter'
+    'desk', 'bookshelf', 'planter', 'picnic-blanket'
   ];
   for (const id of expected) {
     const prop = locationProp(id);
@@ -359,7 +364,8 @@ test('location theme overrides map onto tile colours and absent themes stay defa
   assert.equal(themed['home-floor'], '#abcdef');
   assert.equal(themed.dirt, TERRAIN_COLORS.dirt);
   assert.equal(themed.water, TERRAIN_COLORS.water);
-  assert.equal(locationTheme('park'), null);
+  assert.equal(locationTheme('park').grass, '#4b8750');
+  assert.ok(propsForLocation('park').length > 0);
 
   withLocations({
     'test-beach': baseDef('test-beach', { template: 'beach', theme: { sand: '#eeddaa' } })
