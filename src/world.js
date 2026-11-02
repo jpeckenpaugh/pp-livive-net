@@ -428,8 +428,87 @@ export function generateCentralPark(seed) {
   };
 }
 
+/* ------------------------------------------------------------------------ *
+ * Town: a single east–west street with four facades to the north, a fountain
+ * plaza to the south, and a stub of beach at the east end. Ground and spawn
+ * only: facades, benches, lamps, and the fountain are props in `data/world.json`.
+ * ------------------------------------------------------------------------ */
+
+const TOWN = {
+  street: { x: 2, y: 30, w: 57, h: 3 }, // x 2–58
+  northWalk: { x: 7, y: 28, w: 51, h: 2 }, // x 7–57, in front of the facades
+  southWalk: { x: 7, y: 33, w: 51, h: 1 },
+  plaza: { x: 32, y: 42, rx: 6.5, ry: 5 },
+  plazaLink: { x: 31, y: 34, w: 2, h: 5 }, // south walk down to the plaza
+  beach: { x: 59, y: 31, rx: 5, ry: 5 },
+  facades: [
+    { x: 9, y: 24 }, // home
+    { x: 23, y: 24 }, // shop
+    { x: 37, y: 24 }, // library shell
+    { x: 51, y: 24 } // café shell
+  ],
+  spawn: { x: 32, y: 46 }
+};
+
 export function generateTown(seed) {
-  return { ...generateWorld(seed), template: 'town' };
+  const town = TOWN;
+  const grid = Array.from({ length: WORLD_SIZE }, () => Array(WORLD_SIZE).fill('grass'));
+
+  // A sandy cove at the east end; the street is painted over it afterwards so
+  // the dirt road visibly runs onto the beach and stops there.
+  paintEllipse(grid, town.beach, 'sand', type => type === 'grass');
+
+  paintRect(grid, town.street, 'dirt');
+  paintRect(grid, town.northWalk, 'dirt');
+  paintRect(grid, town.southWalk, 'dirt');
+  paintRect(grid, town.plazaLink, 'dirt');
+  paintEllipse(grid, town.plaza, 'dirt');
+
+  const component = largestWalkableComponent(grid);
+  const componentKeys = new Set(component.map(cell => `${cell.x},${cell.y}`));
+  const requested = town.spawn;
+  const spawn = isWalkable(grid[requested.y]?.[requested.x])
+    && componentKeys.has(`${requested.x},${requested.y}`)
+    ? requested
+    : nearestCell(component, requested.x, requested.y);
+
+  // Keep trees and flowers off the facades, the plaza, and the beach cove.
+  const keepClear = new Set();
+  for (const facade of town.facades) {
+    for (let y = facade.y - 1; y < facade.y + 6; y++) {
+      for (let x = facade.x - 1; x < facade.x + 7; x++) keepClear.add(`${x},${y}`);
+    }
+  }
+  const plaza = town.plaza;
+  for (let y = Math.floor(plaza.y - plaza.ry - 1); y <= Math.ceil(plaza.y + plaza.ry + 1); y++) {
+    for (let x = Math.floor(plaza.x - plaza.rx - 1); x <= Math.ceil(plaza.x + plaza.rx + 1); x++) {
+      const distance = ((x - plaza.x) / (plaza.rx + 1)) ** 2
+        + ((y - plaza.y) / (plaza.ry + 1)) ** 2;
+      if (distance <= 1) keepClear.add(`${x},${y}`);
+    }
+  }
+  for (let y = town.beach.y - town.beach.ry; y <= town.beach.y + town.beach.ry; y++) {
+    for (let x = town.beach.x - town.beach.rx; x <= town.beach.x + town.beach.rx; x++) {
+      keepClear.add(`${x},${y}`);
+    }
+  }
+
+  // The street is busy, so the town keeps a lighter scatter than the meadow.
+  const random = mulberry32(hashString(`town-scenery:${seed}`));
+  const scenery = generateScenery(grid, seed, spawn)
+    .filter(item => !keepClear.has(`${item.x},${item.y}`))
+    .filter(() => random() < 0.4)
+    .sort((a, b) => a.y - b.y);
+
+  return {
+    seed,
+    grid,
+    spawn,
+    template: 'town',
+    component,
+    componentKeys,
+    scenery
+  };
 }
 
 export function generateBeach(seed) {

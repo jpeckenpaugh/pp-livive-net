@@ -82,7 +82,7 @@ export function nearbyTargetIds(id, { isEnabled = isLocationEnabled } = {}) {
 }
 
 /** Build the terrain for a location. Template dispatch keeps new themes out of `worldFor`. */
-export function worldFor(id, seed) {
+export function worldFor(id, seed, record = null) {
   const def = locationDef(id);
   const template = def?.template || (def?.house ? 'interior' : null);
   const builtSeed = seed ?? def?.seed;
@@ -96,10 +96,37 @@ export function worldFor(id, seed) {
       scenery: (world.scenery || []).filter(item => !FORAGE_MUSHROOM_TYPES.includes(item.type))
     };
   }
+  // A save written before location layouts existed keeps its own grown world.
+  // Generating the meadow gives that record scenery that matches its terrain
+  // instead of Central Park trees dropped onto old ground.
+  if (record && record.layout !== locationLayout(id)) {
+    return generateWorld(builtSeed);
+  }
   if (template === 'central-park') return generateCentralPark(builtSeed);
   if (template === 'town') return generateTown(builtSeed);
   if (template === 'beach') return generateBeach(builtSeed);
   return generateWorld(builtSeed);
+}
+
+/**
+ * The layout key a location's current definition builds. Fresh records store it
+ * in `layout` so a save can tell which template its stored terrain came from.
+ */
+export function locationLayout(id) {
+  const def = locationDef(id);
+  if (!def) return null;
+  if (typeof def.template === 'string' && def.template) return def.template;
+  if (def.house) return 'interior';
+  return 'meadow';
+}
+
+/**
+ * True when a saved record was built by the location's current layout. A record
+ * without a marker predates layouts and is deliberately treated as legacy.
+ */
+export function layoutMatches(id, record) {
+  if (!record || typeof record !== 'object') return true;
+  return typeof record.layout === 'string' && record.layout === locationLayout(id);
 }
 
 /**
@@ -250,13 +277,15 @@ export function residentsFor(id) {
   return residents;
 }
 
-/** Normalised prop records declared by a location. */
-export function propsForLocation(id) {
+/** Normalised prop records declared by a location. Legacy records get none. */
+export function propsForLocation(id, record = null) {
+  if (!layoutMatches(id, record)) return [];
   return normalizeLocationProps(locationDef(id)?.props);
 }
 
-/** Optional per-location tile colour overrides. */
-export function locationTheme(id) {
+/** Optional per-location tile colour overrides. Legacy records keep defaults. */
+export function locationTheme(id, record = null) {
+  if (!layoutMatches(id, record)) return null;
   const theme = locationDef(id)?.theme;
   return theme && typeof theme === 'object' && !Array.isArray(theme) ? theme : null;
 }
@@ -282,6 +311,7 @@ export function createHomeLocation({ seed = locationDef('home')?.seed, basket = 
   const world = worldFor('home', seed);
   return {
     seed,
+    layout: 'interior',
     terrain: encodeTerrain(world.grid),
     player: { x: world.spawn.x, y: world.spawn.y, direction: 0 },
     npcs: [],
@@ -303,6 +333,7 @@ export function createLocationRecord(id, { basket = null } = {}) {
   const world = worldFor(id, seed);
   return {
     seed,
+    layout: world.template || locationLayout(id),
     terrain: encodeTerrain(world.grid),
     player: { x: world.spawn.x, y: world.spawn.y, direction: 0 },
     npcs: [],
@@ -339,6 +370,7 @@ export function createShopLocation({ basket = null } = {}) {
   const hasKeeper = Number.isInteger(keeper.x) && Number.isInteger(keeper.y);
   return {
     seed: def?.seed,
+    layout: 'interior',
     terrain: encodeTerrain(world.grid),
     player: { x: world.spawn.x, y: world.spawn.y, direction: 0 },
     npcs: hasKeeper

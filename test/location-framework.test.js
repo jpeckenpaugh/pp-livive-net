@@ -98,7 +98,10 @@ test('worldFor dispatches templates and gives the park the Central Park layout',
     ]) {
       const world = worldFor(id, seed);
       assert.equal(world.template, template);
-      assert.deepEqual(world.grid, baseline.grid);
+      assert.deepEqual(
+        world.grid,
+        template === 'town' ? generateTown(seed).grid : generateBeach(seed).grid
+      );
     }
   });
 
@@ -165,7 +168,7 @@ test('multi-door doorsFor keeps travel and activity doors, and legacy doorFor st
     spawn: home.spawn,
     isEnabled: () => true
   });
-  assert.equal(legacy.to, 'park');
+  assert.equal(legacy.to, 'town');
   assert.equal(legacy.kind, 'travel');
 });
 
@@ -331,9 +334,8 @@ test('a fresh template location gets a terrain record without saved residents', 
 
 test('travelTargets marks door-reachable rows Nearby and sorts them first', () => {
   const park = travelTargets('park');
-  assert.deepEqual(park.map(target => target.id), ['home', 'shop']);
-  assert.equal(park[0].nearby, true);
-  assert.equal(park[1].nearby, false);
+  assert.deepEqual(park.map(target => target.id), ['town', 'home', 'shop']);
+  assert.deepEqual(park.map(target => target.nearby), [true, false, false]);
 
   withLocations({
     'test-hub': baseDef('test-hub', {
@@ -346,8 +348,8 @@ test('travelTargets marks door-reachable rows Nearby and sorts them first', () =
       ['park', 'shop']
     );
     const targets = travelTargets('test-hub');
-    assert.deepEqual(targets.map(target => target.id), ['park', 'shop', 'home']);
-    assert.deepEqual(targets.map(target => target.nearby), [true, true, false]);
+    assert.deepEqual(targets.map(target => target.id), ['park', 'shop', 'home', 'town']);
+    assert.deepEqual(targets.map(target => target.nearby), [true, true, false, false]);
   });
 });
 

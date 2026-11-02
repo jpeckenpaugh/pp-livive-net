@@ -82,7 +82,8 @@ export function activeLocation(state) {
         forage: record.forage,
         // Home-only add-ons. Conditional keys keep older fixtures byte-identical.
         ...(Array.isArray(record.items) ? { items: record.items } : {}),
-        ...(Array.isArray(record.storage) ? { storage: record.storage } : {})
+        ...(Array.isArray(record.storage) ? { storage: record.storage } : {}),
+        ...(typeof record.layout === 'string' && record.layout ? { layout: record.layout } : {})
       };
     }
   }
@@ -91,7 +92,8 @@ export function activeLocation(state) {
     terrain: state.terrain,
     player: state.player,
     npcs: state.npcs,
-    forage: state.forage
+    forage: state.forage,
+    ...(typeof state.layout === 'string' && state.layout ? { layout: state.layout } : {})
   };
 }
 
@@ -360,6 +362,7 @@ export function serializeNpcRecord(npc) {
  */
 export function captureLocationRecord({
   seed = null,
+  layout = null,
   terrain = null,
   player = null,
   npcs = null,
@@ -370,6 +373,9 @@ export function captureLocationRecord({
 } = {}, previous = null) {
   const base = isObject(previous) ? previous : {};
   const encodedTerrain = Array.isArray(terrain) ? encodeTerrain(terrain) : terrain;
+  const nextLayout = typeof layout === 'string' && layout
+    ? layout
+    : (typeof base.layout === 'string' && base.layout ? base.layout : null);
   const nextPlayer = migratePlayerPosition(player) ?? base.player ?? undefined;
   const nextNpcs = Array.isArray(npcs)
     ? npcs
@@ -399,6 +405,7 @@ export function captureLocationRecord({
 
   return {
     ...base,
+    ...(nextLayout ? { layout: nextLayout } : {}),
     seed: normalizeSeed(seed ?? locationSeed(base)),
     terrain: typeof encodedTerrain === 'string' ? encodedTerrain : base.terrain,
     ...(nextPlayer ? { player: nextPlayer } : {}),
@@ -530,6 +537,7 @@ function migrateV4(state) {
   next.locations = {
     ...locations,
     park: {
+      ...(typeof park.layout === 'string' && park.layout ? { layout: park.layout } : {}),
       seed: normalizeSeed(locationSeed(park)),
       terrain: park.terrain,
       player: migratePlayerPosition(park.player),
@@ -568,6 +576,7 @@ export function migrateSave(state) {
     currentLocation: 'park',
     locations: {
       park: {
+        ...(typeof state.layout === 'string' && state.layout ? { layout: state.layout } : {}),
         seed: normalizeSeed(locationSeed(state)),
         terrain: state.terrain,
         player: migratePlayerPosition(state.player),

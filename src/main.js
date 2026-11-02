@@ -7,7 +7,6 @@ import {
   preloadAvatars
 } from './avatar.js';
 import {
-  generateWorld,
   encodeTerrain,
   decodeTerrain,
   makeSeed,
@@ -1154,7 +1153,7 @@ function handleGameEnd(payload) {
 
 function makeDraft() {
   const worldSeed = makeSeed();
-  const world = generateWorld(worldSeed);
+  const world = worldFor('park', worldSeed);
   const playerBuddyId = 'player';
   const playerCompanion = {
     id: makeId('comp'),
@@ -1165,6 +1164,7 @@ function makeDraft() {
 
   return {
     worldSeed,
+    layout: world.template || null,
     world,
     playerName: randomFrom(PLAYER_NAMES),
     playerRecipe: createRecipe(),
@@ -2026,6 +2026,7 @@ async function enterPark() {
   const state = {
     version: 1,
     worldSeed: draft.worldSeed,
+    layout: draft.layout || null,
     terrain: encodeTerrain(draft.world.grid),
     playerName,
     playerRecipe: draft.playerRecipe,
@@ -2110,10 +2111,10 @@ function applyState(state) {
   const homeMode = locationId === 'home';
   const locationState = activeLocation(state) || {};
   const sharedPlayer = state.player && typeof state.player === 'object' ? state.player : {};
-  const worldData = worldFor(locationId, locationState.seed);
+  const worldData = worldFor(locationId, locationState.seed, locationState);
   const terrain = decodeTerrain(locationState.terrain) || worldData.grid;
-  const theme = locationTheme(locationId);
-  const locationProps = propsForLocation(locationId);
+  const theme = locationTheme(locationId, locationState);
+  const locationProps = propsForLocation(locationId, locationState);
   const locationBlocked = locationBlockedTiles(locationProps);
   // Scenery belongs to generated ground: never leave a tree inside a building.
   const scenery = (worldData.scenery || [])
@@ -2360,6 +2361,7 @@ function applyState(state) {
     : {
         park: captureLocationRecord({
           seed: locationState.seed ?? game.worldSeed,
+          layout: locationState.layout || null,
           terrain,
           player: rawPlayer,
           npcs,

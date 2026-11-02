@@ -41,7 +41,7 @@ test('the shop ships enabled with a room, a spawn, a return door, and a menu row
   assert.equal(SHOP.mapLabel, 'Shop map');
   assert.equal(SHOP.forage, false);
   assert.equal(SHOP.menu.label, 'Shop');
-  assert.equal(SHOP.door.to, 'park');
+  assert.equal(SHOP.door.to, 'town');
 
   const { x, y, width, height } = SHOP.house;
   assert.ok(width >= 5 && height >= 5, 'the shop needs a floor');
@@ -70,10 +70,10 @@ test('the shop reuses the Home builder and keeps both doors walkable', () => {
 
   const door = doorFor('shop', { terrain: world.grid, spawn: world.spawn });
   assert.ok(door);
-  assert.equal(door.to, 'park');
+  assert.equal(door.to, 'town');
   const doors = doorsFor('shop', { terrain: world.grid, spawn: world.spawn });
   assert.deepEqual(doors.map(entry => entry.kind), ['travel']);
-  assert.equal(doors[0].to, 'park');
+  assert.equal(doors[0].to, 'town');
 });
 
 test('a fresh shop record contains one fixed shopkeeper and no party', () => {

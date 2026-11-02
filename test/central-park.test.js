@@ -79,7 +79,7 @@ test('the park stays one walkable piece and every zone is reachable from the spa
     { x: 17, y: 42 }, // amphitheatre stage
     { x: 18, y: 19 }, // jungle gym
     { x: 47, y: 20 }, // pier
-    { x: 48, y: 52 }, // home door
+    { x: 48, y: 52 }, // town door
     { x: 32, y: 61 } // gate lip
   ];
   for (const target of targets) {
@@ -103,7 +103,7 @@ test('park props avoid the spawn, doors, gym, and gate lip and never trap the sp
   const blocked = locationBlockedTiles(props);
   const reserved = [
     world.spawn,
-    { x: 48, y: 52 }, // home door
+    { x: 48, y: 52 }, // town door
     { x: 18, y: 19 }, // jungle gym
     { x: 32, y: 61 } // gate lip
   ];
@@ -120,14 +120,15 @@ test('park props avoid the spawn, doors, gym, and gate lip and never trap the sp
   assert.equal(locationProp('picnic-blanket').solid, false, 'blankets are ground cover');
 });
 
-test('the park doors keep the Home door and put the Jungle Gym on the playground', () => {
+test('the park doors lead to Town and put the Jungle Gym on the playground', () => {
   const world = generateCentralPark('central-doors');
   const doors = doorsFor('park', { terrain: world.grid, spawn: world.spawn });
   assert.deepEqual(doors.map(door => door.kind), ['travel', 'activity']);
 
-  const home = doors.find(door => door.kind === 'travel');
-  assert.equal(home.to, 'home');
-  assert.deepEqual({ x: home.x, y: home.y }, { x: 48, y: 52 });
+  const travel = doors.find(door => door.kind === 'travel');
+  assert.equal(travel.to, 'town');
+  assert.equal(travel.prompt, 'Head into town?');
+  assert.deepEqual({ x: travel.x, y: travel.y }, { x: 48, y: 52 });
 
   const gym = doors.find(door => door.kind === 'activity');
   assert.equal(gym.activityId, 'jungle-gym');

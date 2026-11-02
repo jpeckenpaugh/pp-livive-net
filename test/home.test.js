@@ -102,30 +102,31 @@ function homeSpawn() {
   return locationDef('home').spawn;
 }
 
-test('the Home flag exposes the Park door and the menu row', () => {
+test('the Home flag exposes the Town door and the menu row', () => {
   const park = generateWorld('home-door-fixture');
 
-  // The completed Home slice ships enabled, so the Park door and destination exist.
+  // The completed Home slice ships enabled, so the Town door and destination exist.
   assert.equal(isLocationEnabled('home'), true);
   const door = doorFor('park', { terrain: park.grid, spawn: park.spawn });
   assert.ok(door);
-  assert.equal(door.to, 'home');
-  assert.equal(door.prompt, 'Go home?');
+  assert.equal(door.to, 'town');
+  assert.equal(door.prompt, 'Head into town?');
   assert.ok(isWalkable(typeAt(park.grid, door.x, door.y)));
 
   const targets = travelTargets('park');
-  assert.deepEqual(targets.map(target => target.id), ['home', 'shop']);
-  assert.equal(targets[0].label, 'Home');
-  assert.equal(targets[1].label, 'Shop');
-  // Home offers the Park (and the shop) as its way out.
+  assert.deepEqual(targets.map(target => target.id), ['town', 'home', 'shop']);
+  assert.equal(targets[0].label, 'Town');
+  assert.equal(targets[1].label, 'Home');
+  assert.equal(targets[2].label, 'Shop');
+  // Home offers the Town (and the shop) as its way out.
   assert.deepEqual(
     travelTargets('home').map(target => target.id),
-    ['park', 'shop']
+    ['town', 'park', 'shop']
   );
   // The shop is menu-only from the park, and its door returns outside.
   assert.deepEqual(
     travelTargets('shop').map(target => target.id),
-    ['park', 'home']
+    ['town', 'park', 'home']
   );
 });
 
@@ -135,7 +136,7 @@ test('the Park exposes a travel door and a jungle-gym entrance', () => {
   assert.deepEqual(doors.map(door => door.kind), ['travel', 'activity']);
 
   const travel = doors.find(door => door.kind === 'travel');
-  assert.equal(travel.to, 'home');
+  assert.equal(travel.to, 'town');
   const entrance = doors.find(door => door.kind === 'activity');
   assert.equal(entrance.activityId, 'jungle-gym');
   assert.equal(entrance.prompt, 'Run the jungle gym?');
@@ -151,10 +152,11 @@ test('the Park exposes a travel door and a jungle-gym entrance', () => {
   assert.deepEqual(gated.map(door => door.kind), ['travel']);
 });
 
-test('the Home door lands on the carved doorway and returns to the park', () => {  const home = generateHome(HOME_SEED);
+test('the Home door lands on the carved doorway and returns to town', () => {
+  const home = generateHome(HOME_SEED);
   const door = doorFor('home', { terrain: home.grid, spawn: home.spawn, isEnabled: () => true });
   assert.ok(door);
-  assert.equal(door.to, 'park');
+  assert.equal(door.to, 'town');
   assert.deepEqual({ x: door.x, y: door.y }, { x: home.door.x, y: home.door.y });
   assert.ok(isWalkable(typeAt(home.grid, door.x, door.y)));
 });
