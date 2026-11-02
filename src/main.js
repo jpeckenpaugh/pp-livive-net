@@ -3964,6 +3964,10 @@ function boot() {
       panels?.closeMenu();
       return travelTo(targetId);
     },
+    onOpenCourses: () => {
+      panels?.closeMenu();
+      return openActivityChooser();
+    },
     getFurnish: homeFurnishState,
     onFurnishSelect: uid => startFurnish(uid),
     onFurnishStop: () => cancelFurnish(),

@@ -863,6 +863,17 @@ export class PanelsUI {
     const travels = Array.isArray(this.getTravels?.())
       ? this.getTravels()
       : [this.getTravel?.()].filter(Boolean);
+    // A permanent courses shortcut: the side-scroller entrance can move with
+    // the park layout, but the Backpack always reaches the course board.
+    if (typeof this.onOpenCourses === 'function') {
+      travels.push({
+        id: '__courses',
+        label: 'Courses',
+        note: 'Pick a side-scroller course',
+        icon: '🌿',
+        group: 'Activities'
+      });
+    }
     let travelGroup = null;
     for (const travel of travels) {
       if (!travel?.label) continue;
@@ -890,7 +901,8 @@ export class PanelsUI {
       travelRow.append(travelIcon, travelCopy);
       const go = () => {
         this.closeMenu();
-        this.onTravel?.(travel.id);
+        if (travel.id === '__courses') this.onOpenCourses?.();
+        else this.onTravel?.(travel.id);
       };
       travelRow.addEventListener('click', go);
       travelRow.addEventListener('keydown', event => {
