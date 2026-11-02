@@ -105,17 +105,48 @@ rearranging is the sandbox.
 
 ### 2.5 Interactions
 
-In Home, `Enter`/`Space` interacts with the solid item on the tile the player faces, before
-the door or menu checks. Three interactions carry state; the rest print one flavour line.
+**Revised 2026-11-01 — click/tap opens an item menu.** The primary affordance is now
+pointing at an item, not facing it and pressing a key.
 
-- **TV** — toggles an animated static screen and a short cue.
-- **Radio** — toggles and plays a brief synthesized jingle from `data/sounds.json`.
-- **Lamp** — toggles a warm radial glow over the room.
-- **Couch / armchair / chair / bed** — a settle line ("you sink into the couch").
-- **Others** — one line each ("the fridge hums", "the stove is cold").
+Clicking or tapping any tile of a Home item opens a small item card anchored to it:
 
-Interaction state is ephemeral except the TV/radio/lamp on-off, which persists in the item
-record so the room reloads as left.
+```text
+┌─────────────────────┐
+│ 🛏 Bed              │
+│ [ Sleep ]  [ Move ] │
+│            [ Close ]│
+└─────────────────────┘
+```
+
+- **Use** is the primary button and is labelled with the item's verb — "Sleep", "Bake a
+  pie", "Play a tune", "Watch", "Sit", "Read", "Water", "Open".
+- **Move** closes the card and enters Furnish mode with that item selected. This is the
+  bridge between the item menu and Wave 7b's placement controls.
+- Clicking elsewhere, Escape, or Close dismisses it.
+- The same card opens from the keyboard by facing an item and pressing Enter, so keyboard
+  and touch reach the same surface. Enter does not skip the menu.
+- Character clicks still win over item clicks; the item menu is Home-only.
+
+| Item | Use verb | First-pass behaviour |
+| --- | --- | --- |
+| Bed | Sleep | Player lies on the bed, blanket overlay and a zzz bubble; any movement, Escape, or Use wakes them. No time skip. |
+| Couch / armchair / chair | Sit | Player sits on the item in a settled pose; moving stands them up. |
+| Stove | Bake a pie | Needs 3 apples in the basket; consumes them, adds `apple-pie` to the bag, plays `pickup`. Without 3 apples, says how many are missing. |
+| Radio | Play a tune | Toggles a new `radio-tune` 8-bit square-wave cue from `data/sounds.json`; on/off persists. |
+| TV | Watch | Toggles an animated static screen and a short cue; on/off persists. |
+| Lamp | Light | Toggles a warm radial glow; on/off persists. |
+| Bookshelf | Read | A short random flavour line. |
+| Fridge | Open | A short flavour line. |
+| Plant | Water | A short flavour line. |
+| Counter / dresser / nightstand / coffee table | — | A short flavour line. |
+
+The TV, radio, and lamp on/off state persists in the item record. Sleep and sit are
+transient poses on the player, not saved.
+
+**Input priority in Home:** item on the clicked tile → item menu; character → character
+card; otherwise ground movement. With the keyboard: item on the facing tile → item menu;
+otherwise door → travel; otherwise the player menu. This replaces the earlier "Enter toggles
+the item directly" plan.
 
 ---
 
@@ -134,7 +165,15 @@ record so the room reloads as left.
       "colors": { "base": "#7d6a55", "accent": "#a89177" },
       "variants": ["plain", "warm", "cool"],
       "interact": { "kind": "sit", "line": "you sink into the couch." },
+      "use": { "verb": "Sit", "kind": "sit" },
       "tier": 1, "price": 0
+    },
+    "stove": {
+      "id": "stove", "label": "stove", "zone": "kitchen",
+      "size": { "w": 1, "h": 1 }, "solid": true,
+      "shape": "stove",
+      "use": { "verb": "Bake a pie", "kind": "recipe",
+               "recipe": { "inputs": { "apple": 3 }, "output": "apple-pie" } }
     }
   },
   "layout": [
@@ -189,14 +228,22 @@ schema change later.
 
 ## 5. Delivery plan
 
+**Revised 2026-11-01.** Click/tap is now the primary surface, and "Move" lives inside the
+item menu, so the menu and placement must ship together. 7b absorbs the core Use actions;
+7c is polish and the secondary lines.
+
 | Wave | Work | Gate |
 | --- | --- | --- |
-| **7a** | Data file, default layout, canvas shapes, collision, save/migration | Home looks furnished; you can walk around it and reload |
-| **7b** | Furnish mode: select, move, rotate, variant, validation, path check | You rearrange the room and it persists |
-| **7c** | TV/radio/lamp interactions + flavour lines + polish | Three toggles work; the room reloads as left |
+| **7a** | Data file, default layout, canvas shapes, collision, save/migration | Done (`73be877`); room looks furnished and walks correctly |
+| **7b** | Item menu (click/tap + keyboard), Move into Furnish mode, placement/rotate/variant, core Use: sleep, sit, bake pie, radio tune, TV/lamp toggles | You tap a bed, sleep, wake, tap Move, rearrange, reload |
+| **7c** | Flavour lines for the remaining items, pie item polish, 360 px pass, edge cases | Every item has a response; touch and keyboard agree |
 
-Three waves, roughly **4–5 dev days**, one human check each, committed to `main` at each
-gate. No new dependencies or binary assets.
+Two remaining waves, roughly **3–4 dev days**, one human check each, committed to `main` at
+each gate. No new dependencies or binary assets.
+
+**New data this adds:** `use: { verb, kind, line?, recipe?, cue? }` on each item;
+`apple-pie` in `data/items.json` (value 6, tradeable, icon 🥧); a `radio-tune` cue in
+`data/sounds.json`; and a transient `homePose` on the player for sleep/sit.
 
 ---
 
