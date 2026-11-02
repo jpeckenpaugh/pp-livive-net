@@ -439,6 +439,7 @@ export class PanelsUI {
     onToast,
     onSound,
     getTravel,
+    getTravels,
     onTravel,
     getFurnish,
     onFurnishSelect,
@@ -482,6 +483,7 @@ export class PanelsUI {
     this.onToast = onToast;
     this.onSound = onSound;
     this.getTravel = getTravel;
+    this.getTravels = getTravels;
     this.onTravel = onTravel;
     this.getFurnish = getFurnish;
     this.onFurnishSelect = onFurnishSelect;
@@ -837,17 +839,20 @@ export class PanelsUI {
     const coins = game?.player?.coins || 0;
     const basket = basketSummary(game?.forage);
 
-    // Travel row: the current location's destination. It is absent when the
-    // only other location is disabled by data/world.json.
-    const travel = this.getTravel?.() || null;
-    if (travel?.label) {
+    // Travel rows: every other enabled location that declares a menu label.
+    // A single-target fallback keeps older hosts working unchanged.
+    const travels = Array.isArray(this.getTravels?.())
+      ? this.getTravels()
+      : [this.getTravel?.()].filter(Boolean);
+    for (const travel of travels) {
+      if (!travel?.label) continue;
       const travelRow = document.createElement('div');
       travelRow.className = 'friend-row travel-row';
       travelRow.setAttribute('role', 'listitem');
       travelRow.tabIndex = 0;
       const travelIcon = document.createElement('span');
       travelIcon.className = 'travel-icon';
-      travelIcon.textContent = '🚪';
+      travelIcon.textContent = travel.icon || '🚪';
       const travelCopy = document.createElement('div');
       travelCopy.className = 'friend-copy';
       const travelName = document.createElement('strong');
@@ -872,9 +877,11 @@ export class PanelsUI {
 
     // Home furnishing: every placed piece is listed here, so a bed tucked
     // behind the sofa is still selectable. The card's Move button and these rows
-    // are two paths into the same Furnish mode.
+    // are two paths into the same Furnish mode. Bought pieces wait in the
+    // unplaced list until they are dropped into the room.
     const furnishing = this.getFurnish?.() || null;
-    if (furnishing?.items?.length) {
+    const unplaced = Array.isArray(furnishing?.unplaced) ? furnishing.unplaced : [];
+    if (furnishing && (furnishing.items?.length || unplaced.length)) {
       const header = document.createElement('p');
       header.className = 'panel-note';
       header.style.margin = '10px 0 6px';
@@ -898,29 +905,29 @@ export class PanelsUI {
         list.append(stop);
       }
 
-      for (const item of furnishing.items) {
+      const appendFurnishRow = (entry, key, focused) => {
         const row = document.createElement('div');
         row.className = 'friend-row travel-row furnish-row';
-        if (item.uid === furnishing.uid) row.classList.add('nav-focused');
+        if (focused) row.classList.add('nav-focused');
         row.setAttribute('role', 'listitem');
         row.tabIndex = 0;
 
         const icon = document.createElement('span');
         icon.className = 'travel-icon';
-        icon.textContent = item.icon || '•';
+        icon.textContent = entry.icon || '•';
 
         const copy = document.createElement('div');
         copy.className = 'friend-copy';
         const name = document.createElement('strong');
-        name.textContent = item.label;
+        name.textContent = entry.label;
         const note = document.createElement('small');
-        note.textContent = item.note;
+        note.textContent = entry.note;
         copy.append(name, note);
         row.append(icon, copy);
 
         const select = () => {
           this.closeMenu();
-          this.onFurnishSelect?.(item.uid);
+          this.onFurnishSelect?.(key);
         };
         row.addEventListener('click', select);
         row.addEventListener('keydown', event => {
@@ -930,6 +937,21 @@ export class PanelsUI {
           select();
         });
         list.append(row);
+      };
+
+      for (const item of furnishing.items || []) {
+        appendFurnishRow(item, item.uid, item.uid === furnishing.uid);
+      }
+
+      if (unplaced.length) {
+        const unplacedHeader = document.createElement('p');
+        unplacedHeader.className = 'panel-note';
+        unplacedHeader.style.margin = '8px 0 6px';
+        unplacedHeader.textContent = 'Unplaced · ready to drop in';
+        list.append(unplacedHeader);
+        for (const item of unplaced) {
+          appendFurnishRow(item, item.key, false);
+        }
       }
     }
 

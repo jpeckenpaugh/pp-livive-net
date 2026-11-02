@@ -17,9 +17,11 @@ import {
 } from './world.js';
 import {
   DEFAULT_LOCATION,
+  SHOPKEEPER_ID,
   allowsForage,
   arrivalTile,
   createHomeLocation,
+  createShopLocation,
   doorsFor,
   isLocationEnabled,
   locationDef,
@@ -43,10 +45,14 @@ import {
   selectHomeRoster
 } from './home.js';
 import {
+  HOME_SHOP,
   blockedTiles,
+  buyShopItem,
   canPlaceHomeItem,
   consumeRecipe,
+  consumeHomeStorage,
   doorLaneTiles,
+  findHomePlacementTile,
   homeActionPriority,
   homeItem,
   homeItemAtTop,
@@ -55,7 +61,10 @@ import {
   homeItemTierInfo,
   homeItemUse,
   loadHomeItems,
+  nextHomeUid,
+  normalizeHomeStorage,
   rugTiles,
+  shopStock,
   toggleHomeItem,
   upgradeHomeItem
 } from './home_items.js';
@@ -450,7 +459,10 @@ function resolveCharacter(id) {
 
 function behaviorActors() {
   if (!game) return [];
-  return [...(game.npcs || []), ...(game.companions || [])];
+  // Shopkeepers and other fixed characters are scenery with dialogue, not
+  // wanderers, so the Park's behaviour runtime never schedules them.
+  return [...(game.npcs || []), ...(game.companions || [])]
+    .filter(actor => !actor?.stationary && !actor?.shopkeeper);
 }
 
 function showToast(message) {
@@ -651,6 +663,12 @@ function tableGamesFor(opponent) {
 
 function openDialogue(npc) {
   if (!npc) return;
+  // The keeper does not use the neighbour conversation flow: one short greeting
+  // and a door into the shop panel.
+  if (isShopkeeper(npc)) {
+    openShopBeat(npc);
+    return;
+  }
   closeHomeItemCard();
   setVoiceVolumeOpen(false);
   dismissNpcWatchPrompt();
@@ -1558,6 +1576,10 @@ function ensureGame() {
       canvas: $('world'),
       minimap: $('minimap'),
       onSelect: character => {
+        if (character && isShopkeeper(character)) {
+          game.openDialogueWith(character);
+          return;
+        }
         if (character) closeHomeItemCard();
         panels?.showCard(character);
       },
@@ -1902,6 +1924,7 @@ function applyState(state) {
   // A new world never inherits an item card or an uncommitted furnishing draft.
   closeHomeItemCard();
   endFurnish();
+  closeShopPanel({ silent: true });
 
   const requested = typeof state.currentLocation === 'string' ? state.currentLocation : DEFAULT_LOCATION;
   const locationId = isLocationEnabled(requested) ? requested : DEFAULT_LOCATION;
@@ -1939,6 +1962,10 @@ function applyState(state) {
   const homeItems = homeMode
     ? loadHomeItems(locationState, { house: worldData.house, door: worldData.door, roomTiles })
     : [];
+  // Home storage travels with the Home record even while the player is at the
+  // shop, so a purchase is never stranded in the shop's live state.
+  const stateHome = isObjectMap(state.locations) ? state.locations.home : null;
+  const homeStorage = normalizeHomeStorage(homeMode ? locationState.storage : stateHome?.storage);
   const homeBlocked = homeMode ? blockedTiles(homeItems) : new Set();
   const homeDoorLane = homeMode
     ? doorLaneTiles({ house: worldData.house, door: worldData.door })
@@ -1958,6 +1985,7 @@ function applyState(state) {
     .filter(npc => npc && npc.recipe && npc.name)
     .map(npc => {
       const hasPosition = Number.isFinite(Number(npc.x)) && Number.isFinite(Number(npc.y));
+      const isKeeper = locationId === 'shop' && (npc.id === SHOPKEEPER_ID);
       const entry = {
         id: npc.id || makeId('npc'),
         name: npc.name,
@@ -1971,7 +1999,10 @@ function applyState(state) {
         y: hasPosition ? Math.round(Number(npc.y)) : -1,
         direction: Number(npc.direction) || 0,
         coins: Number.isFinite(npc.coins) ? npc.coins : STARTING_COINS,
-        stabledCompanions: Array.isArray(npc.stabledCompanions) ? npc.stabledCompanions : []
+        stabledCompanions: Array.isArray(npc.stabledCompanions) ? npc.stabledCompanions : [],
+        // The shopkeeper stays behind the counter; the behaviour runtime skips him.
+        shopkeeper: isKeeper,
+        stationary: isKeeper
       };
       if (!isWalkable(terrain[entry.y]?.[entry.x])) {
         const spot = findOpenTile(terrain, { x: rawPlayer.x, y: rawPlayer.y });
@@ -2092,6 +2123,7 @@ function applyState(state) {
     wander: state.wander !== false
   });
   game.homeOverflow = homeSelection.overflow;
+  game.homeStorage = homeStorage;
   // Doors are per location, so they are set after setWorld resets them.
   game.doors = doorsFor(locationId, { terrain, spawn: rawPlayer });
 
@@ -2214,7 +2246,8 @@ function captureLocation() {
     player: game.player,
     npcs: game.npcs,
     forage: game.forage,
-    items: currentLocationId === 'home' ? game.homeItems : null
+    items: currentLocationId === 'home' ? game.homeItems : null,
+    storage: currentLocationId === 'home' ? activeHomeStorage() : null
   }, locationStates[currentLocationId] || null);
 }
 
@@ -2326,6 +2359,7 @@ function travelTo(targetId) {
   refreshMiniGameFlags();
   bubbles?.clear();
   panels?.closeAllPanels();
+  closeShopPanel({ silent: true });
   cancelFurnish({ silent: true });
   closeHomeItemCard();
   wakeHomePose({ silent: true });
@@ -2335,6 +2369,9 @@ function travelTo(targetId) {
   captureCompanions();
   if (targetId === 'home' && !locationStates.home) {
     locationStates.home = createHomeLocation({ basket: carriedBasket });
+  }
+  if (targetId === 'shop' && !locationStates.shop) {
+    locationStates.shop = createShopLocation({ basket: carriedBasket });
   }
   // The basket travels with the player, so Park apples are bakeable at Home and
   // a pie baked at Home spends the same count back in the Park.
@@ -2370,6 +2407,29 @@ function travelTo(targetId) {
 /** The live Home furniture records; always an array. */
 function activeHomeItems() {
   return Array.isArray(game?.homeItems) ? game.homeItems : [];
+}
+
+/** Bought-but-unplaced Home furniture; always an array. */
+function activeHomeStorage() {
+  return Array.isArray(game?.homeStorage) ? game.homeStorage : [];
+}
+
+/** Commit the unplaced list; captureLocation writes it into the save. */
+function applyHomeStorage(nextStorage) {
+  if (!game) return;
+  game.homeStorage = normalizeHomeStorage(nextStorage);
+}
+
+/**
+ * Keep `locations.home.storage` in step with the live list. Buying happens at
+ * the shop, where Home is not the captured location, so the purchase is mirrored
+ * into the Home record immediately (creating a fresh, unvisited Home if needed).
+ */
+function persistHomeStorage() {
+  if (!locationStates.home) {
+    locationStates.home = createHomeLocation({ basket: game?.forage?.basket });
+  }
+  locationStates.home = { ...locationStates.home, storage: activeHomeStorage() };
 }
 
 /**
@@ -2423,6 +2483,16 @@ function homeFurnishState() {
         icon: item?.icon || '•',
         zone: item?.zone || '',
         note: `${variantLabel(item, record.variant)} · ${homeItemTierInfo(record.itemId, record.tier).name} · x${record.x} y${record.y}${record.on ? ' · on' : ''}`
+      };
+    }),
+    unplaced: activeHomeStorage().map((entry, index) => {
+      const item = homeItem(entry.itemId);
+      return {
+        key: `storage:${index}`,
+        itemId: entry.itemId,
+        label: item?.label || entry.itemId,
+        icon: item?.icon || '•',
+        note: `in storage · ${variantLabel(item, entry.variant)} · pick to place`
       };
     })
   };
@@ -2497,6 +2567,9 @@ function cancelFurnish({ silent = false } = {}) {
 /** Enter Furnish with a placed piece selected (card Move, or the Backpack list). */
 function startFurnish(target) {
   if (currentLocationId !== 'home' || !game?.player) return false;
+  if (typeof target === 'string' && target.startsWith('storage:')) {
+    return startStoredFurnish(Number(target.slice('storage:'.length)));
+  }
   const record = typeof target === 'string' ? homeItemRecord(target) : target;
   const item = record ? homeItem(record.itemId) : null;
   if (!record?.uid || !item) return false;
@@ -2507,6 +2580,7 @@ function startFurnish(target) {
   furnish = {
     uid: record.uid,
     itemId: record.itemId,
+    storageIndex: null,
     draft: {
       x: record.x,
       y: record.y,
@@ -2524,6 +2598,57 @@ function startFurnish(target) {
   validateFurnish();
   panels?.renderInventory?.();
   showToast(`Moving the ${item.label}. Arrows move, R rotates, C recolours, Enter places.`);
+  return true;
+}
+
+/**
+ * Place a bought piece that has no position yet: find the first valid room
+ * tile, then run the same draft flow. Placing consumes its storage slot.
+ */
+function startStoredFurnish(index) {
+  if (currentLocationId !== 'home' || !game?.player) return false;
+  const entry = activeHomeStorage()[index] || null;
+  const item = entry ? homeItem(entry.itemId) : null;
+  if (!entry || !item) return false;
+  const homeDef = locationDef('home');
+  const spot = findHomePlacementTile({
+    items: activeHomeItems(),
+    itemId: entry.itemId,
+    roomTiles: game.homeRoomTiles || [],
+    house: homeDef?.house,
+    door: homeDef?.door,
+    terrain: game.terrain,
+    player: game.player
+  });
+  if (!spot) {
+    showToast(`There is no room for the ${item.label} right now.`);
+    return false;
+  }
+  closeHomeItemCard();
+  panels?.closeAllPanels();
+  wakeHomePose({ silent: true });
+
+  furnish = {
+    uid: nextHomeUid(activeHomeItems(), entry.itemId),
+    itemId: entry.itemId,
+    storageIndex: index,
+    draft: {
+      x: spot.x,
+      y: spot.y,
+      rot: 0,
+      variant: entry.variant,
+      tier: 0,
+      on: false
+    },
+    reason: null
+  };
+  game.homeDraft = { ...furnish.draft, uid: furnish.uid, itemId: furnish.itemId, reason: null };
+  game.player.path = [];
+  game.destination = null;
+  game.heldKeys = [];
+  validateFurnish();
+  panels?.renderInventory?.();
+  showToast(`Placing the ${item.label}. Arrows move, R rotates, C recolours, Enter places.`);
   return true;
 }
 
@@ -2579,11 +2704,35 @@ function placeFurnish() {
   }
   const label = homeItem(furnish.itemId)?.label || furnish.itemId;
   const draft = furnish.draft;
-  const nextItems = activeHomeItems().map(record => (
-    record.uid === furnish.uid
-      ? { ...record, x: draft.x, y: draft.y, rot: draft.rot, variant: draft.variant }
-      : record
-  ));
+  let nextItems;
+  if (furnish.storageIndex != null) {
+    const consumed = consumeHomeStorage(activeHomeStorage(), furnish.storageIndex);
+    if (!consumed.ok) {
+      showToast('That piece is no longer in storage.');
+      endFurnish();
+      return false;
+    }
+    applyHomeStorage(consumed.storage);
+    nextItems = [
+      ...activeHomeItems(),
+      {
+        uid: furnish.uid,
+        itemId: furnish.itemId,
+        x: draft.x,
+        y: draft.y,
+        rot: draft.rot,
+        variant: draft.variant,
+        tier: 0,
+        on: false
+      }
+    ];
+  } else {
+    nextItems = activeHomeItems().map(record => (
+      record.uid === furnish.uid
+        ? { ...record, x: draft.x, y: draft.y, rot: draft.rot, variant: draft.variant }
+        : record
+    ));
+  }
   applyHomeItems(nextItems, { standBuddies: true });
   endFurnish();
   sounds.play('place');
@@ -2727,6 +2876,163 @@ function closeHomeItemCard() {
   homeItemCard = null;
   const card = $('home-item-card');
   if (card) card.hidden = true;
+  return true;
+}
+
+// --- Shop ------------------------------------------------------------------
+
+function isShopkeeper(character) {
+  return Boolean(character) && (
+    character.shopkeeper === true
+    || (currentLocationId === 'shop' && character.id === SHOPKEEPER_ID)
+  );
+}
+
+/** The keeper's short beat: one line, then Browse or Leave. */
+function openShopBeat(keeper) {
+  if (!keeper) return false;
+  closeHomeItemCard();
+  setVoiceVolumeOpen(false);
+  dismissNpcWatchPrompt();
+  panels?.closeAllPanels();
+  game?.select?.(keeper.id);
+  behaviorRuntime?.setDialogue(true);
+  sounds.play('ui-click');
+  const greeting = locationDef('shop')?.shopkeeper?.greeting || 'Welcome in.';
+  showDialogueBeat(keeper, greeting, [
+    {
+      label: 'Browse',
+      className: 'primary',
+      onClick: () => {
+        dialogue.close();
+        openShopPanel();
+      }
+    },
+    {
+      label: 'Leave',
+      className: 'pill quiet',
+      onClick: () => dialogue.close()
+    }
+  ]);
+  return true;
+}
+
+function shopPanelOpen() {
+  return Boolean($('shop-panel') && !$('shop-panel').hidden);
+}
+
+/** Open the compact catalog. Play pauses until the panel is closed. */
+function openShopPanel() {
+  if (!game?.player) return false;
+  closeHomeItemCard();
+  panels?.closeAllPanels();
+  if (game.player.path) game.player.path = [];
+  game.destination = null;
+  game.heldKeys = [];
+  game.paused = true;
+  game.interactive = false;
+  const result = $('shop-result');
+  if (result) {
+    result.hidden = true;
+    result.textContent = '';
+  }
+  renderShopPanel();
+  const panel = $('shop-panel');
+  if (panel) panel.hidden = false;
+  $('shop-close')?.focus?.({ preventScroll: true });
+  return true;
+}
+
+function closeShopPanel({ silent = false } = {}) {
+  const panel = $('shop-panel');
+  if (!panel || panel.hidden) return false;
+  panel.hidden = true;
+  const result = $('shop-result');
+  if (result) {
+    result.hidden = true;
+    result.textContent = '';
+  }
+  if (game) {
+    game.paused = false;
+    game.interactive = true;
+  }
+  if (!silent) sounds.play('ui-click');
+  return true;
+}
+
+/** Coins, title, and one row per stock item. */
+function renderShopPanel() {
+  const list = $('shop-list');
+  if (!list) return;
+  const balance = Number(game?.player?.coins) || 0;
+  const balanceEl = $('shop-balance');
+  if (balanceEl) balanceEl.textContent = `${Math.max(0, Math.round(balance))} 🪙`;
+  const title = $('shop-title');
+  if (title) title.textContent = HOME_SHOP.title || 'Shop';
+  const note = $('shop-note');
+  if (note) note.textContent = HOME_SHOP.note || 'a few nice things for the house.';
+
+  list.replaceChildren();
+  for (const entry of shopStock()) {
+    const row = document.createElement('div');
+    row.className = 'shop-row';
+    row.setAttribute('role', 'listitem');
+
+    const icon = document.createElement('span');
+    icon.className = 'shop-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = entry.icon;
+
+    const copy = document.createElement('div');
+    copy.className = 'shop-copy';
+    const name = document.createElement('strong');
+    name.textContent = entry.label;
+    const price = document.createElement('small');
+    price.textContent = `${entry.price} coins`;
+    copy.append(name, price);
+
+    const buy = document.createElement('button');
+    buy.type = 'button';
+    buy.className = 'pill primary shop-buy';
+    buy.textContent = `Buy · ${entry.price}🪙`;
+    buy.setAttribute('aria-label', `Buy the ${entry.label} for ${entry.price} coins`);
+    buy.addEventListener('click', () => buyShopItemNow(entry.itemId));
+
+    row.append(icon, copy, buy);
+    list.append(row);
+  }
+}
+
+/** One click: pay, add to unplaced storage, refresh, and say what happened. */
+function buyShopItemNow(itemId) {
+  if (!game?.player) return false;
+  const result = buyShopItem(itemId, {
+    coins: game.player.coins,
+    storage: activeHomeStorage()
+  });
+  const out = $('shop-result');
+  const say = text => {
+    if (!out) return;
+    out.textContent = text;
+    out.hidden = false;
+  };
+
+  if (!result.ok) {
+    if (result.reason === 'insufficient') {
+      say(`need ${result.short} more 🪙 for the ${result.entry?.label || 'piece'}.`);
+    } else {
+      say('that piece is not on the shelf.');
+    }
+    return false;
+  }
+
+  game.player.coins = result.coins;
+  applyHomeStorage(result.storage);
+  persistHomeStorage();
+  sounds.play('pickup');
+  saveNow();
+  renderShopPanel();
+  say(`bought the ${result.entry.label}. it is waiting in furnish.`);
   return true;
 }
 
@@ -3145,6 +3451,7 @@ function bindEvents() {
   });
   $('home-item-close')?.addEventListener('click', () => closeHomeItemCard());
   $('home-item-upgrade')?.addEventListener('click', upgradeHomeItemCard);
+  $('shop-close')?.addEventListener('click', () => closeShopPanel());
   document.addEventListener('pointerdown', event => {
     if (!homeItemCard) return;
     const card = $('home-item-card');
@@ -3195,6 +3502,11 @@ function bindEvents() {
     if (homeItemCard) {
       event.preventDefault();
       closeHomeItemCard();
+      return;
+    }
+    if (shopPanelOpen()) {
+      event.preventDefault();
+      closeShopPanel();
       return;
     }
     if (game?.player?.homePose) {
@@ -3395,6 +3707,13 @@ function boot() {
       const target = travelTargets(currentLocationId)[0] || null;
       return target ? { id: target.id, label: target.label, note: target.note } : null;
     },
+    getTravels: () => travelTargets(currentLocationId)
+      .map(target => ({
+        id: target.id,
+        label: target.label,
+        note: target.note,
+        icon: target.id === 'shop' ? '🛍️' : (target.id === 'home' ? '🏠' : '🚪')
+      })),
     onTravel: targetId => {
       panels?.closeMenu();
       return travelTo(targetId);

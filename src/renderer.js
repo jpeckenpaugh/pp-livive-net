@@ -668,6 +668,93 @@ function drawDresser(ctx, box, colors) {
   }
 }
 
+function drawPiano(ctx, box, colors) {
+  itemShadow(ctx, box);
+  const bodyHeight = TILE * 0.86;
+  const bodyY = box.baseY - bodyHeight;
+  fillRoundRect(ctx, box.left, bodyY, box.width, bodyHeight, 5, colors.base);
+  fillRoundRect(ctx, box.left + 3, bodyY + 3, box.width - 6, bodyHeight - 6, 3, colors.trim);
+  // Lid, music ledge, and the keys along the front edge.
+  fillRoundRect(ctx, box.left + TILE * 0.08, bodyY + TILE * 0.08, box.width - TILE * 0.16, TILE * 0.2, 3, colors.accent);
+  fillRoundRect(ctx, box.left + TILE * 0.05, bodyY + TILE * 0.3, box.width - TILE * 0.1, TILE * 0.12, 2, colors.base);
+  const keysY = box.baseY - TILE * 0.3;
+  fillRoundRect(ctx, box.left + TILE * 0.04, keysY, box.width - TILE * 0.08, TILE * 0.22, 3, colors.accent);
+  ctx.save();
+  ctx.fillStyle = colors.trim;
+  const keyCount = Math.max(6, Math.round((box.width - TILE * 0.1) / (TILE * 0.11)));
+  for (let index = 1; index < keyCount; index += 1) {
+    const x = box.left + TILE * 0.04 + (index * (box.width - TILE * 0.08)) / keyCount;
+    ctx.fillRect(x, keysY + 1, Math.max(1, TILE * 0.018), TILE * 0.13);
+  }
+  ctx.restore();
+  fillRoundRect(ctx, box.left + TILE * 0.06, box.baseY - TILE * 0.06, TILE * 0.1, TILE * 0.06, 2, colors.trim);
+  fillRoundRect(ctx, box.right - TILE * 0.16, box.baseY - TILE * 0.06, TILE * 0.1, TILE * 0.06, 2, colors.trim);
+}
+
+function drawAquarium(ctx, box, colors) {
+  itemShadow(ctx, box);
+  const standHeight = TILE * 0.16;
+  const standY = box.baseY - standHeight;
+  fillRoundRect(ctx, box.left + TILE * 0.08, standY, box.width - TILE * 0.16, standHeight, 3, colors.trim);
+  const tankHeight = TILE * 0.74;
+  const tankY = standY - tankHeight;
+  const tankX = box.left + TILE * 0.06;
+  const tankW = box.width - TILE * 0.12;
+  fillRoundRect(ctx, tankX, tankY, tankW, tankHeight, 4, colors.base);
+  ctx.save();
+  ctx.globalAlpha = 0.55;
+  fillRoundRect(ctx, tankX + 3, tankY + 3, tankW - 6, tankHeight - 6, 3, colors.accent);
+  ctx.restore();
+  // Two little fish and a bubble trail.
+  ctx.fillStyle = colors.trim;
+  for (const fish of [
+    { dx: 0.3, dy: 0.58, w: 0.12 },
+    { dx: 0.62, dy: 0.38, w: 0.1 }
+  ]) {
+    ctx.beginPath();
+    ctx.ellipse(tankX + tankW * fish.dx, tankY + tankHeight * fish.dy, TILE * fish.w, TILE * 0.05, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.strokeStyle = colors.accent;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(tankX + tankW * 0.2, tankY + tankHeight * 0.7);
+  ctx.lineTo(tankX + tankW * 0.2, tankY + tankHeight * 0.45);
+  ctx.stroke();
+  strokeRoundRect(ctx, tankX, tankY, tankW, tankHeight, 4, colors.trim, 2);
+}
+
+function drawWallClock(ctx, box, colors) {
+  itemShadow(ctx, box);
+  const centerX = (box.left + box.right) / 2;
+  const caseWidth = Math.min(box.width * 0.56, TILE * 0.54);
+  const caseHeight = TILE * 1.44;
+  const caseX = centerX - caseWidth / 2;
+  const caseY = box.baseY - caseHeight;
+  fillRoundRect(ctx, caseX, caseY, caseWidth, caseHeight, caseWidth * 0.24, colors.base);
+  strokeRoundRect(ctx, caseX + 2, caseY + 2, caseWidth - 4, caseHeight - 4, caseWidth * 0.2, colors.trim, 1.5);
+  const faceRadius = caseWidth * 0.34;
+  const faceX = centerX;
+  const faceY = caseY + caseWidth * 0.44;
+  ctx.beginPath();
+  ctx.arc(faceX, faceY, faceRadius, 0, Math.PI * 2);
+  ctx.fillStyle = colors.accent;
+  ctx.fill();
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = Math.max(1.5, TILE * 0.025);
+  ctx.beginPath();
+  ctx.moveTo(faceX, faceY);
+  ctx.lineTo(faceX, faceY - faceRadius * 0.55);
+  ctx.moveTo(faceX, faceY);
+  ctx.lineTo(faceX + faceRadius * 0.45, faceY + faceRadius * 0.2);
+  ctx.stroke();
+  fillRoundRect(ctx, centerX - caseWidth * 0.12, caseY + caseHeight - TILE * 0.28, caseWidth * 0.24, TILE * 0.5, 3, colors.trim);
+  fillRoundRect(ctx, caseX - 2, box.baseY - TILE * 0.08, caseWidth + 4, TILE * 0.08, 2, colors.trim);
+}
+
 function drawGenericFurniture(ctx, box, colors) {
   itemShadow(ctx, box);
   fillRoundRect(ctx, box.left, box.baseY - TILE * 0.6, box.width, TILE * 0.6, 4, colors.base);
@@ -774,7 +861,10 @@ const HOME_ITEM_SHAPES = {
   chair: drawChair,
   bed: drawBed,
   nightstand: drawNightstand,
-  dresser: drawDresser
+  dresser: drawDresser,
+  piano: drawPiano,
+  aquarium: drawAquarium,
+  'wall-clock': drawWallClock
 };
 
 export class WorldRenderer {

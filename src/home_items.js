@@ -13,6 +13,8 @@ export const HOME_ITEM_ITEMS = homeItemsData.items || {};
 export const HOME_ITEM_IDS = Object.keys(HOME_ITEM_ITEMS);
 export const DEFAULT_HOME_LAYOUT = Array.isArray(homeItemsData.layout) ? homeItemsData.layout : [];
 export const BACKPACK_ITEM_IDS = HOME_ITEM_IDS.filter(id => HOME_ITEM_ITEMS[id].backpack === true);
+export const HOME_SHOP = homeItemsData.shop || {};
+export const SHOP_STOCK_IDS = Array.isArray(HOME_SHOP.stock) ? HOME_SHOP.stock : [];
 
 const ITEM_BY_ID = new Map(HOME_ITEM_IDS.map(id => [id, HOME_ITEM_ITEMS[id]]));
 
@@ -160,6 +162,127 @@ export function upgradeHomeItem(items = [], uid, coins = 0) {
     coins: balance - info.next.price,
     tier: info.next
   };
+}
+
+/**
+ * The shop's stock, resolved against the catalog. Only items that exist and
+ * carry a positive price are offered, so a bad data row cannot sell nothing.
+ */
+export function shopStock() {
+  return SHOP_STOCK_IDS
+    .map(itemId => {
+      const item = homeItem(itemId);
+      const price = Math.max(0, Math.round(Number(item?.price) || 0));
+      if (!item || price <= 0) return null;
+      return {
+        itemId,
+        label: item.label || itemId,
+        icon: item.icon || '•',
+        price,
+        line: item.use?.line || ''
+      };
+    })
+    .filter(Boolean);
+}
+
+/** One-click purchase. Nothing mutates; the caller commits coins and storage. */
+export function buyShopItem(itemId, { coins = 0, storage = [] } = {}) {
+  const entry = shopStock().find(candidate => candidate.itemId === itemId) || null;
+  const balance = Math.max(0, Math.round(Number(coins) || 0));
+  const list = normalizeHomeStorage(storage);
+  if (!entry) {
+    return { ok: false, reason: 'unknown-item', coins: balance, storage: list, cost: 0, short: 0, entry: null };
+  }
+  if (balance < entry.price) {
+    return {
+      ok: false,
+      reason: 'insufficient',
+      coins: balance,
+      storage: list,
+      cost: entry.price,
+      short: entry.price - balance,
+      entry
+    };
+  }
+  return {
+    ok: true,
+    reason: null,
+    coins: balance - entry.price,
+    storage: [...list, { itemId: entry.itemId, variant: 0 }],
+    cost: entry.price,
+    short: 0,
+    entry
+  };
+}
+
+/** Owned-but-unplaced furniture: known item ids with a valid palette index. */
+export function normalizeHomeStorage(entries) {
+  if (!Array.isArray(entries)) return [];
+  const records = [];
+  for (const entry of entries) {
+    if (!isRecord(entry)) continue;
+    const item = homeItem(entry.itemId);
+    if (!item) continue;
+    records.push({ itemId: item.id, variant: normalizeVariant(item, entry.variant) });
+  }
+  return records;
+}
+
+/** Remove one stored piece so placing it cannot leave a duplicate behind. */
+export function consumeHomeStorage(storage = [], index) {
+  const list = normalizeHomeStorage(storage);
+  const at = Number(index);
+  if (!Number.isInteger(at) || at < 0 || at >= list.length) {
+    return { ok: false, storage: list, entry: null };
+  }
+  return {
+    ok: true,
+    entry: list[at],
+    storage: list.filter((entry, position) => position !== at)
+  };
+}
+
+/** A uid that no placed record or pending draft already uses. */
+export function nextHomeUid(items = [], itemId) {
+  const used = new Set((Array.isArray(items) ? items : []).map(entry => entry?.uid).filter(Boolean));
+  let index = 1;
+  while (used.has(`home_${itemId}_${index}`)) index += 1;
+  return `home_${itemId}_${index}`;
+}
+
+/**
+ * First room tile where a stored piece fits, reading top-left to bottom-right.
+ * Used when Furnish opens a piece that has no position yet.
+ */
+export function findHomePlacementTile({
+  items = [],
+  itemId,
+  roomTiles = [],
+  house = null,
+  door = null,
+  terrain = null,
+  player = null,
+  allowPlayer = false
+} = {}) {
+  const tiles = (Array.isArray(roomTiles) ? roomTiles : [])
+    .slice()
+    .sort((a, b) => (a.y - b.y) || (a.x - b.x));
+  for (const tile of tiles) {
+    const placement = canPlaceHomeItem({
+      items,
+      itemId,
+      x: tile.x,
+      y: tile.y,
+      roomTiles,
+      house,
+      door,
+      terrain,
+      player,
+      allowPlayer
+    });
+    if (placement.ok) return { x: tile.x, y: tile.y };
+  }
+  return null;
 }
 
 export function footprintTiles({ itemId, x, y, rot = 0 } = {}) {

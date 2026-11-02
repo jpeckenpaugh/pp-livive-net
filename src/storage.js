@@ -78,7 +78,10 @@ export function activeLocation(state) {
         terrain: record.terrain,
         player: record.player,
         npcs: record.npcs,
-        forage: record.forage
+        forage: record.forage,
+        // Home-only add-ons. Conditional keys keep older fixtures byte-identical.
+        ...(Array.isArray(record.items) ? { items: record.items } : {}),
+        ...(Array.isArray(record.storage) ? { storage: record.storage } : {})
       };
     }
   }
@@ -333,7 +336,8 @@ export function captureLocationRecord({
   npcs = null,
   forage = null,
   decor = null,
-  items = null
+  items = null,
+  storage = null
 } = {}, previous = null) {
   const base = isObject(previous) ? previous : {};
   const encodedTerrain = Array.isArray(terrain) ? encodeTerrain(terrain) : terrain;
@@ -350,6 +354,16 @@ export function captureLocationRecord({
   const nextItems = Array.isArray(items)
     ? items.filter(isObject).map(entry => ({ ...entry }))
     : (Array.isArray(base.items) ? base.items.filter(isObject).map(entry => ({ ...entry })) : null);
+  // `storage` is Home-only: owned furniture bought at the shop but not placed.
+  // A passed array (even empty) wins; otherwise the previous list is preserved.
+  const nextStorage = Array.isArray(storage)
+    ? storage.filter(isObject).map(entry => ({
+        itemId: entry.itemId,
+        variant: Number.isFinite(Number(entry.variant)) ? Math.max(0, Math.round(Number(entry.variant))) : 0
+      }))
+    : (Array.isArray(base.storage)
+      ? base.storage.filter(isObject).map(entry => ({ ...entry }))
+      : null);
 
   return {
     ...base,
@@ -359,7 +373,8 @@ export function captureLocationRecord({
     npcs: nextNpcs,
     forage: normalizeForage(forage ?? base.forage),
     ...(nextDecor ? { decor: nextDecor } : {}),
-    ...(nextItems ? { items: nextItems } : {})
+    ...(nextItems ? { items: nextItems } : {}),
+    ...(nextStorage ? { storage: nextStorage } : {})
   };
 }
 

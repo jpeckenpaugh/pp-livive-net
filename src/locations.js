@@ -63,10 +63,12 @@ export function travelTargets(fromId, { isEnabled = isLocationEnabled } = {}) {
     }));
 }
 
-/** Build the terrain for a location. Home also drops mushrooms (no harvest). */
+/** Build the terrain for a location. Interior lots use the Home builder. */
 export function worldFor(id, seed) {
-  if (id === 'home') {
-    const world = generateHome(seed);
+  const def = locationDef(id);
+  if (def?.house) {
+    const world = generateHome(seed ?? def.seed, def);
+    // Rooms that opt out of forage never grow mushrooms either.
     return {
       ...world,
       scenery: (world.scenery || []).filter(item => !FORAGE_MUSHROOM_TYPES.includes(item.type))
@@ -178,6 +180,7 @@ export function arrivalTile(id, record) {
 /**
  * A fresh Home location record. Forage is deliberately seeded and empty: Home
  * never grows or collects apples, and the player's basket travels with them.
+ * `storage` holds bought furniture that is owned but not yet placed.
  */
 export function createHomeLocation({ seed = locationDef('home')?.seed, basket = null } = {}) {
   const world = worldFor('home', seed);
@@ -186,15 +189,55 @@ export function createHomeLocation({ seed = locationDef('home')?.seed, basket = 
     terrain: encodeTerrain(world.grid),
     player: { x: world.spawn.x, y: world.spawn.y, direction: 0 },
     npcs: [],
-    forage: {
-      apples: [],
-      basket: {
-        apple: Math.max(0, Math.floor(Number(basket?.apple) || 0)),
-        mushroom: Math.max(0, Math.floor(Number(basket?.mushroom) || 0))
-      },
-      harvested: {},
-      nextAppleAt: 0,
-      seeded: true
-    }
+    storage: [],
+    forage: emptyForage(basket)
+  };
+}
+
+function emptyForage(basket = null) {
+  return {
+    apples: [],
+    basket: {
+      apple: Math.max(0, Math.floor(Number(basket?.apple) || 0)),
+      mushroom: Math.max(0, Math.floor(Number(basket?.mushroom) || 0))
+    },
+    harvested: {},
+    nextAppleAt: 0,
+    seeded: true
+  };
+}
+
+/** The shopkeeper id is data, with a stable fallback for older world files. */
+export const SHOPKEEPER_ID = locationDef('shop')?.shopkeeper?.id || 'shopkeeper';
+
+/**
+ * A fresh Shop record: the same interior builder as Home, plus one fixed
+ * shopkeeper. The keeper is a plain NPC record, not a behaviour actor, so the
+ * Park's wander runtime never claims him.
+ */
+export function createShopLocation({ basket = null } = {}) {
+  const def = locationDef('shop');
+  const world = worldFor('shop', def?.seed);
+  const keeper = def?.shopkeeper || {};
+  const hasKeeper = Number.isInteger(keeper.x) && Number.isInteger(keeper.y);
+  return {
+    seed: def?.seed,
+    terrain: encodeTerrain(world.grid),
+    player: { x: world.spawn.x, y: world.spawn.y, direction: 0 },
+    npcs: hasKeeper
+      ? [{
+          id: keeper.id || SHOPKEEPER_ID,
+          name: keeper.name || 'Shopkeeper',
+          recipe: { seed: keeper.seed || 'shopkeeper', look: keeper.look || {} },
+          x: keeper.x,
+          y: keeper.y,
+          direction: Number.isFinite(Number(keeper.direction)) ? Number(keeper.direction) : 0,
+          inventory: [],
+          equipped: [],
+          coins: 0,
+          stabledCompanions: []
+        }]
+      : [],
+    forage: emptyForage(basket)
   };
 }

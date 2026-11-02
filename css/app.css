@@ -446,6 +446,7 @@ body.activity-open .minimap-wrap,
 body.activity-open #npc-card,
 body.activity-open #home-note,
 body.activity-open #home-item-card,
+body.activity-open #shop-panel,
 body.activity-open #furnish-hud {
   display: none !important;
 }
@@ -553,6 +554,123 @@ body.activity-open #furnish-hud {
 .home-item-actions.secondary .pill {
   min-height: 32px;
   font-size: 10.5px;
+}
+
+/* Shop card: a compact catalog, above the canvas and clear of the HUD. */
+.shop-panel {
+  position: fixed;
+  top: 76px;
+  left: 16px;
+  z-index: 62;
+  width: 272px;
+  padding: 13px;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: var(--panel);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow);
+  animation: rise 160ms ease both;
+}
+
+.shop-panel[hidden] {
+  display: none;
+}
+
+.shop-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shop-head strong {
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+
+.shop-balance {
+  margin-left: auto;
+  padding: 3px 8px;
+  border: 1px solid rgba(226, 196, 138, 0.34);
+  border-radius: 999px;
+  background: rgba(226, 196, 138, 0.1);
+  color: #ecd6a4;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.shop-list {
+  display: grid;
+  gap: 6px;
+}
+
+.shop-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid rgba(163, 210, 139, 0.14);
+  border-radius: 10px;
+  background: rgba(25, 39, 29, 0.6);
+}
+
+.shop-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: radial-gradient(circle at 50% 70%, rgba(240, 212, 138, 0.22), transparent 68%);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.shop-copy strong {
+  display: block;
+  overflow: hidden;
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.shop-copy small {
+  display: block;
+  margin-top: 1px;
+  color: var(--muted);
+  font-size: 9.5px;
+}
+
+.shop-buy {
+  min-height: 32px;
+  padding: 6px 9px;
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.shop-result {
+  margin: 9px 0 0;
+  padding: 6px 8px;
+  border-radius: 9px;
+  background: rgba(182, 227, 124, 0.1);
+  color: var(--accent-strong);
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+.shop-result[hidden] {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .shop-panel {
+    top: 64px;
+    left: 12px;
+    width: calc(100vw - 24px);
+    max-width: 320px;
+  }
 }
 
 /* Furnish mode banner, clear of the touch d-pad. */

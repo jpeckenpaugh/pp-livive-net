@@ -43,7 +43,7 @@ function key(tile) {
 }
 
 test('home_items.json describes every furnished room type with three quality tiers', () => {
-  assert.equal(HOME_ITEM_IDS.length, 17);
+  assert.equal(HOME_ITEM_IDS.length, 20);
 
   for (const id of HOME_ITEM_IDS) {
     const item = HOME_ITEM_ITEMS[id];

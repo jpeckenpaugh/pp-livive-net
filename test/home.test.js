@@ -114,12 +114,18 @@ test('the Home flag exposes the Park door and the menu row', () => {
   assert.ok(isWalkable(typeAt(park.grid, door.x, door.y)));
 
   const targets = travelTargets('park');
-  assert.deepEqual(targets.map(target => target.id), ['home']);
+  assert.deepEqual(targets.map(target => target.id), ['home', 'shop']);
   assert.equal(targets[0].label, 'Home');
-  // Home offers the Park as its way out.
+  assert.equal(targets[1].label, 'Shop');
+  // Home offers the Park (and the shop) as its way out.
   assert.deepEqual(
     travelTargets('home').map(target => target.id),
-    ['park']
+    ['park', 'shop']
+  );
+  // The shop is menu-only from the park, and its door returns outside.
+  assert.deepEqual(
+    travelTargets('shop').map(target => target.id),
+    ['park', 'home']
   );
 });
 

@@ -412,7 +412,81 @@
         { "name": "comfy", "price": 10, "accent": "#e2c48a" },
         { "name": "deluxe", "price": 25, "accent": "#cfe9f4" }
       ]
+    },
+    "piano": {
+      "id": "piano",
+      "label": "upright piano",
+      "zone": "living",
+      "icon": "🎹",
+      "size": { "w": 2, "h": 1 },
+      "solid": true,
+      "shape": "piano",
+      "price": 15,
+      "colors": { "base": "#4a3a33", "accent": "#e9e3d4", "trim": "#2b211d" },
+      "variants": [
+        { "id": "plain", "label": "plain" },
+        { "id": "warm", "label": "warm", "colors": { "base": "#5c3f2e", "accent": "#f2e6cc" } },
+        { "id": "cool", "label": "cool", "colors": { "base": "#323c42", "accent": "#dfe9ec" } }
+      ],
+      "interact": { "kind": "look", "line": "the keys are cool under your fingers." },
+      "use": { "verb": "Play", "kind": "look", "line": "you pick out a small tune." },
+      "tiers": [
+        { "name": "plain", "price": 0, "accent": "#b7c6a2" },
+        { "name": "tuned", "price": 12, "accent": "#e2c48a" },
+        { "name": "concert", "price": 30, "accent": "#cfe9f4" }
+      ]
+    },
+    "aquarium": {
+      "id": "aquarium",
+      "label": "aquarium",
+      "zone": "living",
+      "icon": "🐠",
+      "size": { "w": 2, "h": 1 },
+      "solid": true,
+      "shape": "aquarium",
+      "price": 30,
+      "colors": { "base": "#33524f", "accent": "#9fd7d0", "trim": "#1f3331" },
+      "variants": [
+        { "id": "plain", "label": "plain" },
+        { "id": "warm", "label": "warm", "colors": { "base": "#4d4a3a", "accent": "#e6cf95" } },
+        { "id": "cool", "label": "cool", "colors": { "base": "#2f4654", "accent": "#b3dcea" } }
+      ],
+      "interact": { "kind": "look", "line": "the fish drift in slow circles." },
+      "use": { "verb": "Watch", "kind": "look", "line": "a little bubble wobbles to the top." },
+      "tiers": [
+        { "name": "plain", "price": 0, "accent": "#b7c6a2" },
+        { "name": "planted", "price": 15, "accent": "#e2c48a" },
+        { "name": "reef", "price": 35, "accent": "#cfe9f4" }
+      ]
+    },
+    "wall-clock": {
+      "id": "wall-clock",
+      "label": "wall clock",
+      "zone": "living",
+      "icon": "🕰️",
+      "size": { "w": 1, "h": 1 },
+      "solid": true,
+      "shape": "wall-clock",
+      "price": 20,
+      "colors": { "base": "#6b4a34", "accent": "#f0e6cf", "trim": "#3d2a1e" },
+      "variants": [
+        { "id": "plain", "label": "plain" },
+        { "id": "warm", "label": "warm", "colors": { "base": "#7d5233", "accent": "#f6e3b4" } },
+        { "id": "cool", "label": "cool", "colors": { "base": "#4a5158", "accent": "#dfe8ee" } }
+      ],
+      "interact": { "kind": "look", "line": "the clock ticks steadily." },
+      "use": { "verb": "Check", "kind": "look", "line": "it is always about tea time." },
+      "tiers": [
+        { "name": "plain", "price": 0, "accent": "#b7c6a2" },
+        { "name": "oiled", "price": 8, "accent": "#e2c48a" },
+        { "name": "heirloom", "price": 22, "accent": "#cfe9f4" }
+      ]
     }
+  },
+  "shop": {
+    "title": "Corner shop",
+    "note": "a few nice things for the house.",
+    "stock": ["piano", "aquarium", "wall-clock"]
   },
   "layout": [
     { "itemId": "bookshelf", "dx": 1, "dy": 1, "rot": 0, "variant": 0 },
