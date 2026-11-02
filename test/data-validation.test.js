@@ -9,6 +9,7 @@ import { validateConfig } from '../src/behavior/config.js';
 import { validateMeta, INPUT_MODES, RENDER_LAYERS } from '../src/minigames/contract.js';
 import { REJECT_REASONS } from '../src/minigames/strip.js';
 import { EFFECT_MOTIONS, EFFECT_SLOTS } from '../src/effects.js';
+import { TRADE_REJECT_REASONS, TRADE_TEMPLATES, validateOffer } from '../src/trade.js';
 
 function readJson(name) {
   return JSON.parse(readFileSync(new URL(`../data/${name}`, import.meta.url), 'utf8'));
@@ -399,4 +400,39 @@ test('world.json locations resolve ids, doors, spawns, and the Home flag', () =>
   const inside = home.spawn.x > x && home.spawn.x < x + width - 1
     && home.spawn.y > y && home.spawn.y < y + height - 1;
   assert.ok(inside, 'home spawn must stand inside the room');
+});
+
+test('every catalog item carries a value and a tradeable flag in the agreed bands', () => {
+  for (const item of Object.values(catalog)) {
+    assert.ok(Number.isInteger(item.value) && item.value > 0, `${item.id} needs a positive integer value`);
+    assert.equal(typeof item.tradeable, 'boolean', `${item.id} needs a boolean tradeable flag`);
+
+    const isEffect = item.kind === 'effect';
+    assert.equal(item.tradeable, isEffect, `${item.id} tradeability should follow its category`);
+    if (isEffect) {
+      assert.ok(item.value >= 20 && item.value <= 60, `${item.id} effect value ${item.value} outside 20–60`);
+    } else {
+      assert.ok(item.value >= 10 && item.value <= 40, `${item.id} toy value ${item.value} outside 10–40`);
+      assert.ok(['throw', 'unfurl'].includes(item.action), `${item.id} should be a toy`);
+    }
+  }
+});
+
+test('every trade template validates, matches its key, and names tradeable items', () => {
+  const templates = Object.entries(TRADE_TEMPLATES);
+  assert.ok(templates.length >= 2, 'trading needs at least two templates');
+  assert.equal(new Set(TRADE_REJECT_REASONS).size, 4);
+
+  for (const [key, offer] of templates) {
+    assert.equal(offer.id, key, `${key} id must match its template key`);
+    const result = validateOffer(offer);
+    assert.equal(result.ok, true, `${key}: ${result.detail || 'invalid'}`);
+
+    for (const side of [offer.give, offer.get]) {
+      if (side.itemId) {
+        assert.ok(catalog[side.itemId], `${key} references missing item ${side.itemId}`);
+        assert.equal(catalog[side.itemId].tradeable, true, `${key} trades untradeable ${side.itemId}`);
+      }
+    }
+  }
 });

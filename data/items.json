@@ -4,6 +4,8 @@
     "ball": {
       "id": "ball",
       "name": "Bouncy Ball",
+      "value": 10,
+      "tradeable": false,
       "action": "throw",
       "description": "Throw for your companion to fetch.",
       "defaultColor": "#e63946"
@@ -11,6 +13,8 @@
     "tic-tac-toe": {
       "id": "tic-tac-toe",
       "name": "Tic-Tac-Toe",
+      "value": 15,
+      "tradeable": false,
       "action": "unfurl",
       "description": "Unfurl a 3x3 play mat on the grass.",
       "icon": "🎲"
@@ -18,6 +22,8 @@
     "checkers": {
       "id": "checkers",
       "name": "Checkerboard",
+      "value": 20,
+      "tradeable": false,
       "action": "unfurl",
       "description": "Unfurl an 8x8 draughts board on the grass.",
       "icon": "🏁"
@@ -25,6 +31,8 @@
     "chess": {
       "id": "chess",
       "name": "Chess Set",
+      "value": 40,
+      "tradeable": false,
       "action": "unfurl",
       "description": "Unfurl an 8x8 chess board on the grass.",
       "icon": "♟️"
@@ -32,6 +40,8 @@
     "memory-grid": {
       "id": "memory-grid",
       "name": "Memory Grid",
+      "value": 15,
+      "tradeable": false,
       "action": "unfurl",
       "description": "Unfurl a 4x4 card-matching mat on the grass.",
       "icon": "🧠"
@@ -39,6 +49,8 @@
     "connect-four": {
       "id": "connect-four",
       "name": "Connect Four",
+      "value": 20,
+      "tradeable": false,
       "action": "unfurl",
       "description": "Unfurl a 7x6 disc-dropping board on the grass.",
       "icon": "🔴"
@@ -46,6 +58,8 @@
     "big-o-bracelet": {
       "id": "big-o-bracelet",
       "name": "Big-O Bracelet",
+      "value": 40,
+      "tradeable": true,
       "kind": "effect",
       "action": "equip",
       "slot": "charm",
@@ -58,6 +72,8 @@
     "chamo-clip": {
       "id": "chamo-clip",
       "name": "Chamo Clip",
+      "value": 30,
+      "tradeable": true,
       "kind": "effect",
       "action": "equip",
       "slot": "face",
@@ -70,6 +86,8 @@
     "teleport-tricorder": {
       "id": "teleport-tricorder",
       "name": "Teleport Tricorder",
+      "value": 60,
+      "tradeable": true,
       "kind": "effect",
       "action": "equip",
       "slot": "hand",
@@ -82,6 +100,8 @@
     "hover-halo": {
       "id": "hover-halo",
       "name": "Hover Halo",
+      "value": 45,
+      "tradeable": true,
       "kind": "effect",
       "action": "equip",
       "slot": "head",
@@ -94,6 +114,8 @@
     "prism-pin": {
       "id": "prism-pin",
       "name": "Prism Pin",
+      "value": 35,
+      "tradeable": true,
       "kind": "effect",
       "action": "equip",
       "slot": "charm",
@@ -106,6 +128,8 @@
     "echo-bell": {
       "id": "echo-bell",
       "name": "Echo Bell",
+      "value": 30,
+      "tradeable": true,
       "kind": "effect",
       "action": "equip",
       "slot": "charm",
@@ -118,6 +142,8 @@
     "bouncy-boots": {
       "id": "bouncy-boots",
       "name": "Bouncy Boots",
+      "value": 30,
+      "tradeable": true,
       "kind": "effect",
       "action": "equip",
       "slot": "feet",
@@ -130,6 +156,8 @@
     "buddy-cape": {
       "id": "buddy-cape",
       "name": "Buddy Cape",
+      "value": 50,
+      "tradeable": true,
       "kind": "effect",
       "action": "equip",
       "slot": "back",
@@ -142,6 +170,8 @@
     "glowworm-jar": {
       "id": "glowworm-jar",
       "name": "Glowworm Jar",
+      "value": 20,
+      "tradeable": true,
       "kind": "effect",
       "action": "equip",
       "slot": "hand",
@@ -154,6 +184,8 @@
     "lucky-clover": {
       "id": "lucky-clover",
       "name": "Lucky Clover",
+      "value": 60,
+      "tradeable": true,
       "kind": "effect",
       "action": "equip",
       "slot": "charm",
@@ -166,6 +198,8 @@
     "wings": {
       "id": "wings",
       "name": "Glider Wings",
+      "value": 55,
+      "tradeable": true,
       "kind": "effect",
       "action": "equip",
       "slot": "back",

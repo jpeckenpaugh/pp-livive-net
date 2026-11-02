@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "templates": {
+    "buy-hover-halo": {
+      "id": "buy-hover-halo",
+      "give": { "coins": 50 },
+      "get": { "itemId": "hover-halo", "qty": 1 }
+    },
+    "sell-hover-halo": {
+      "id": "sell-hover-halo",
+      "give": { "itemId": "hover-halo", "qty": 1 },
+      "get": { "coins": 35 }
+    },
+    "swap-prism-echo": {
+      "id": "swap-prism-echo",
+      "give": { "itemId": "prism-pin", "qty": 1 },
+      "get": { "itemId": "echo-bell", "qty": 1 }
+    }
+  }
+}
