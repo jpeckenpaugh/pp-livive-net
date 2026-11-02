@@ -162,6 +162,17 @@ schema change later.
   positions; `decor` stops being written.
 - Moving or restyling an item rewrites only its record.
 
+**Wave 7a decisions (autopilot, 2026-11-01)**
+
+- **Unify now.** Rug and plant fold into `home.items` in 7a; `home.decor` is read once when `items` is missing, then never written. The Backpack decor row keeps working by acting on the rug/plant items.
+- **Layout offsets** are footprint top-lefts relative to `house.x/y` (interior 1..15), tested for bounds, overlap, and reachability against the generated terrain.
+- **Draw order** sorts multi-tile items by footprint bottom row with a left-edge tie-break; the rug alone draws in the ground pass.
+- **Collision** is `game.homeBlockedTiles`, empty outside Home, checked in `tryStep` before reservations, and passed to `tickHomeBuddy`.
+- **Buddy placement** excludes furniture footprints and the door lane, not just wander.
+- **Save:** read `decor` only when `items` is missing; write `items`; keep the stale `decor` key preserved but unread for one wave as a downgrade hedge.
+- **Rendering:** one `drawHomeItem` dispatcher with per-shape helpers; colours and variants come from data.
+- **Tests:** a new `test/home-items.test.js` for data, layout, rotation, and blocked derivation; extended buddy tests; a save round-trip and migration case; and a door-to-spawn reachability assertion through `findPath`.
+
 ---
 
 ## 4. Collision and companions
