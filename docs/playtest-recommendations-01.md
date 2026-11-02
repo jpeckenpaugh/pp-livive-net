@@ -117,6 +117,16 @@ still says "bump into a neighbour to talk" while a board is open.
 **Files:** `src/main.js` (strip + target + rejection), `src/games/*.js` (expose a
 validation/reason helper if not already public), `css/app.css`, `index.html`.
 
+**Wave B decisions (2026-11-01)**
+
+- The strip reuses the `#hint` node: content swaps while a session is active, `aria-live="polite"`, and it is forced visible at narrow widths during a game. The original hint returns on clear.
+- Each game/adapter may expose `describeStatus()` returning `{ turnSeat, instruction }`; the host surfaces it through `getState()`. `null` means "no turn".
+- Rejections become a typed event `{ type: 'reject', reason, message }` with a closed reason set: `occupied`, `not-turn`, `off-square`, `illegal`. No string matching. All five boards get the seam; games that cannot describe a target return `null` and still show turn and instruction.
+- Each game may expose `describeTarget({x, y})` returning `{ tile, valid }`; the host draws one consistent ring on the `overlay` layer.
+- The strip owns only the terse state word (won/lost/draw/abandoned); the settlement dialogue keeps the narrative and rewards. The strip persists until the end dialogue closes.
+- The host owns a 50-entry ring buffer appended in `_notify` / `_processEvents`, read through `getTrace()`, memory only, cleared on park load. The Debug tab renders it as a compact list.
+- Strip copy (instructions and reason lines) lives in `data/minigames.json`; code supplies the reason key and turn seat.
+
 ---
 
 ## 4. #3 — Keep the board readable while moving
