@@ -10,6 +10,7 @@ import { shouldMirror, UP } from './facing.js';
 import { getAnimationProfile } from './animation.js';
 import { composeRenderTransform, resolveFx } from './effects.js';
 import { isMushroomHidden, isMushroomScenery } from './forage.js';
+import { decorItem } from './home.js';
 import sceneryAssets from '../data/nature_scenery.json' with { type: 'json' };
 
 export const TILE = 48;
@@ -267,6 +268,9 @@ export class WorldRenderer {
       }
     }
 
+    // A rug is ground cover: above the floor, below doors and every actor.
+    this.drawDecorGround(ctx, game);
+
     // Travel doors sit above the ground and below every actor, so a character
     // standing in the doorway is drawn in front of it.
     for (const door of game.doors || []) this.drawDoorMarker(ctx, door, game.time);
@@ -303,6 +307,19 @@ export class WorldRenderer {
     if (game.player) renderables.push({ type: 'char', y: game.interpolated(game.player).y, entity: game.player });
     for (const npc of game.npcs) renderables.push({ type: 'char', y: game.interpolated(npc).y, entity: npc });
     for (const comp of game.companions) renderables.push({ type: 'char', y: game.interpolated(comp).y, entity: comp });
+    for (const buddy of game.homeBuddies || []) {
+      renderables.push({ type: 'char', y: game.interpolated(buddy).y, entity: buddy });
+    }
+    for (const entry of game.decor || []) {
+      const item = decorItem(entry.id);
+      if (!item || item.kind === 'rug') continue;
+      renderables.push({
+        type: 'scenery',
+        y: entry.y,
+        entity: { type: item.sprite, x: entry.x, y: entry.y, scale: item.scale || 0.6 },
+        opacity: 1
+      });
+    }
 
     if (Array.isArray(game.scenery)) {
       // Delta time calculation for smooth scenery fade tweening
@@ -519,6 +536,30 @@ export class WorldRenderer {
     ctx.restore();
   }
 
+  drawDecorGround(ctx, game) {
+    for (const entry of game.decor || []) {
+      const item = decorItem(entry.id);
+      if (!item || item.kind !== 'rug') continue;
+      const cx = (entry.x + 0.5) * TILE;
+      const cy = (entry.y + 0.62) * TILE;
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, TILE * 0.46, TILE * 0.31, 0, 0, Math.PI * 2);
+      ctx.fillStyle = item.color || '#b9744f';
+      ctx.fill();
+      ctx.strokeStyle = item.accent || '#e8c7a0';
+      ctx.lineWidth = Math.max(1.5, TILE * 0.04);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, TILE * 0.31, TILE * 0.19, 0, 0, Math.PI * 2);
+      ctx.globalAlpha = 0.55;
+      ctx.strokeStyle = item.accent || '#e8c7a0';
+      ctx.lineWidth = Math.max(1, TILE * 0.03);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
   drawSceneryItem(ctx, item, opacity = 1) {
     const img = this.sceneryImages.get(item.type);
     if (!img || !img.complete) return;
@@ -575,6 +616,7 @@ export class WorldRenderer {
   drawCharacter(game, character) {
     const { ctx } = this;
     const isCompanion = Boolean(character.isCompanion);
+    const sitting = character.pose === 'sit';
     const profile = getAnimationProfile(character.recipe);
     const is3DModel = Boolean(profile.family?.startsWith('pet-') || profile.family?.startsWith('creature-'));
     const baseHeight = characterBaseHeight(character);
@@ -650,9 +692,11 @@ export class WorldRenderer {
       if (progress > 0.35 && progress < 0.65) alpha *= 0.12;
     }
 
-    const scaleX = animTransform.scaleX ?? 1;
-    const scaleY = animTransform.scaleY ?? 1;
-    const shadowScale = animTransform.shadowScale ?? 1;
+    // Home buddies settle with a small squash rather than a new sprite frame.
+    if (sitting) offsetY += height * 0.08;
+    const scaleX = (animTransform.scaleX ?? 1) * (sitting ? 1.08 : 1);
+    const scaleY = (animTransform.scaleY ?? 1) * (sitting ? 0.7 : 1);
+    const shadowScale = (animTransform.shadowScale ?? 1) * (sitting ? 1.12 : 1);
     const drawX = footX + offsetX;
     const top = footY - height + offsetY;
 
@@ -924,6 +968,14 @@ export class WorldRenderer {
       mctx.beginPath();
       mctx.arc((position.x + 0.5) * (size / WORLD_SIZE), (position.y + 0.5) * (size / WORLD_SIZE), Math.max(2, size / 110), 0, Math.PI * 2);
       mctx.fillStyle = 'rgba(233, 240, 232, 0.65)';
+      mctx.fill();
+    }
+
+    for (const buddy of game.homeBuddies || []) {
+      const position = game.interpolated(buddy);
+      mctx.beginPath();
+      mctx.arc((position.x + 0.5) * (size / WORLD_SIZE), (position.y + 0.5) * (size / WORLD_SIZE), Math.max(1.8, size / 130), 0, Math.PI * 2);
+      mctx.fillStyle = 'rgba(229, 244, 165, 0.7)';
       mctx.fill();
     }
 

@@ -31,12 +31,24 @@ import { PLAYER_NAMES, COMPANION_NAMES, pickName, pickVibe } from './names.js';
 import {
   serializeSave,
   captureLocationRecord,
+  activeDecor,
   saveState,
   loadSave,
   clearSave,
   recordGameResult,
   activeLocation
 } from './storage.js';
+import {
+  DECOR_ITEMS,
+  canPlaceDecor,
+  decorItem,
+  homeRoomTiles,
+  normalizeDecor,
+  placeDecor,
+  placeHomeBuddies,
+  rugTiles,
+  selectHomeRoster
+} from './home.js';
 import { castVoice } from './voice/casting.js';
 import { VoiceEngine } from './voice/engine.js';
 import { DialogueManager } from './dialogue.js';
@@ -1599,6 +1611,7 @@ function applyState(state) {
 
   const requested = typeof state.currentLocation === 'string' ? state.currentLocation : DEFAULT_LOCATION;
   const locationId = isLocationEnabled(requested) ? requested : DEFAULT_LOCATION;
+  const homeMode = locationId === 'home';
   const locationState = activeLocation(state) || {};
   const sharedPlayer = state.player && typeof state.player === 'object' ? state.player : {};
   const worldData = worldFor(locationId, locationState.seed);
@@ -1665,7 +1678,10 @@ function applyState(state) {
   }
 
   let companions = Array.isArray(state.companions) ? state.companions : [];
-  if (!companions.length) {
+  // Only the wizard's v1 draft still needs synthesized buddies. A v4 save with
+  // no active party must not invent one, especially in Home where it would stop
+  // being "the same records".
+  if (!companions.length && Number(state.version) < 4) {
     companions.push({
       id: makeId('comp'),
       name: randomFrom(COMPANION_NAMES),
@@ -1691,22 +1707,41 @@ function applyState(state) {
   // A companion that follows the player between locations can arrive on a wall
   // tile (the Home spawn is nowhere near its Park coordinates). Nudge those
   // onto the nearest open tile instead of letting them spawn inside stone.
-  const companionTiles = new Set([
-    `${rawPlayer.x},${rawPlayer.y}`,
-    ...npcs.map(npc => `${npc.x},${npc.y}`)
-  ]);
-  companions = companions.map(comp => {
-    const x = Math.round(Number(comp.x));
-    const y = Math.round(Number(comp.y));
-    const key = `${x},${y}`;
-    if (Number.isFinite(x) && Number.isFinite(y) && isWalkable(terrain[y]?.[x]) && !companionTiles.has(key)) {
-      companionTiles.add(key);
-      return comp;
-    }
-    const spot = findOpenTile(terrain, { x: rawPlayer.x, y: rawPlayer.y }, companionTiles, 1);
-    companionTiles.add(`${spot.x},${spot.y}`);
-    return { ...comp, x: spot.x, y: spot.y };
-  });
+  // Home keeps the roster untouched: Home coordinates are never merged back,
+  // so the Park party returns to the tiles it left.
+  if (!homeMode) {
+    const companionTiles = new Set([
+      `${rawPlayer.x},${rawPlayer.y}`,
+      ...npcs.map(npc => `${npc.x},${npc.y}`)
+    ]);
+    companions = companions.map(comp => {
+      const x = Math.round(Number(comp.x));
+      const y = Math.round(Number(comp.y));
+      const key = `${x},${y}`;
+      if (Number.isFinite(x) && Number.isFinite(y) && isWalkable(terrain[y]?.[x]) && !companionTiles.has(key)) {
+        companionTiles.add(key);
+        return comp;
+      }
+      const spot = findOpenTile(terrain, { x: rawPlayer.x, y: rawPlayer.y }, companionTiles, 1);
+      companionTiles.add(`${spot.x},${spot.y}`);
+      return { ...comp, x: spot.x, y: spot.y };
+    });
+  }
+
+  const decor = homeMode ? normalizeDecor(activeDecor(state)) : [];
+  const homeRugTiles = homeMode ? rugTiles(decor) : [];
+  const roomTiles = homeMode ? homeRoomTiles(terrain, worldData.house) : [];
+  const homeSelection = homeMode
+    ? selectHomeRoster(companions, rawPlayer.stabledCompanions)
+    : { buddies: [], total: 0, overflow: 0 };
+  const homeBuddies = homeMode
+    ? placeHomeBuddies(homeSelection.buddies, {
+      terrain,
+      house: worldData.house,
+      spawn: { x: rawPlayer.x, y: rawPlayer.y },
+      rugTiles: homeRugTiles
+    })
+    : [];
 
   ensureGame();
   const forage = createForageState(locationState.forage);
@@ -1730,11 +1765,17 @@ function applyState(state) {
     worldSeed: locationState.seed ?? worldData.seed,
     player: rawPlayer,
     npcs,
-    companions,
+    companions: homeMode ? [] : companions,
     scenery,
     forage,
+    decor,
+    homeMode,
+    homeBuddies,
+    homeRoomTiles: roomTiles,
+    homeRugTiles,
     wander: state.wander !== false
   });
+  game.homeOverflow = homeSelection.overflow;
   // Doors are per location, so they are set after setWorld resets them.
   const door = doorFor(locationId, { terrain, spawn: rawPlayer });
   game.doors = door ? [door] : [];
@@ -1811,6 +1852,21 @@ function updateLocationChrome() {
       `A 64 by 64 tile ${locationLabel(currentLocationId).toLowerCase()}. Use WASD or the arrow keys to walk, or click the ground to move.`
     );
   }
+  updateHomeNote();
+}
+
+/** Quiet "and N more" note when the Home roster is over the placed cap. */
+function updateHomeNote() {
+  const note = $('home-note');
+  if (!note) return;
+  const overflow = Number(game?.homeOverflow) || 0;
+  if (currentLocationId !== 'home' || overflow <= 0) {
+    note.hidden = true;
+    note.textContent = '';
+    return;
+  }
+  note.hidden = false;
+  note.textContent = `and ${overflow} more ${overflow === 1 ? 'buddy is' : 'buddies are'} resting elsewhere`;
 }
 
 function behaviorSaveState() {
@@ -1842,7 +1898,8 @@ function captureLocation() {
     terrain: game.terrain,
     player: game.player,
     npcs: game.npcs,
-    forage: game.forage
+    forage: game.forage,
+    decor: currentLocationId === 'home' ? game.decor : null
   }, locationStates[currentLocationId] || null);
 }
 
@@ -1973,6 +2030,56 @@ function travelTo(targetId) {
   saveNow();
   sounds.play('ui-click');
   showToast(`You are at the ${locationLabel(targetId).toLowerCase()}.`);
+  return true;
+}
+
+/**
+ * Home decor state for the backpack row. Null outside Home, so the row is
+ * invisible in the Park and cannot collide with travel or a future activity HUD.
+ */
+function homeDecorState() {
+  if (currentLocationId !== 'home' || !game?.player) return null;
+  const placed = Array.isArray(game.decor) ? game.decor[0] || null : null;
+  const player = game.player;
+  return {
+    canPlace: canPlaceDecor({ roomTiles: game.homeRoomTiles || [], x: player.x, y: player.y }),
+    items: DECOR_ITEMS.map(item => ({
+      id: item.id,
+      label: item.label,
+      icon: item.icon || '•',
+      kind: item.kind,
+      active: placed?.id === item.id,
+      here: placed?.id === item.id && placed.x === player.x && placed.y === player.y
+    })),
+    placed: placed ? { ...placed } : null
+  };
+}
+
+/** Place or swap the one Home decoration at the player's feet. */
+function placeHomeDecor(itemId) {
+  if (currentLocationId !== 'home' || !game?.player) return false;
+  const item = decorItem(itemId);
+  if (!item) return false;
+  const player = game.player;
+  if (!canPlaceDecor({ roomTiles: game.homeRoomTiles || [], x: player.x, y: player.y })) {
+    showToast('Stand on the floor inside the house to place that.');
+    return false;
+  }
+  const current = Array.isArray(game.decor) ? game.decor[0] : null;
+  if (current?.id === itemId && current.x === player.x && current.y === player.y) {
+    showToast(`The ${item.label} is already here.`);
+    return false;
+  }
+  game.decor = placeDecor(game.decor, itemId, player.x, player.y);
+  game.homeRugTiles = rugTiles(game.decor);
+  for (const buddy of game.homeBuddies || []) {
+    if (buddy.pose !== 'sit') continue;
+    buddy.pose = 'stand';
+    buddy.sitTimer = 0;
+    buddy.timer = 0.4;
+  }
+  saveNow();
+  showToast(`Placed the ${item.label}.`);
   return true;
 }
 
@@ -2419,6 +2526,8 @@ function boot() {
       panels?.closeMenu();
       return travelTo(targetId);
     },
+    getDecor: homeDecorState,
+    onPlaceDecor: placeHomeDecor,
     onSelect: character => panels?.showCard(character),
     onAddNeighbour: addNeighbour,
     onNewPark: () => {

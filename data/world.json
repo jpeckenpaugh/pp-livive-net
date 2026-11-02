@@ -28,7 +28,7 @@
     "home": {
       "id": "home",
       "label": "Home",
-      "enabled": false,
+      "enabled": true,
       "mapLabel": "Home map",
       "seed": "acorn-hearth-01",
       "spawn": {

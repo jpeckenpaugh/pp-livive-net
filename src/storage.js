@@ -331,7 +331,8 @@ export function captureLocationRecord({
   terrain = null,
   player = null,
   npcs = null,
-  forage = null
+  forage = null,
+  decor = null
 } = {}, previous = null) {
   const base = isObject(previous) ? previous : {};
   const encodedTerrain = Array.isArray(terrain) ? encodeTerrain(terrain) : terrain;
@@ -339,6 +340,11 @@ export function captureLocationRecord({
   const nextNpcs = Array.isArray(npcs)
     ? npcs.filter(isObject).map(serializeNpcRecord)
     : (Array.isArray(base.npcs) ? base.npcs : []);
+  // `decor` is Home-only today. Capture it when passed, otherwise keep whatever
+  // the previous record held so travelling away cannot erase a placed item.
+  const nextDecor = Array.isArray(decor)
+    ? decor.filter(isObject).map(entry => ({ ...entry }))
+    : (Array.isArray(base.decor) ? base.decor.filter(isObject).map(entry => ({ ...entry })) : null);
 
   return {
     ...base,
@@ -346,8 +352,17 @@ export function captureLocationRecord({
     terrain: typeof encodedTerrain === 'string' ? encodedTerrain : base.terrain,
     ...(nextPlayer ? { player: nextPlayer } : {}),
     npcs: nextNpcs,
-    forage: normalizeForage(forage ?? base.forage)
+    forage: normalizeForage(forage ?? base.forage),
+    ...(nextDecor ? { decor: nextDecor } : {})
   };
+}
+
+/** The current location's Home decoration, or an empty list for other maps. */
+export function activeDecor(state) {
+  if (!isObject(state) || !isObject(state.locations)) return [];
+  const current = typeof state.currentLocation === 'string' ? state.currentLocation : 'park';
+  const record = isObject(state.locations[current]) ? state.locations[current] : null;
+  return Array.isArray(record?.decor) ? record.decor.filter(isObject).map(entry => ({ ...entry })) : [];
 }
 
 function migrateCharacterRecord(record) {

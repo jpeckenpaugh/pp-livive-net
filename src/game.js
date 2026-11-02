@@ -18,6 +18,7 @@ import {
 } from './renderer.js';
 import { resolveFx } from './effects.js';
 import { focusOptionsFor, focusPointFor } from './camera-focus.js';
+import { tickHomeBuddy } from './home.js';
 import engineConfig from '../data/engine_config.json' with { type: 'json' };
 
 export {
@@ -241,6 +242,12 @@ export class Game {
     this.player = null;
     this.npcs = [];
     this.companions = [];
+    this.homeBuddies = [];
+    this.homeMode = false;
+    this.homeRoomTiles = [];
+    this.homeRugTiles = [];
+    this.homeOverflow = 0;
+    this.decor = [];
     this.miniGames = [];
     this.miniGameHost = null;
     this.behaviorRuntime = null;
@@ -439,21 +446,55 @@ export class Game {
     return Array.isArray(this.companions) ? this.companions.length : 0;
   }
 
-  setWorld({ terrain, worldSeed, player, npcs, companions = [], scenery = [], forage = null, wander = true }) {
+  setWorld({
+    terrain,
+    worldSeed,
+    player,
+    npcs,
+    companions = [],
+    scenery = [],
+    forage = null,
+    wander = true,
+    decor = [],
+    homeMode = false,
+    homeBuddies = [],
+    homeRoomTiles = [],
+    homeRugTiles = []
+  }) {
     this.terrain = terrain;
     this.worldSeed = worldSeed;
     this.scenery = scenery;
     this.doors = [];
     this.forage = forage;
+    this.decor = Array.isArray(decor) ? decor : [];
+    this.homeMode = Boolean(homeMode);
+    this.homeRoomTiles = Array.isArray(homeRoomTiles) ? homeRoomTiles : [];
+    this.homeRugTiles = Array.isArray(homeRugTiles) ? homeRugTiles : [];
+    this.homeOverflow = 0;
     this.player = player ? this.makeCharacter(player, true) : null;
     this.npcs = (npcs || []).map(npc => this.makeCharacter(npc, false));
 
-    // Initialize companions
+    // Initialize companions. Home never admits a live party: its buddies live in
+    // the display list below, so a caller cannot accidentally follow into Home.
     this.companions = [];
     const allBuddies = this.player ? [this.player, ...this.npcs] : [...this.npcs];
-    for (const comp of companions) {
+    for (const comp of (this.homeMode ? [] : companions)) {
       const buddy = allBuddies.find(b => b.id === comp.buddyId);
       if (buddy) this.companions.push(this.makeCompanion(comp, buddy));
+    }
+
+    // Home buddies are a display-only list. They never join `companions`, so
+    // party membership, reservations, and Park positions stay untouched.
+    this.homeBuddies = [];
+    for (const state of Array.isArray(homeBuddies) ? homeBuddies : []) {
+      const buddy = this.player || { id: 'player', x: state.x, y: state.y };
+      const rendered = this.makeCompanion(state, buddy);
+      rendered.homeOnly = true;
+      rendered.partyActive = Boolean(state.partyActive);
+      rendered.pose = state.pose === 'sit' ? 'sit' : 'stand';
+      rendered.timer = Number(state.timer) || 0;
+      rendered.sitTimer = Number(state.sitTimer) || 0;
+      this.homeBuddies.push(rendered);
     }
 
     this.wander = wander;
@@ -480,6 +521,12 @@ export class Game {
     this.player = null;
     this.npcs = [];
     this.companions = [];
+    this.homeBuddies = [];
+    this.homeMode = false;
+    this.homeRoomTiles = [];
+    this.homeRugTiles = [];
+    this.homeOverflow = 0;
+    this.decor = [];
     this.selected = null;
     this.hovered = null;
     this.dialogueNpc = null;
@@ -550,7 +597,8 @@ export class Game {
       this.selected = this.player;
       return;
     }
-    this.selected = this.getNpc(id) || this.companions.find(c => c.id === id) || null;
+    this.selected = this.getNpc(id) || this.companions.find(c => c.id === id)
+      || this.homeBuddies.find(c => c.id === id) || null;
   }
 
   allOtherCharacters(exclude = null) {
@@ -1226,12 +1274,67 @@ export class Game {
     }
   }
 
+  updateHomeBuddies(dt) {
+    const buddies = Array.isArray(this.homeBuddies) ? this.homeBuddies : [];
+    if (!buddies.length) return;
+
+    for (const buddy of buddies) {
+      if (buddy.moving) {
+        buddy.elapsed += dt;
+        if (buddy.elapsed >= buddy.duration) {
+          buddy.x = buddy.toX;
+          buddy.y = buddy.toY;
+          buddy.moving = false;
+          buddy.elapsed = 0;
+        }
+        continue;
+      }
+
+      const occupied = new Set();
+      if (this.player) occupied.add(`${this.player.x},${this.player.y}`);
+      for (const other of buddies) {
+        if (other !== buddy) occupied.add(`${other.x},${other.y}`);
+      }
+
+      const fromX = buddy.x;
+      const fromY = buddy.y;
+      const next = tickHomeBuddy(buddy, {
+        dt,
+        terrain: this.terrain,
+        roomTiles: this.homeRoomTiles,
+        rugTiles: this.homeRugTiles,
+        occupied
+      });
+      if (!next || next === buddy) continue;
+
+      const moved = next.x !== fromX || next.y !== fromY;
+      buddy.pose = next.pose === 'sit' ? 'sit' : 'stand';
+      buddy.timer = Number(next.timer) || 0;
+      buddy.sitTimer = Number(next.sitTimer) || 0;
+      buddy.direction = Number.isFinite(Number(next.direction)) ? Number(next.direction) : buddy.direction;
+      if (!moved) continue;
+
+      buddy.fromX = fromX;
+      buddy.fromY = fromY;
+      buddy.toX = next.x;
+      buddy.toY = next.y;
+      // Reserve the destination immediately so another buddy cannot pick it
+      // while the step animates.
+      buddy.x = next.x;
+      buddy.y = next.y;
+      buddy.moving = true;
+      buddy.elapsed = 0;
+      buddy.duration = COMPANION_STEP;
+    }
+  }
+
   update(dt) {
     this.time += dt;
     if (!this.paused) {
       this.updatePlayer(dt);
       for (const npc of this.npcs) this.updateNpc(npc, dt);
-      for (const comp of this.companions) this.updateCompanion(comp, dt);
+      if (this.homeMode) this.updateHomeBuddies(dt);
+      else for (const comp of this.companions) this.updateCompanion(comp, dt);
       if (this.behaviorRuntime && typeof this.behaviorRuntime.update === 'function') {
         this.behaviorRuntime.update(dt * 1000);
       }

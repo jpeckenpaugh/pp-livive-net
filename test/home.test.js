@@ -101,28 +101,23 @@ function homeSpawn() {
   return locationDef('home').spawn;
 }
 
-test('the Home flag gates the Park door and the menu row', () => {
+test('the Home flag exposes the Park door and the menu row', () => {
   const park = generateWorld('home-door-fixture');
 
-  // Default flag state ships false, so there is no Park door and no destination.
-  assert.equal(isLocationEnabled('home'), false);
-  assert.equal(doorFor('park', { terrain: park.grid, spawn: park.spawn }), null);
-  assert.deepEqual(travelTargets('park'), []);
-
-  // Forced on (as a play-test does): the door lands on a walkable tile.
-  const enabled = () => true;
-  const door = doorFor('park', { terrain: park.grid, spawn: park.spawn, isEnabled: enabled });
+  // The completed Home slice ships enabled, so the Park door and destination exist.
+  assert.equal(isLocationEnabled('home'), true);
+  const door = doorFor('park', { terrain: park.grid, spawn: park.spawn });
   assert.ok(door);
   assert.equal(door.to, 'home');
   assert.equal(door.prompt, 'Go home?');
   assert.ok(isWalkable(typeAt(park.grid, door.x, door.y)));
 
-  const targets = travelTargets('park', { isEnabled: enabled });
+  const targets = travelTargets('park');
   assert.deepEqual(targets.map(target => target.id), ['home']);
   assert.equal(targets[0].label, 'Home');
   // Home offers the Park as its way out.
   assert.deepEqual(
-    travelTargets('home', { isEnabled: enabled }).map(target => target.id),
+    travelTargets('home').map(target => target.id),
     ['park']
   );
 });

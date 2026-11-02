@@ -299,6 +299,33 @@ test('board strip copy covers every rejection reason and instruction placeholder
   }
 });
 
+test('decor.json offers the swappable rug and plant with existing art', () => {
+  const decor = readJson('decor.json');
+  const scenery = readJson('nature_scenery.json');
+  assert.equal(decor.version, 1);
+  assert.ok(Array.isArray(decor.items));
+  assert.equal(decor.items.length, 2);
+
+  const ids = new Set(decor.items.map(item => item.id));
+  assert.equal(ids.size, 2);
+  assert.ok(ids.has(decor.default));
+  for (const item of decor.items) {
+    assert.equal(typeof item.id, 'string');
+    assert.ok(item.id);
+    assert.equal(typeof item.label, 'string');
+    assert.ok(item.label);
+    assert.ok(['rug', 'plant'].includes(item.kind));
+    assert.equal(typeof item.icon, 'string');
+    if (item.kind === 'rug') {
+      assert.equal(typeof item.color, 'string');
+      assert.equal(typeof item.accent, 'string');
+    } else {
+      assert.ok(scenery[item.sprite], `${item.id} references missing scenery ${item.sprite}`);
+      assert.ok(Number(item.scale) > 0 && Number(item.scale) <= 1);
+    }
+  }
+});
+
 test('world.json locations resolve ids, doors, spawns, and the Home flag', () => {
   const worldConfig = readJson('world.json');
   assert.equal(worldConfig.version, 1);
@@ -318,9 +345,9 @@ test('world.json locations resolve ids, doors, spawns, and the Home flag', () =>
     assert.ok(Number.isInteger(def.spawn?.x) && Number.isInteger(def.spawn?.y), `${id} spawn tile`);
   }
 
-  // The Home slice ships dark: Wave 2 flips this with companions and decor.
+  // The Home slice is complete: the flag is on and the door is reachable.
   assert.equal(worldConfig.locations.park.enabled, true);
-  assert.equal(worldConfig.locations.home.enabled, false);
+  assert.equal(worldConfig.locations.home.enabled, true);
   assert.equal(worldConfig.locations.home.forage, false);
 
   const home = worldConfig.locations.home;

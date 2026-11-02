@@ -367,7 +367,9 @@ export class PanelsUI {
     onToast,
     onSound,
     getTravel,
-    onTravel
+    onTravel,
+    getDecor,
+    onPlaceDecor
   }) {
     this.getGame = getGame;
     this.getFriends = getFriends;
@@ -406,6 +408,8 @@ export class PanelsUI {
     this.onSound = onSound;
     this.getTravel = getTravel;
     this.onTravel = onTravel;
+    this.getDecor = getDecor;
+    this.onPlaceDecor = onPlaceDecor;
     this.cardCharacter = null;
     this.lastNpcCharacter = null;
     this.activeTab = null;
@@ -732,6 +736,7 @@ export class PanelsUI {
     const owners = [
       player,
       ...(game?.companions || []),
+      ...(game?.homeBuddies || []),
       ...(player?.stabledCompanions || [])
     ].filter(Boolean);
     for (const owner of owners) {
@@ -778,6 +783,56 @@ export class PanelsUI {
         go();
       });
       list.append(travelRow);
+    }
+
+    // Home decor row: two one-click choices, visible only in Home. Keeping it
+    // inside the backpack list means it never competes with travel or a future
+    // activity HUD for screen space.
+    const decor = this.getDecor?.() || null;
+    if (decor?.items?.length) {
+      const header = document.createElement('p');
+      header.className = 'panel-note';
+      header.style.margin = '10px 0 6px';
+      header.textContent = decor.canPlace
+        ? 'Home decor · place at your feet'
+        : 'Home decor · stand on the floor inside';
+      list.append(header);
+
+      for (const item of decor.items) {
+        const row = document.createElement('div');
+        row.className = 'friend-row travel-row decor-row';
+        row.setAttribute('role', 'listitem');
+        row.tabIndex = 0;
+
+        const icon = document.createElement('span');
+        icon.className = 'travel-icon';
+        icon.textContent = item.icon || '•';
+
+        const copy = document.createElement('div');
+        copy.className = 'friend-copy';
+        const name = document.createElement('strong');
+        name.textContent = item.label;
+        const note = document.createElement('small');
+        if (item.active && item.here) note.textContent = 'Placed here';
+        else if (item.active) note.textContent = 'Click to move here';
+        else if (decor.placed) note.textContent = 'Click to swap in';
+        else note.textContent = 'Click to place here';
+        copy.append(name, note);
+        row.append(icon, copy);
+
+        const place = () => {
+          this.closeMenu();
+          this.onPlaceDecor?.(item.id);
+        };
+        row.addEventListener('click', place);
+        row.addEventListener('keydown', event => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          event.stopPropagation();
+          place();
+        });
+        list.append(row);
+      }
     }
 
     // Coin + basket banner
@@ -1259,9 +1314,56 @@ export class PanelsUI {
     list.replaceChildren();
 
     const game = this.getGame();
+    const homeMode = Boolean(game?.homeMode);
     const activeCompanions = game?.getCompanionsFor ? game.getCompanionsFor('player') : [];
     const stabledCompanions = Array.isArray(game?.player?.stabledCompanions) ? game.player.stabledCompanions : [];
     const summary = $('companion-summary');
+
+    // At Home every owned buddy is present, including reserves. The list is
+    // read-only here so Home never changes party membership; Park still owns
+    // the bench/activate controls.
+    if (homeMode) {
+      const buddies = Array.isArray(game?.homeBuddies) ? game.homeBuddies : [];
+      const overflow = Number(game?.homeOverflow) || 0;
+      if (summary) {
+        summary.textContent = buddies.length
+          ? `${buddies.length} buddies relaxing at home${overflow ? ` · and ${overflow} more resting elsewhere` : ''}.`
+          : 'No buddies at home yet.';
+      }
+      if (!buddies.length) {
+        const empty = document.createElement('p');
+        empty.className = 'friend-empty';
+        empty.textContent = 'No buddies at home right now.';
+        list.append(empty);
+        return;
+      }
+
+      const homeFragment = document.createDocumentFragment();
+      for (const buddy of buddies) {
+        const info = formatCompanionInfo(buddy);
+        const row = document.createElement('div');
+        row.className = 'friend-row';
+        row.setAttribute('role', 'listitem');
+        row.tabIndex = 0;
+
+        const image = document.createElement('img');
+        bindAnimatedAvatar(image, buddy.recipe, 0);
+        image.alt = buddy.name;
+
+        const copy = document.createElement('div');
+        copy.className = 'friend-copy';
+        const name = document.createElement('strong');
+        name.textContent = `${buddy.name} (${info.type})`;
+        const sub = document.createElement('small');
+        sub.textContent = `${info.class} · At home · ${buddy.partyActive ? 'active follower' : 'in reserve'}`;
+        copy.append(name, sub, this.makeBuddySlot(buddy));
+        row.addEventListener('click', () => this.showCard(buddy));
+        row.append(image, copy);
+        homeFragment.append(row);
+      }
+      list.append(homeFragment);
+      return;
+    }
 
     if (!activeCompanions.length && !stabledCompanions.length) {
       if (summary) summary.textContent = 'No companions currently following you.';

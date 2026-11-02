@@ -365,6 +365,27 @@ body.dialogue-open #hud .topbar #voice-hint * {
   pointer-events: none;
 }
 
+.home-note {
+  position: fixed;
+  left: 16px;
+  bottom: 52px;
+  margin: 0;
+  padding: 5px 12px;
+  border: 1px solid rgba(229, 244, 165, 0.2);
+  border-radius: 999px;
+  background: rgba(9, 15, 11, 0.66);
+  backdrop-filter: blur(10px);
+  color: rgba(229, 244, 165, 0.72);
+  font-size: 10px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.decor-row strong {
+  text-transform: capitalize;
+}
+
 .minimap-wrap {
   position: fixed;
   right: 16px;
@@ -1322,6 +1343,14 @@ body.dialogue-open .topbar {
     display: none;
   }
 
+  .home-note {
+    left: 10px;
+    max-width: calc(100vw - 20px);
+    overflow: hidden;
+    font-size: 9.5px;
+    text-overflow: ellipsis;
+  }
+
   #hint.game-strip {
     display: block;
     left: 10px;
@@ -1462,6 +1491,11 @@ body.dialogue-open .topbar {
     justify-content: space-between;
     align-items: flex-end;
     padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 0px)) 20px;
+  }
+
+  /* Clear the on-screen d-pad, which owns the bottom-left corner. */
+  .home-note {
+    bottom: calc(190px + env(safe-area-inset-bottom, 0px));
   }
 }
 
