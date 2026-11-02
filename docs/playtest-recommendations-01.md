@@ -72,6 +72,17 @@ does. Companions and the player keep the current card.
 **Files:** `src/ui/panels.js` (card render), `index.html` (action row), `css/app.css`,
 `src/main.js` (action handlers), `test/` for any pure eligibility helper.
 
+**Wave A decisions (2026-11-01)**
+
+- **Talk** always opens the existing beat. **Invite** skips the chat: with one board owned it starts it directly, labelled with the board name; with several it opens the friend beat's chooser.
+- Card actions call the public `game.openDialogueWith(npc)` so pause and guards match a bump; no `game.js` edit.
+- The card closes as part of the existing `closeAllPanels()` path — no fade, no delay.
+- The row and badge exist only for neighbours; player and companion cards are unchanged.
+- The badge is a text `<span>` after the name ("Friend" / "Not friends yet"), never colour-only.
+- Invite is never rendered disabled: non-friends see the Ask action plus a one-line note; friends with no boards see "You don't own a board yet".
+- No focus trap and no autofocus; the row is Tab-reachable and Enter activates.
+- One pure helper for badge/actions/note, tested. Inline it in `panels.js` if that module is Node-import-safe, otherwise one small `src/ui/card-actions.js`; no more than one new file.
+
 ---
 
 ## 3. #2 — Teach board controls in the moment
