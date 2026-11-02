@@ -26,16 +26,34 @@ import {
   travelTargets,
   worldFor
 } from '../src/locations.js';
-import { locationBlockedTiles } from '../src/location_props.js';
+import {
+  locationBlockedTiles,
+  propOpenings,
+  propTiles
+} from '../src/location_props.js';
 import { activeLocation, captureLocationRecord, migrateSave } from '../src/storage.js';
 import { Game } from '../src/game.js';
 
 const TOWN_SEED = LOCATIONS.town.seed;
+const ENTERABLE = [
+  { to: 'home', x: 23, y: 17 },
+  { to: 'shop', x: 8, y: 17 },
+  { to: 'library', x: 38, y: 17 }
+];
+
+function townWorld() {
+  return generateTown(TOWN_SEED);
+}
+
+function townProps(record = null) {
+  return propsForLocation('town', record || createLocationRecord('town'));
+}
 
 test('Town is a valid 64 × 64 world with a walkable spawn and one component', () => {
   for (const seed of [TOWN_SEED, 'town-b', 'town-c']) {
     const world = generateTown(seed);
     assert.equal(world.template, 'town');
+    assert.equal(world.layout, 'town-grid');
     assert.equal(world.grid.length, WORLD_SIZE);
     for (const row of world.grid) {
       assert.equal(row.length, WORLD_SIZE);
@@ -49,32 +67,56 @@ test('Town is a valid 64 × 64 world with a walkable spawn and one component', (
   }
 });
 
-test('Town paints the street, north facades, south plaza, and east beach stub', () => {
-  const world = generateTown(TOWN_SEED);
-  const grid = world.grid;
+test('Town paints a grid of two-tile streets, pavements, a ring, and the east cove', () => {
+  const grid = townWorld().grid;
 
-  assert.equal(typeAt(grid, 3, 31), 'dirt', 'west gate');
-  assert.equal(typeAt(grid, 32, 31), 'dirt', 'main street');
-  assert.equal(typeAt(grid, 57, 31), 'dirt', 'street runs east');
-  assert.equal(typeAt(grid, 12, 28), 'dirt', 'north walk in front of the facades');
-  assert.equal(typeAt(grid, 14, 33), 'dirt', 'south walk');
-  assert.equal(typeAt(grid, 32, 42), 'dirt', 'plaza centre');
-  assert.equal(typeAt(grid, 32, 38), 'dirt', 'plaza link');
-  assert.equal(typeAt(grid, 12, 24), 'grass', 'facades are props over grass');
-  assert.equal(typeAt(grid, 62, 31), 'sand', 'beach at the east end');
-  assert.equal(typeAt(grid, 59, 31), 'sand', 'sand begins where the street stops');
+  // Two horizontal streets with a one-tile pavement on either side.
+  for (const y of [20, 42]) {
+    assert.equal(typeAt(grid, 5, y), 'dirt', `H street at y ${y}`);
+    assert.equal(typeAt(grid, 5, y + 1), 'dirt', `H street is two tiles wide at y ${y}`);
+    assert.equal(typeAt(grid, 5, y - 1), 'sand', `north pavement at y ${y}`);
+    assert.equal(typeAt(grid, 5, y + 2), 'sand', `south pavement at y ${y}`);
+  }
+
+  // Three vertical streets, likewise two tiles with pavements.
+  for (const x of [16, 31, 47]) {
+    assert.equal(typeAt(grid, x, 10), 'dirt', `V street at x ${x}`);
+    assert.equal(typeAt(grid, x + 1, 10), 'dirt', `V street is two tiles wide at x ${x}`);
+    assert.equal(typeAt(grid, x - 1, 10), 'sand', `west pavement at x ${x}`);
+    assert.equal(typeAt(grid, x + 2, 10), 'sand', `east pavement at x ${x}`);
+  }
+
+  // High street and the central plaza/crossroads.
+  assert.equal(typeAt(grid, 5, 30), 'dirt', 'high street');
+  assert.equal(typeAt(grid, 5, 31), 'dirt', 'high street is two tiles wide');
+  assert.equal(typeAt(grid, 5, 29), 'sand', 'high street north pavement');
+  assert.equal(typeAt(grid, 5, 32), 'sand', 'high street south pavement');
+  assert.equal(typeAt(grid, 31, 34), 'dirt', 'plaza south of the fountain');
+
+  // The ring closes around the town, including its corners.
+  assert.equal(typeAt(grid, 2, 2), 'dirt', 'north-west ring corner');
+  assert.equal(typeAt(grid, 61, 61), 'dirt', 'south-east ring corner');
+  assert.equal(typeAt(grid, 2, 30), 'dirt', 'west ring beside the Park gate');
+  assert.equal(typeAt(grid, 60, 10), 'dirt', 'east ring');
+
+  // Facades sit on grass; the sand cove is the Beach exit.
+  assert.equal(typeAt(grid, 8, 17), 'grass', 'inside the shop footprint');
+  assert.equal(typeAt(grid, 6, 15), 'grass', 'facade block');
+  assert.equal(typeAt(grid, 62, 31), 'sand', 'Beach door cove');
+  assert.ok(typeAt(grid, 63, 36) === 'sand', 'cove reaches the east edge');
 });
 
-test('every Town zone is reachable from the spawn around the solid props', () => {
-  const world = generateTown(TOWN_SEED);
-  const props = propsForLocation('town', createLocationRecord('town'));
+test('every Town door and zone is reachable from the spawn around the solid props', () => {
+  const world = townWorld();
+  const props = townProps();
   const blocked = locationBlockedTiles(props);
+  const doors = doorsFor('town', { terrain: world.grid, spawn: world.spawn });
   const targets = [
-    { x: 3, y: 31 }, // Park door
-    { x: 12, y: 28 }, // Home door
-    { x: 26, y: 28 }, // Shop door
-    { x: 62, y: 31 }, // beach stub
-    { x: 27, y: 41 } // plaza, beside the fountain
+    ...doors.map(door => ({ x: door.x, y: door.y })),
+    { x: 29, y: 34 }, // plaza beside the bench
+    { x: 2, y: 60 }, // ring south-west
+    { x: 61, y: 5 }, // ring north-east
+    { x: 31, y: 10 } // V2 north
   ];
   for (const target of targets) {
     const path = findPath(world.grid, world.spawn, target, blocked);
@@ -84,27 +126,42 @@ test('every Town zone is reachable from the spawn around the solid props', () =>
   }
 });
 
-test('Town declares the template, spawn, theme, menu row, and four facades', () => {
+test('Town declares the grid layout, spawn, theme, menu row, and 12 buildings', () => {
   const def = LOCATIONS.town;
   assert.equal(def.enabled, true);
   assert.equal(def.template, 'town');
+  assert.equal(def.layout, 'town-grid');
   assert.equal(def.label, 'Town');
-  assert.deepEqual(def.spawn, { x: 32, y: 46 });
+  assert.deepEqual(def.spawn, { x: 31, y: 35 });
   assert.equal(def.menu.label, 'Town');
   assert.ok(locationTheme('town'));
 
-  const buildings = propsForLocation('town').filter(prop => prop.type === 'building');
-  assert.equal(buildings.length, 4);
-  assert.deepEqual(buildings.map(prop => prop.x), [9, 23, 37, 51]);
+  const buildings = townProps().filter(prop => prop.type === 'building');
+  assert.ok(buildings.length >= 12, 'the grid blocks hold at least twelve buildings');
+  assert.equal(buildings.length, 12);
+  assert.equal(new Set(buildings.map(prop => `${prop.x},${prop.y}`)).size, 12);
+  assert.deepEqual(
+    buildings.map(prop => prop.label),
+    [
+      'Shop', 'Home', 'Library', 'Café',
+      'Bakery', 'Clinic', 'Rose Cottage', 'Workshop',
+      'Maple House', 'Workshop', 'Willow House', 'Hill House'
+    ]
+  );
 
   const record = createLocationRecord('town');
-  assert.equal(record.layout, 'town');
-  assert.deepEqual(decodeTerrain(record.terrain), generateTown(TOWN_SEED).grid);
-  assert.equal(locationLayout('town'), 'town');
+  assert.equal(record.layout, 'town-grid');
+  assert.deepEqual(decodeTerrain(record.terrain), townWorld().grid);
+  assert.deepEqual(
+    { x: record.player.x, y: record.player.y },
+    { x: 31, y: 35 },
+    'a fresh Town spawn is the new plaza tile'
+  );
+  assert.equal(locationLayout('town'), 'town-grid');
 });
 
 test('Town has doors to the Park, Home, Shop, Library, and Beach', () => {
-  const world = generateTown(TOWN_SEED);
+  const world = townWorld();
   const doors = doorsFor('town', { terrain: world.grid, spawn: world.spawn });
   assert.deepEqual(doors.map(door => door.kind), ['travel', 'travel', 'travel', 'travel', 'travel']);
   assert.deepEqual(doors.map(door => door.to), ['park', 'home', 'shop', 'library', 'beach']);
@@ -118,16 +175,229 @@ test('Town has doors to the Park, Home, Shop, Library, and Beach', () => {
   assert.equal(new Set(doors.map(door => `${door.x},${door.y}`)).size, 5);
 
   const byTarget = new Map(doors.map(door => [door.to, door]));
-  assert.deepEqual({ x: byTarget.get('park').x, y: byTarget.get('park').y }, { x: 3, y: 31 });
-  assert.deepEqual({ x: byTarget.get('home').x, y: byTarget.get('home').y }, { x: 12, y: 28 });
-  assert.deepEqual({ x: byTarget.get('shop').x, y: byTarget.get('shop').y }, { x: 26, y: 28 });
-  assert.deepEqual({ x: byTarget.get('library').x, y: byTarget.get('library').y }, { x: 40, y: 28 });
-  assert.deepEqual({ x: byTarget.get('beach').x, y: byTarget.get('beach').y }, { x: 60, y: 31 });
+  assert.deepEqual({ x: byTarget.get('park').x, y: byTarget.get('park').y }, { x: 2, y: 31 });
+  assert.deepEqual({ x: byTarget.get('home').x, y: byTarget.get('home').y }, { x: 23, y: 17 });
+  assert.deepEqual({ x: byTarget.get('shop').x, y: byTarget.get('shop').y }, { x: 8, y: 17 });
+  assert.deepEqual({ x: byTarget.get('library').x, y: byTarget.get('library').y }, { x: 38, y: 17 });
+  assert.deepEqual({ x: byTarget.get('beach').x, y: byTarget.get('beach').y }, { x: 62, y: 31 });
   for (const door of doors) {
     assert.ok(isWalkable(typeAt(world.grid, door.x, door.y)), `${door.to} door is walkable`);
     assert.ok(world.componentKeys.has(`${door.x},${door.y}`), `${door.to} door is reachable`);
   }
-  assert.equal(doors.some(door => door.to === 'library'), true);
+});
+
+test('interior doors stand inside an enterable footprint, not on the pavement', () => {
+  const props = townProps();
+  const blocked = locationBlockedTiles(props);
+  const buildings = props.filter(prop => prop.type === 'building');
+  const doors = doorsFor('town', { terrain: townWorld().grid, spawn: townWorld().spawn });
+
+  for (const expected of ENTERABLE) {
+    const door = doors.find(entry => entry.to === expected.to);
+    assert.ok(door, `${expected.to} door exists`);
+    assert.deepEqual({ x: door.x, y: door.y }, { x: expected.x, y: expected.y });
+
+    const host = buildings.find(building => (
+      propTiles(building).some(tile => tile.x === door.x && tile.y === door.y)
+    ));
+    assert.ok(host, `${expected.to} door is inside a building footprint`);
+    assert.equal(door.x, host.x + 2);
+    assert.equal(door.y, host.y + 2);
+    assert.ok(blocked.has(`${host.x + 2},${host.y + 3}`) === false, 'front opening stays walkable');
+    assert.ok(!blocked.has(`${door.x},${door.y}`), 'inner trigger tile stays walkable');
+    assert.ok(!blocked.has(`${door.x},${door.y + 1}`), 'the doorway is a two-tile corridor');
+  }
+
+  // Every other building is a solid shell: no opening, no trigger.
+  const shells = buildings.filter(building => propOpenings(building).length === 0);
+  assert.equal(shells.length, buildings.length - ENTERABLE.length);
+  for (const shell of shells) {
+    for (const tile of propTiles(shell)) {
+      assert.ok(blocked.has(`${tile.x},${tile.y}`), `${shell.x},${shell.y} stays solid at ${tile.x},${tile.y}`);
+    }
+  }
+});
+
+test('openings are excluded from locationBlockedTiles and still collide around them', () => {
+  const shop = townProps().find(prop => prop.type === 'building' && prop.x === 6 && prop.y === 15);
+  assert.deepEqual(propOpenings(shop), [{ dx: 2, dy: 3 }, { dx: 2, dy: 2 }]);
+  const blocked = locationBlockedTiles([shop]);
+  assert.equal(blocked.has('8,17'), false, 'inner trigger is walkable');
+  assert.equal(blocked.has('8,18'), false, 'front doorway is walkable');
+  assert.equal(blocked.has('7,17'), true, 'the wall beside the door is solid');
+  assert.equal(blocked.has('8,16'), true, 'the wall behind the trigger is solid');
+
+  // The interior trigger is reachable from the pavement through the doorway.
+  const world = townWorld();
+  const path = findPath(world.grid, { x: 8, y: 19 }, { x: 8, y: 17 }, blocked);
+  assert.deepEqual(path, [{ x: 8, y: 18 }, { x: 8, y: 17 }]);
+});
+
+test('Town residents are ten stable neighbours, walkable and outside every prop', () => {
+  const world = townWorld();
+  const blocked = locationBlockedTiles(townProps());
+  const residents = residentsFor('town');
+  assert.equal(residents.length, 10);
+  assert.equal(new Set(residents.map(resident => resident.id)).size, 10);
+  assert.equal(new Set(residents.map(resident => resident.name)).size, 10);
+  assert.equal(new Set(residents.map(resident => resident.recipe.seed)).size, 10);
+
+  for (const resident of residents) {
+    assert.equal(resident.resident, true);
+    assert.ok(isWalkable(typeAt(world.grid, resident.x, resident.y)), `${resident.id} stands on ground`);
+    assert.ok(!blocked.has(`${resident.x},${resident.y}`), `${resident.id} is not inside a prop`);
+    assert.ok(
+      findPath(world.grid, world.spawn, { x: resident.x, y: resident.y }, blocked).length > 0,
+      `${resident.id} is reachable from the spawn`
+    );
+  }
+
+  const record = captureLocationRecord({
+    seed: TOWN_SEED,
+    terrain: world.grid,
+    player: { x: world.spawn.x, y: world.spawn.y, direction: 0 },
+    npcs: residents.map(resident => ({
+      ...resident,
+      inventory: [],
+      equipped: [],
+      coins: 0,
+      stabledCompanions: []
+    })),
+    forage: null
+  });
+  assert.deepEqual(record.npcs, []);
+
+  // The shopkeeper is a Shop record, not a Town resident.
+  const shop = createShopLocation();
+  assert.ok(shop.npcs.length > 0);
+  assert.equal(residents.some(resident => resident.id === 'shopkeeper'), false);
+});
+
+test('Town residents stroll with the lightweight wander fallback', () => {
+  const world = townWorld();
+  const game = new Game();
+  game.terrain = world.grid;
+  game.wander = true;
+  game.companions = [];
+  game.homeBuddies = [];
+  game.miniGames = [];
+  game.player = game.makeCharacter({ id: 'player', x: 20, y: 20 }, true);
+  game.behaviorRuntime = { update() {} };
+
+  const resident = game.makeCharacter(residentsFor('town')[0], false);
+  resident.resident = true;
+  resident.wait = 0;
+  game.npcs = [resident];
+  game.updateNpc(resident, 1 / 60);
+  assert.equal(resident.moving, true, 'a Town resident strolls without a behaviour actor');
+});
+
+test('props and doors never land on the spawn or each other', () => {
+  const world = townWorld();
+  const record = createLocationRecord('town');
+  const declared = LOCATIONS.town.props.length;
+  const props = propsForLocation('town', record);
+  assert.equal(props.length, declared, 'no solid prop dropped for an overlap');
+
+  const blocked = locationBlockedTiles(props);
+  const doors = doorsFor('town', { terrain: world.grid, spawn: world.spawn });
+  const reserved = [world.spawn, ...doors.map(door => ({ x: door.x, y: door.y }))];
+  for (const tile of reserved) {
+    assert.ok(!blocked.has(`${tile.x},${tile.y}`), `prop blocks ${tile.x},${tile.y}`);
+  }
+});
+
+test('bumping the inner trigger of each Town door fires that travel target', () => {
+  const world = townWorld();
+  const props = townProps();
+  const doors = doorsFor('town', { terrain: world.grid, spawn: world.spawn });
+
+  const starts = {
+    park: { x: 3, y: 31, dx: -1, dy: 0 },
+    home: { x: 23, y: 18, dx: 0, dy: -1 },
+    shop: { x: 8, y: 18, dx: 0, dy: -1 },
+    library: { x: 38, y: 18, dx: 0, dy: -1 },
+    beach: { x: 61, y: 31, dx: 1, dy: 0 }
+  };
+
+  for (const door of doors) {
+    const start = starts[door.to];
+    assert.ok(start, `test knows how to approach ${door.to}`);
+    const game = new Game();
+    game.terrain = world.grid;
+    game.doors = doors;
+    game.locationBlockedTiles = locationBlockedTiles(props);
+    game.npcs = [];
+    game.companions = [];
+    game.homeBuddies = [];
+    game.miniGames = [];
+    game.interactive = true;
+    game.paused = false;
+    game.worldSuspended = false;
+    game.player = game.makeCharacter({ id: 'player', x: start.x, y: start.y }, true);
+    const fired = [];
+    game.onDoor = doorHit => fired.push(doorHit.to);
+
+    // Enterable doors are bumped from the threshold tile; the inner trigger
+    // stops the step and fires travel.
+    for (let step = 0; step < 4 && !fired.length; step += 1) {
+      game.tryPlayerStep(start.dx, start.dy);
+    }
+    assert.deepEqual(fired, [door.to], `${door.to} door fired from its trigger tile`);
+    assert.deepEqual(
+      { x: game.player.x, y: game.player.y },
+      { x: start.x, y: start.y },
+      `${door.to} bump stops on the threshold`
+    );
+  }
+});
+
+test('a legacy Town layout rebuilds as the grid instead of a meadow, then settles', () => {
+  const oldWorld = generateWorld('legacy-town-grid');
+  const oldRecord = {
+    seed: 'legacy-town-grid',
+    layout: 'town',
+    terrain: encodeTerrain(oldWorld.grid),
+    player: { x: 12, y: 14, direction: 2 },
+    npcs: [],
+    forage: null
+  };
+
+  assert.equal(layoutMatches('town', oldRecord), false);
+  assert.deepEqual(propsForLocation('town', oldRecord), [], 'stale markers get no new props');
+
+  const rebuilt = worldFor('town', oldRecord.seed, oldRecord);
+  assert.equal(rebuilt.template, 'town');
+  assert.equal(rebuilt.layout, 'town-grid');
+  assert.deepEqual(rebuilt.grid, generateTown(oldRecord.seed).grid);
+  assert.notDeepEqual(rebuilt.grid, oldWorld.grid, 'the old meadow is not reused');
+  assert.deepEqual(rebuilt.spawn, { x: 31, y: 35 }, 'the player resets to the grid spawn');
+
+  // The same one-time upgrade main.js writes: marker, terrain, and spawn.
+  const upgraded = captureLocationRecord({
+    seed: rebuilt.seed,
+    layout: locationLayout('town'),
+    terrain: rebuilt.grid,
+    player: { x: rebuilt.spawn.x, y: rebuilt.spawn.y, direction: 0 },
+    npcs: [],
+    forage: oldRecord.forage
+  }, oldRecord);
+  assert.equal(upgraded.layout, 'town-grid');
+  assert.equal(layoutMatches('town', upgraded), true);
+  assert.deepEqual(upgraded.player, { x: 31, y: 35, direction: 0 });
+  assert.deepEqual(decodeTerrain(upgraded.terrain), rebuilt.grid);
+  assert.equal(propsForLocation('town', upgraded).length, LOCATIONS.town.props.length);
+  assert.deepEqual(worldFor('town', upgraded.seed, upgraded).grid, rebuilt.grid);
+
+  // The loaded record is what the save layer exposes to the app.
+  const loaded = migrateSave({
+    version: 4,
+    currentLocation: 'town',
+    locations: { park: createLocationRecord('park'), town: oldRecord }
+  });
+  assert.equal(loaded.locations.town.layout, 'town', 'migration leaves the raw marker alone');
+  assert.deepEqual(activeLocation(loaded).terrain, oldRecord.terrain);
+  assert.equal(layoutMatches('town', activeLocation(loaded)), false, 'the app still sees a stale Town');
 });
 
 test('Park, Home, and Shop doors are reparented to Town', () => {
@@ -160,77 +430,6 @@ test('Town is the nearby hub in the travel menu and still lists every destinatio
   for (const id of ['home', 'shop']) {
     const row = travelTargets(id).find(target => target.id === 'town');
     assert.ok(row?.nearby, `${id} should mark Town Nearby`);
-  }
-});
-
-test('Town has six stable residents who are never written into the save', () => {
-  const world = generateTown(TOWN_SEED);
-  const props = propsForLocation('town', createLocationRecord('town'));
-  const blocked = locationBlockedTiles(props);
-  const residents = residentsFor('town');
-  assert.equal(residents.length, 6);
-  assert.equal(new Set(residents.map(resident => resident.id)).size, 6);
-  assert.equal(new Set(residents.map(resident => resident.name)).size, 6);
-  assert.equal(new Set(residents.map(resident => resident.recipe.seed)).size, 6);
-
-  for (const resident of residents) {
-    assert.equal(resident.resident, true);
-    assert.ok(isWalkable(typeAt(world.grid, resident.x, resident.y)), `${resident.id} stands on ground`);
-    assert.ok(!blocked.has(`${resident.x},${resident.y}`), `${resident.id} is not inside a prop`);
-  }
-
-  const record = captureLocationRecord({
-    seed: TOWN_SEED,
-    terrain: world.grid,
-    player: { x: world.spawn.x, y: world.spawn.y, direction: 0 },
-    npcs: residents.map(resident => ({
-      ...resident,
-      inventory: [],
-      equipped: [],
-      coins: 0,
-      stabledCompanions: []
-    })),
-    forage: null
-  });
-  assert.deepEqual(record.npcs, []);
-
-  // The shopkeeper is a Shop record, not a Town resident.
-  const shop = createShopLocation();
-  assert.ok(shop.npcs.length > 0);
-  assert.equal(residents.some(resident => resident.id === 'shopkeeper'), false);
-});
-
-test('Town residents stroll with the lightweight wander fallback', () => {
-  const world = generateTown(TOWN_SEED);
-  const game = new Game();
-  game.terrain = world.grid;
-  game.wander = true;
-  game.companions = [];
-  game.homeBuddies = [];
-  game.miniGames = [];
-  game.player = game.makeCharacter({ id: 'player', x: 20, y: 20 }, true);
-  game.behaviorRuntime = { update() {} };
-
-  const resident = game.makeCharacter(residentsFor('town')[0], false);
-  resident.resident = true;
-  resident.wait = 0;
-  game.npcs = [resident];
-  game.updateNpc(resident, 1 / 60);
-  assert.equal(resident.moving, true, 'a Town resident strolls without a behaviour actor');
-});
-
-test('props and doors never land on the spawn or each other', () => {
-  const world = generateTown(TOWN_SEED);
-  const record = createLocationRecord('town');
-  const declared = LOCATIONS.town.props.length;
-  const props = propsForLocation('town', record);
-  assert.equal(props.length, declared, 'no solid prop dropped for an overlap');
-
-  const blocked = locationBlockedTiles(props);
-  const doors = doorsFor('town', { terrain: world.grid, spawn: world.spawn });
-  const reserved = [world.spawn, ...doors.map(door => ({ x: door.x, y: door.y }))];
-  for (const tile of reserved) {
-    assert.ok(!blocked.has(`${tile.x},${tile.y}`), `prop blocks ${tile.x},${tile.y}`);
   }
 });
 

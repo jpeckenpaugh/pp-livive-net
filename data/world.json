@@ -183,6 +183,7 @@
       "enabled": true,
       "mapLabel": "Town map",
       "template": "town",
+      "layout": "town-grid",
       "seed": "town-main-01",
       "theme": {
         "grass": "#4f7d4e",
@@ -192,15 +193,15 @@
         "field": "#8a9a4f"
       },
       "spawn": {
-        "x": 32,
-        "y": 46
+        "x": 31,
+        "y": 35
       },
       "menu": {
         "label": "Town",
         "note": "Shops, neighbours, and the way home."
       },
       "door": {
-        "x": 3,
+        "x": 2,
         "y": 31,
         "to": "park",
         "prompt": "Head into the park?"
@@ -210,97 +211,109 @@
           "id": "home-door",
           "kind": "travel",
           "to": "home",
-          "x": 12,
-          "y": 28,
+          "x": 23,
+          "y": 17,
           "prompt": "Go home?"
         },
         {
           "id": "shop-door",
           "kind": "travel",
           "to": "shop",
-          "x": 26,
-          "y": 28,
+          "x": 8,
+          "y": 17,
           "prompt": "Step into the shop?"
         },
         {
           "id": "library-door",
           "kind": "travel",
           "to": "library",
-          "x": 40,
-          "y": 28,
+          "x": 38,
+          "y": 17,
           "prompt": "Visit the library?"
         },
         {
           "id": "beach-door",
           "kind": "travel",
           "to": "beach",
-          "x": 60,
+          "x": 62,
           "y": 31,
           "prompt": "Walk down to the beach?"
         }
       ],
       "props": [
-        { "type": "building", "x": 9, "y": 24 },
-        { "type": "building", "x": 23, "y": 24, "variant": 1 },
-        { "type": "building", "x": 37, "y": 24, "variant": 2 },
-        { "type": "building", "x": 51, "y": 24 },
+        { "type": "building", "x": 6, "y": 15, "variant": 0, "label": "Shop", "openings": [{ "dx": 2, "dy": 3 }, { "dx": 2, "dy": 2 }] },
+        { "type": "building", "x": 21, "y": 15, "variant": 1, "label": "Home", "openings": [{ "dx": 2, "dy": 3 }, { "dx": 2, "dy": 2 }] },
+        { "type": "building", "x": 36, "y": 15, "variant": 2, "label": "Library", "openings": [{ "dx": 2, "dy": 3 }, { "dx": 2, "dy": 2 }] },
+        { "type": "building", "x": 51, "y": 15, "variant": 0, "label": "Café" },
 
-        { "type": "fountain", "x": 31, "y": 41 },
+        { "type": "building", "x": 6, "y": 25, "variant": 1, "label": "Bakery" },
+        { "type": "building", "x": 21, "y": 25, "variant": 2, "label": "Clinic" },
+        { "type": "building", "x": 36, "y": 25, "variant": 0, "label": "Rose Cottage" },
+        { "type": "building", "x": 51, "y": 25, "variant": 1, "label": "Workshop" },
 
-        { "type": "bench", "x": 27, "y": 39 },
-        { "type": "bench", "x": 36, "y": 39, "variant": 1 },
-        { "type": "bench", "x": 27, "y": 44, "variant": 1 },
-        { "type": "bench", "x": 36, "y": 44 },
-        { "type": "bench", "x": 14, "y": 33 },
-        { "type": "bench", "x": 45, "y": 33, "variant": 1 },
-        { "type": "bench", "x": 51, "y": 34, "variant": 1 },
+        { "type": "building", "x": 6, "y": 37, "variant": 2, "label": "Maple House" },
+        { "type": "building", "x": 21, "y": 37, "variant": 0, "label": "Workshop" },
+        { "type": "building", "x": 36, "y": 37, "variant": 1, "label": "Willow House" },
+        { "type": "building", "x": 51, "y": 37, "variant": 2, "label": "Hill House" },
 
-        { "type": "lamp", "x": 6, "y": 29 },
-        { "type": "lamp", "x": 16, "y": 29, "variant": 1 },
-        { "type": "lamp", "x": 30, "y": 29 },
-        { "type": "lamp", "x": 44, "y": 29, "variant": 1 },
-        { "type": "lamp", "x": 55, "y": 29 },
-        { "type": "lamp", "x": 10, "y": 33, "variant": 1 },
-        { "type": "lamp", "x": 40, "y": 33 },
-        { "type": "lamp", "x": 53, "y": 33, "variant": 1 },
-        { "type": "lamp", "x": 28, "y": 38 },
-        { "type": "lamp", "x": 36, "y": 38, "variant": 1 },
-        { "type": "lamp", "x": 28, "y": 46 },
-        { "type": "lamp", "x": 36, "y": 46, "variant": 1 },
+        { "type": "fountain", "x": 30, "y": 30 },
 
-        { "type": "planter", "x": 10, "y": 29 },
-        { "type": "planter", "x": 14, "y": 29, "variant": 1 },
-        { "type": "planter", "x": 24, "y": 29, "variant": 1 },
-        { "type": "planter", "x": 28, "y": 29 },
-        { "type": "planter", "x": 38, "y": 29 },
-        { "type": "planter", "x": 42, "y": 29, "variant": 1 },
-        { "type": "planter", "x": 52, "y": 29, "variant": 1 },
-        { "type": "planter", "x": 56, "y": 29 },
-        { "type": "planter", "x": 29, "y": 41, "variant": 1 },
-        { "type": "planter", "x": 35, "y": 41 },
-        { "type": "planter", "x": 29, "y": 43 },
-        { "type": "planter", "x": 35, "y": 43, "variant": 1 },
+        { "type": "bench", "x": 25, "y": 30 },
+        { "type": "bench", "x": 36, "y": 30, "variant": 1 },
+        { "type": "bench", "x": 27, "y": 34 },
+        { "type": "bench", "x": 34, "y": 34, "variant": 1 },
 
-        { "type": "gate", "x": 2, "y": 30 },
+        { "type": "planter", "x": 28, "y": 27 },
+        { "type": "planter", "x": 34, "y": 27, "variant": 1 },
+        { "type": "planter", "x": 26, "y": 35, "variant": 1 },
+        { "type": "planter", "x": 36, "y": 35 },
+        { "type": "planter", "x": 12, "y": 19 },
+        { "type": "planter", "x": 57, "y": 19, "variant": 1 },
 
-        { "type": "palm", "x": 57, "y": 27 },
-        { "type": "palm", "x": 62, "y": 35, "variant": 1 },
-        { "type": "umbrella", "x": 60, "y": 34 }
+        { "type": "lamp", "x": 9, "y": 19 },
+        { "type": "lamp", "x": 24, "y": 19, "variant": 1 },
+        { "type": "lamp", "x": 39, "y": 19 },
+        { "type": "lamp", "x": 54, "y": 19, "variant": 1 },
+        { "type": "lamp", "x": 13, "y": 29 },
+        { "type": "lamp", "x": 20, "y": 29, "variant": 1 },
+        { "type": "lamp", "x": 27, "y": 29 },
+        { "type": "lamp", "x": 36, "y": 29, "variant": 1 },
+        { "type": "lamp", "x": 43, "y": 29 },
+        { "type": "lamp", "x": 52, "y": 29, "variant": 1 },
+        { "type": "lamp", "x": 58, "y": 29 },
+        { "type": "lamp", "x": 9, "y": 41 },
+        { "type": "lamp", "x": 24, "y": 41, "variant": 1 },
+        { "type": "lamp", "x": 39, "y": 41 },
+        { "type": "lamp", "x": 54, "y": 41, "variant": 1 },
+
+        { "type": "bench", "x": 13, "y": 41 },
+        { "type": "bench", "x": 44, "y": 41, "variant": 1 },
+        { "type": "bench", "x": 11, "y": 31, "variant": 1 },
+        { "type": "bench", "x": 55, "y": 31 },
+
+        { "type": "gate", "x": 1, "y": 29, "rot": 1 },
+
+        { "type": "palm", "x": 57, "y": 25, "variant": 1 },
+        { "type": "palm", "x": 62, "y": 26 },
+        { "type": "palm", "x": 57, "y": 37, "variant": 1 },
+        { "type": "palm", "x": 62, "y": 37 },
+        { "type": "umbrella", "x": 59, "y": 33 },
+        { "type": "picnic-blanket", "x": 60, "y": 35, "variant": 1 }
       ],
       "residents": [
         {
           "id": "resident-mira",
           "name": "Mira",
           "seed": "town-mira",
-          "x": 18,
-          "y": 31,
+          "x": 11,
+          "y": 30,
           "direction": 1
         },
         {
           "id": "resident-oren",
           "name": "Oren",
           "seed": "town-oren",
-          "x": 34,
+          "x": 24,
           "y": 31,
           "direction": 0
         },
@@ -308,7 +321,7 @@
           "id": "resident-pip",
           "name": "Pip",
           "seed": "town-pip",
-          "x": 44,
+          "x": 40,
           "y": 31,
           "direction": 3
         },
@@ -316,25 +329,57 @@
           "id": "resident-tessa",
           "name": "Tessa",
           "seed": "town-tessa",
-          "x": 26,
-          "y": 41,
+          "x": 29,
+          "y": 33,
           "direction": 2
         },
         {
           "id": "resident-bram",
           "name": "Bram",
           "seed": "town-bram",
-          "x": 37,
-          "y": 45,
+          "x": 10,
+          "y": 43,
           "direction": 2
         },
         {
           "id": "resident-nia",
           "name": "Nia",
           "seed": "town-nia",
-          "x": 35,
+          "x": 44,
           "y": 42,
           "direction": 2
+        },
+        {
+          "id": "resident-jules",
+          "name": "Jules",
+          "seed": "town-jules",
+          "x": 17,
+          "y": 12,
+          "direction": 0
+        },
+        {
+          "id": "resident-sera",
+          "name": "Sera",
+          "seed": "town-sera",
+          "x": 48,
+          "y": 24,
+          "direction": 1
+        },
+        {
+          "id": "resident-otto",
+          "name": "Otto",
+          "seed": "town-otto",
+          "x": 52,
+          "y": 20,
+          "direction": 2
+        },
+        {
+          "id": "resident-ada",
+          "name": "Ada",
+          "seed": "town-ada",
+          "x": 5,
+          "y": 31,
+          "direction": 1
         }
       ]
     },

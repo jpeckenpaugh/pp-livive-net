@@ -94,13 +94,42 @@ export function propTiles(record) {
   });
 }
 
+/**
+ * Walkable cut-outs inside a solid footprint, expressed as offsets from the
+ * prop origin in its placed (post-rotation) orientation. A building declares a
+ * 1×2 doorway so the player can step inside; the trigger tile itself is an
+ * opening, not pavement outside the facade.
+ */
+export function propOpenings(record) {
+  const size = locationPropSize(record?.type, record?.rot);
+  if (!size) return [];
+  const seen = new Set();
+  const openings = [];
+  for (const entry of Array.isArray(record?.openings) ? record.openings : []) {
+    const dx = Math.round(Number(entry?.dx));
+    const dy = Math.round(Number(entry?.dy));
+    if (!Number.isFinite(dx) || !Number.isFinite(dy)) continue;
+    if (dx < 0 || dx >= size.w || dy < 0 || dy >= size.h) continue;
+    const key = `${dx},${dy}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    openings.push({ dx, dy });
+  }
+  return openings;
+}
+
 /** Solid footprints only; a pier or umbrella never blocks a step. */
 export function locationBlockedTiles(props = []) {
   const blocked = new Set();
   for (const record of Array.isArray(props) ? props : []) {
     const prop = locationProp(record?.type);
     if (!prop?.solid) continue;
-    for (const tile of propTiles(record)) blocked.add(propTileKey(tile));
+    const openings = new Set(propOpenings(record).map(opening => `${opening.dx},${opening.dy}`));
+    for (const tile of propTiles(record)) {
+      const offset = `${tile.x - Math.round(Number(record.x))},${tile.y - Math.round(Number(record.y))}`;
+      if (openings.has(offset)) continue;
+      blocked.add(propTileKey(tile));
+    }
   }
   return blocked;
 }
@@ -179,12 +208,18 @@ export function normalizeLocationProps(entries) {
     const keys = tiles.map(propTileKey);
     if (prop.solid && keys.some(key => taken.has(key))) continue;
     for (const key of keys) taken.add(key);
+    const openings = propOpenings({ type: prop.id, x, y, rot, openings: entry.openings });
+    const label = typeof entry.label === 'string' && entry.label.trim()
+      ? entry.label.trim().slice(0, 24)
+      : '';
     records.push({
       type: prop.id,
       x,
       y,
       rot,
-      variant: normalizePropVariant(prop, entry.variant)
+      variant: normalizePropVariant(prop, entry.variant),
+      ...(label ? { label } : {}),
+      ...(openings.length ? { openings } : {})
     });
   }
   return records;
@@ -199,13 +234,14 @@ export function propRenderMeta(record) {
   const y = Math.round(Number(record.y) || 0);
   return {
     type: prop.id,
-    label: prop.label || prop.id,
+    label: typeof record?.label === 'string' && record.label ? record.label : (prop.label || prop.id),
     shape: prop.shape || prop.id,
     solid: prop.solid === true,
     colors: locationPropColors(prop.id, record.variant),
     size,
     x,
     y,
+    openings: propOpenings(record),
     sortY: y + size.h - 1
   };
 }

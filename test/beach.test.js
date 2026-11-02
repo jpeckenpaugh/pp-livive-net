@@ -115,7 +115,7 @@ test('Town opens an east door onto the Beach and lists it Nearby', () => {
   const beachDoor = doors.find(door => door.to === 'beach');
   assert.ok(beachDoor);
   assert.equal(beachDoor.prompt, 'Walk down to the beach?');
-  assert.deepEqual({ x: beachDoor.x, y: beachDoor.y }, { x: 60, y: 31 });
+  assert.deepEqual({ x: beachDoor.x, y: beachDoor.y }, { x: 62, y: 31 });
   assert.equal(typeAt(town.grid, beachDoor.x, beachDoor.y), 'sand', 'the door stands on the cove');
 
   const target = travelTargets('town').find(row => row.id === 'beach');

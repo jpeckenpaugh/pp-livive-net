@@ -85,7 +85,7 @@ test('Town has a reachable library door on the third facade', () => {
   const doors = doorsFor('town', { terrain: town.grid, spawn: town.spawn });
   const door = doors.find(entry => entry.to === 'library');
   assert.ok(door, 'the town offers the library');
-  assert.deepEqual({ x: door.x, y: door.y }, { x: 40, y: 28 });
+  assert.deepEqual({ x: door.x, y: door.y }, { x: 38, y: 17 });
   assert.equal(door.prompt, 'Visit the library?');
   assert.ok(isWalkable(typeAt(town.grid, door.x, door.y)));
   assert.ok(!blocked.has(`${door.x},${door.y}`), 'no prop sits on the library door');

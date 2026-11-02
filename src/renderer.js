@@ -18,7 +18,7 @@ import {
   itemColors,
   itemTierAccent
 } from './home_items.js';
-import { propRenderMeta } from './location_props.js';
+import { propRenderMeta, propTiles } from './location_props.js';
 import sceneryAssets from '../data/nature_scenery.json' with { type: 'json' };
 
 export const TILE = 48;
@@ -1016,7 +1016,41 @@ function drawAmphitheatreTier(ctx, box, colors) {
   fillRoundRect(ctx, box.left, box.baseY - TILE * 0.08, box.width, TILE * 0.08, 2, colors.trim);
 }
 
-function drawBuilding(ctx, box, colors) {
+/** A small painted sign so shop, home, library, and shells read apart. */
+function drawBuildingSign(ctx, box, meta, roofY, colors) {
+  const label = typeof meta?.label === 'string' ? meta.label : '';
+  if (!label || label === 'Building') return;
+  const maxWidth = box.width * 0.82;
+  const fontSize = Math.max(8, Math.round(TILE * 0.18));
+  ctx.save();
+  ctx.font = `700 ${fontSize}px system-ui, -apple-system, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  let text = label;
+  let width = ctx.measureText(text).width;
+  while (width > maxWidth - TILE * 0.18 && text.length > 3) {
+    text = text.slice(0, -1);
+    width = ctx.measureText(text).width;
+  }
+  const plaqueWidth = Math.min(maxWidth, width + TILE * 0.22);
+  const plaqueHeight = Math.max(11, TILE * 0.25);
+  const cx = (box.left + box.right) / 2;
+  const top = roofY + TILE * 0.42;
+  fillRoundRect(
+    ctx,
+    cx - plaqueWidth / 2,
+    top,
+    plaqueWidth,
+    plaqueHeight,
+    plaqueHeight / 2,
+    colors.trim
+  );
+  ctx.fillStyle = '#f4e3ae';
+  ctx.fillText(text, cx, top + plaqueHeight / 2 + 0.5);
+  ctx.restore();
+}
+
+function drawBuilding(ctx, box, colors, time = 0, meta = null) {
   propShadow(ctx, box);
   const roofY = box.top + TILE * 0.18;
   fillRoundRect(ctx, box.left, roofY + TILE * 0.24, box.width, box.baseY - roofY - TILE * 0.24, 5, colors.base);
@@ -1028,17 +1062,59 @@ function drawBuilding(ctx, box, colors) {
   ctx.closePath();
   ctx.fill();
   fillRoundRect(ctx, box.left, roofY + TILE * 0.22, box.width, TILE * 0.1, 2, colors.trim);
-  const doorWidth = TILE * 0.62;
-  const doorX = (box.left + box.right) / 2 - doorWidth / 2;
-  fillRoundRect(ctx, doorX, box.baseY - TILE * 1.02, doorWidth, TILE * 0.98, 3, colors.trim);
-  ctx.fillStyle = '#f0d48a';
-  ctx.beginPath();
-  ctx.arc(doorX + doorWidth * 0.76, box.baseY - TILE * 0.52, TILE * 0.045, 0, Math.PI * 2);
-  ctx.fill();
+  drawBuildingSign(ctx, box, meta, roofY, colors);
+
+  const tileWidth = box.width / Math.max(1, meta?.size?.w || 1);
+  const openings = Array.isArray(meta?.openings) ? meta.openings : [];
+  // The lowest opening is the front of the placed footprint. A solid shell
+  // draws a display window instead, so a facade never promises a door it lacks.
+  const front = openings.reduce((best, opening) => (
+    !best || opening.dy > best.dy ? opening : best
+  ), null);
+  if (front) {
+    const doorWidth = tileWidth * 0.74;
+    const centerX = box.left + (front.dx + 0.5) * tileWidth;
+    const top = box.baseY - TILE * 1.02;
+    fillRoundRect(ctx, centerX - doorWidth / 2 - 3, top - 3, doorWidth + 6, TILE * 1.05, 4, colors.trim);
+    // A dark, walkable opening reads as a real doorway rather than a painted one.
+    fillRoundRect(ctx, centerX - doorWidth / 2, top, doorWidth, TILE * 0.98, 3, '#1c1510');
+    fillRoundRect(
+      ctx,
+      centerX - doorWidth / 2 + 2,
+      top + TILE * 0.1,
+      doorWidth - 4,
+      TILE * 0.16,
+      2,
+      'rgba(240, 212, 138, 0.22)'
+    );
+  } else {
+    const windowWidth = Math.max(TILE * 0.7, box.width * 0.22);
+    const centerX = (box.left + box.right) / 2;
+    fillRoundRect(
+      ctx,
+      centerX - windowWidth / 2,
+      box.baseY - TILE * 1.0,
+      windowWidth,
+      TILE * 0.62,
+      4,
+      '#6f8f96'
+    );
+    fillRoundRect(
+      ctx,
+      centerX - windowWidth / 2 + 3,
+      box.baseY - TILE * 0.98,
+      windowWidth / 2 - 5,
+      TILE * 0.58,
+      3,
+      '#8fb3ba'
+    );
+    fillRoundRect(ctx, centerX - 1.5, box.baseY - TILE * 1.0, 3, TILE * 0.62, 0, colors.trim);
+  }
+
   const windowWidth = Math.max(TILE * 0.34, box.width * 0.12);
   for (const x of [box.left + TILE * 0.18, box.right - TILE * 0.18 - windowWidth]) {
-    fillRoundRect(ctx, x, box.baseY - TILE * 1.24, windowWidth, TILE * 0.4, 3, '#7fa9b8');
-    fillRoundRect(ctx, x + windowWidth * 0.44, box.baseY - TILE * 1.24, 2, TILE * 0.4, 0, colors.trim);
+    fillRoundRect(ctx, x, box.baseY - TILE * 1.34, windowWidth, TILE * 0.4, 3, '#7fa9b8');
+    fillRoundRect(ctx, x + windowWidth * 0.44, box.baseY - TILE * 1.34, 2, TILE * 0.4, 0, colors.trim);
   }
 }
 
@@ -1347,8 +1423,22 @@ export class WorldRenderer {
     this.drawHomeLampGlow(ctx, game);
 
     // Travel doors sit above the ground and below every actor, so a character
-    // standing in the doorway is drawn in front of it.
-    for (const door of game.doors || []) this.drawDoorMarker(ctx, door, game.time);
+    // standing in the doorway is drawn in front of it. Doors cut into a solid
+    // footprint are held back: their floating marker climbs above the building.
+    const doorHosts = new Map();
+    if (Array.isArray(game.locationProps)) {
+      const propAtTile = new Map();
+      for (const record of game.locationProps) {
+        for (const tile of propTiles(record)) propAtTile.set(`${tile.x},${tile.y}`, record);
+      }
+      for (const door of game.doors || []) {
+        const host = propAtTile.get(`${door.x},${door.y}`);
+        if (host) doorHosts.set(door, host);
+      }
+    }
+    for (const door of game.doors || []) {
+      if (!doorHosts.has(door)) this.drawDoorMarker(ctx, door, game.time);
+    }
 
     // Mini-game ground/object layers. The host owns sessions when present;
     // legacy miniGames remain a fallback for older wiring.
@@ -1537,6 +1627,13 @@ export class WorldRenderer {
       }
     }
 
+    // Interior door markers float above their building, so the roof can never
+    // swallow the one tile the player needs to bump.
+    for (const [door, host] of doorHosts) {
+      const meta = propRenderMeta(host);
+      if (meta) this.drawInteriorDoorMarker(ctx, door, meta, game.time);
+    }
+
     // Overlay layer (tokens, hover highlights) sits above characters.
     if (game.miniGameHost) {
       game.miniGameHost.renderLayer?.(ctx, 'overlay', view);
@@ -1621,6 +1718,51 @@ export class WorldRenderer {
     ctx.beginPath();
     ctx.arc(left + doorW * 0.78, top + doorH * 0.58, 2.4, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
+  }
+
+  /**
+   * A doorway set inside a building footprint needs a marker above the roof:
+   * the ordinary door art would be painted under the facade. The pill bobs on
+   * the same clock as the door ring so it reads as part of the same system.
+   */
+  drawInteriorDoorMarker(ctx, door, meta, time = 0) {
+    if (!door || !meta?.size) return;
+    const cx = (door.x + 0.5) * TILE;
+    const pulse = 0.5 + Math.sin((time || 0) * 2.2 + door.x * 0.6) * 0.5;
+    const bob = Math.sin((time || 0) * 2.6 + door.x * 0.4) * TILE * 0.04;
+    const label = 'ENTER';
+    const pillH = Math.max(14, TILE * 0.34);
+    const top = meta.y * TILE - pillH - TILE * 0.2 + bob;
+
+    ctx.save();
+    ctx.font = `700 ${Math.max(9, Math.round(TILE * 0.19))}px system-ui, -apple-system, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const pillW = Math.max(TILE * 0.9, ctx.measureText(label).width + TILE * 0.34);
+    const left = cx - pillW / 2;
+
+    // A small down arrow points at the roof the doorway hides beneath.
+    ctx.beginPath();
+    ctx.moveTo(cx, top + pillH + TILE * 0.16);
+    ctx.lineTo(cx - TILE * 0.1, top + pillH + TILE * 0.01);
+    ctx.lineTo(cx + TILE * 0.1, top + pillH + TILE * 0.01);
+    ctx.closePath();
+    ctx.fillStyle = '#f0d48a';
+    ctx.fill();
+
+    ctx.globalAlpha = 0.82 + pulse * 0.15;
+    ctx.fillStyle = '#15251b';
+    ctx.strokeStyle = '#e5f4a5';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(left, top, pillW, pillH, pillH / 2);
+    else ctx.rect(left, top, pillW, pillH);
+    ctx.fill();
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#e5f4a5';
+    ctx.fillText(label, cx, top + pillH / 2 + 0.5);
     ctx.restore();
   }
 
@@ -1899,7 +2041,7 @@ export class WorldRenderer {
     const box = itemPad(bounds);
     const draw = LOCATION_PROP_SHAPES[meta.shape] || drawGenericProp;
     ctx.save();
-    draw(ctx, box, meta.colors, game?.time || 0);
+    draw(ctx, box, meta.colors, game?.time || 0, meta);
     ctx.restore();
   }
 

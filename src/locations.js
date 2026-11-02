@@ -104,7 +104,12 @@ export function worldFor(id, seed, record = null) {
   // A save written before location layouts existed keeps its own grown world.
   // Generating the meadow gives that record scenery that matches its terrain
   // instead of Central Park trees dropped onto old ground.
-  if (record && record.layout !== locationLayout(id)) {
+  if (record && !layoutMatches(id, record)) {
+    // A Town saved before the grid layout is regenerated rather than grown as
+    // a meadow: its streets are the whole point, and the caller resets the
+    // player to the new spawn. Every other stale record keeps the legacy
+    // meadow fallback.
+    if (template === 'town') return generateTown(builtSeed);
     return generateWorld(builtSeed);
   }
   if (template === 'central-park') return generateCentralPark(builtSeed);
@@ -120,6 +125,9 @@ export function worldFor(id, seed, record = null) {
 export function locationLayout(id) {
   const def = locationDef(id);
   if (!def) return null;
+  // A location may version its template without renaming it; old records then
+  // rebuild once. Town moved from a single street to a street grid this way.
+  if (typeof def.layout === 'string' && def.layout) return def.layout;
   if (typeof def.template === 'string' && def.template) return def.template;
   if (def.house) return 'interior';
   return 'meadow';
@@ -339,7 +347,7 @@ export function createLocationRecord(id, { basket = null } = {}) {
   const world = worldFor(id, seed);
   return {
     seed,
-    layout: world.template || locationLayout(id),
+    layout: world.layout || locationLayout(id),
     terrain: encodeTerrain(world.grid),
     player: { x: world.spawn.x, y: world.spawn.y, direction: 0 },
     npcs: [],

@@ -25,8 +25,10 @@ import {
   createLocationRecord,
   doorsFor,
   isLocationEnabled,
+  layoutMatches,
   locationDef,
   locationLabel,
+  locationLayout,
   locationTheme,
   propsForLocation,
   residentsFor,
@@ -2128,16 +2130,26 @@ function applyState(state) {
   const homeMode = locationId === 'home';
   const locationState = activeLocation(state) || {};
   const sharedPlayer = state.player && typeof state.player === 'object' ? state.player : {};
+  // A Town record from the single-street layout rebuilds once on the grid and
+  // wakes the player at the new spawn. Other stale records keep the meadow.
+  const townRegenerated = locationId === 'town' && !layoutMatches(locationId, locationState);
+  const layoutRecord = townRegenerated
+    ? { ...locationState, layout: locationLayout(locationId) }
+    : locationState;
   const worldData = worldFor(locationId, locationState.seed, locationState);
-  const terrain = decodeTerrain(locationState.terrain) || worldData.grid;
-  const theme = locationTheme(locationId, locationState);
-  const locationProps = propsForLocation(locationId, locationState);
+  const terrain = townRegenerated
+    ? worldData.grid
+    : (decodeTerrain(locationState.terrain) || worldData.grid);
+  const theme = locationTheme(locationId, layoutRecord);
+  const locationProps = propsForLocation(locationId, layoutRecord);
   const locationBlocked = locationBlockedTiles(locationProps);
   // Scenery belongs to generated ground: never leave a tree inside a building.
   const scenery = (worldData.scenery || [])
     .filter(item => !locationBlocked.has(`${item.x},${item.y}`));
   const locationSpawn = locationDef(locationId)?.spawn || worldData.spawn || { x: 32, y: 32 };
-  const arrival = arrivalTile(locationId, { player: locationState.player });
+  const arrival = townRegenerated
+    ? { x: worldData.spawn.x, y: worldData.spawn.y, direction: 0 }
+    : arrivalTile(locationId, { player: locationState.player });
   const rawPlayer = {
     id: 'player',
     name: state.playerName || 'You',
@@ -2409,6 +2421,18 @@ function applyState(state) {
           forage: game.forage
         })
       };
+  // Seal the one-time Town rebuild into the record so the next arrival finds a
+  // matching layout marker instead of regenerating the streets every load.
+  if (townRegenerated) {
+    locationStates.town = captureLocationRecord({
+      seed: worldData.seed ?? locationState.seed,
+      layout: locationLayout('town'),
+      terrain,
+      player: rawPlayer,
+      npcs: [],
+      forage: locationState.forage
+    }, locationStates.town || null);
+  }
   currentLocationId = locationId;
   rosterCompanions = companions.map(comp => ({ ...comp }));
 
