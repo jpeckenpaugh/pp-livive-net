@@ -224,7 +224,7 @@ test('Bouncy Boots shortens the step duration through the effect stat', () => {
   assert.ok(Math.abs(game.player.duration - PLAYER_STEP * 0.6) < 1e-9);
 });
 
-test('teleport jumps up to 3 tiles and passes through water, characters, and boards', () => {
+test('teleport jumps up to 3 tiles through water and characters, but not onto a board', () => {
   const waterGame = makeGame();
   waterGame.terrain[10][11] = 'water';
   equip(waterGame.player, 'teleport-tricorder', 'hand', 'tricorder');
@@ -240,11 +240,17 @@ test('teleport jumps up to 3 tiles and passes through water, characters, and boa
   assert.equal(occupancyGame.tryStep(occupancyGame.player, 1, 0, PLAYER_STEP), true);
   assert.equal(occupancyGame.player.toX, 13);
 
+  // Board play is a no-teleport zone: the effect must not leap the board.
   const boardGame = makeGame();
-  boardGame.setMiniGameHost({ blocksStep: () => true, update: () => {} });
+  boardGame.setMiniGameHost({
+    blocksStep: () => true,
+    isParticipant: () => false,
+    getBlockedTiles: () => new Set(['11,10', '12,10', '13,10']),
+    update: () => {}
+  });
   equip(boardGame.player, 'teleport-tricorder', 'hand', 'tricorder');
-  assert.equal(boardGame.tryStep(boardGame.player, 1, 0, PLAYER_STEP), true);
-  assert.equal(boardGame.player.toX, 13);
+  assert.equal(boardGame.tryStep(boardGame.player, 1, 0, PLAYER_STEP), false);
+  assert.equal(boardGame.player.moving, false);
 
   const bumpGame = makeGame();
   const bumpNpc = bumpGame.makeCharacter({ id: 'npc-bump', name: 'Bop', x: 11, y: 10 });

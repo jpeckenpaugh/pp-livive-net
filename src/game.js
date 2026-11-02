@@ -876,14 +876,27 @@ export class Game {
     };
   }
 
+  /**
+   * Teleport is a map ability. Board play is tile-by-tile, so participants and
+   * anyone standing on a board walk normally: blinking would skip squares and
+   * bypass the board's collision rules.
+   */
+  isTeleportSuppressed(character) {
+    if (!character) return false;
+    if (character.inMiniGame) return true;
+    if (this.miniGameHost?.isParticipant?.(character)) return true;
+    return this.isCharacterOnMiniGameBoard(character);
+  }
+
   tryStep(character, dx, dy, duration) {
     if (!this.terrain) return false;
     const fx = this.resolveFxFor(character);
+    const teleportSuppressed = fx?.motionId === 'teleport' && this.isTeleportSuppressed(character);
 
     // Teleport is the one movement style allowed to bypass terrain and board
-    // blocking. It still refuses to land on another character, so reservations
-    // and bump-to-talk remain coherent.
-    if (fx?.motionId === 'teleport') {
+    // blocking on the map. During board play it is suppressed and the normal
+    // walk path below applies instead.
+    if (fx?.motionId === 'teleport' && !teleportSuppressed) {
       return this.tryTeleportStep(character, dx, dy, duration, fx);
     }
 
@@ -943,7 +956,7 @@ export class Game {
     character.duration = Math.max(0.01, duration * durationScale);
     character.direction = directionForStep(dx, dy);
 
-    const motionId = fx?.motionId || null;
+    const motionId = teleportSuppressed ? null : (fx?.motionId || null);
     character.motionStyle = motionId;
     character.motionArriveAt = 1;
     if (motionId === 'teleport') {
@@ -971,6 +984,7 @@ export class Game {
       const ty = character.y + dy * distance;
       if (tx < 0 || tx >= WORLD_SIZE || ty < 0 || ty >= WORLD_SIZE) break;
       if (this.homeBlockedTiles.size && this.homeBlockedTiles.has(`${tx},${ty}`)) continue;
+      if (this.miniGameHost?.blocksStep?.(character, tx, ty)) continue;
       if (reservationAtTile(collidingObstacles, tx, ty)) continue;
       landing = { x: tx, y: ty, distance };
     }
