@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   formatTraceEntry,
+  formatVoiceReadout,
   npcCardActions,
   npcCardSummary,
   npcEconomySummary,
@@ -281,4 +282,83 @@ test('debug trace lines name the game, phase, turn, action, and verdict', () => 
     reason: null
   });
   assert.equal(informational, '#14 · no game · — · no turn · turn event');
+});
+
+const LANGUAGES = [
+  { id: 'en', label: 'English' },
+  { id: 'es', label: 'Spanish' }
+];
+
+const VOICE = {
+  lang: 'es',
+  voiceId: 'ef_dora',
+  pitchSt: 0.5,
+  formantRatio: 1.1,
+  tiltDbPerOct: -0.2
+};
+
+test('a voice readout with no target explains how to get one', () => {
+  assert.equal(
+    formatVoiceReadout({}),
+    'No voice activity yet — open a neighbour card or let someone speak'
+  );
+});
+
+test('a card voice lists language, id, and the three knobs before any line', () => {
+  const line = formatVoiceReadout({
+    source: 'card',
+    name: 'Marisol',
+    voice: VOICE,
+    playback: null,
+    languages: LANGUAGES
+  });
+  assert.match(line, /^card · Marisol · Spanish \(es\) · ef_dora · p \+0\.5 · f 1\.10 · t -0\.2 · no line yet$/);
+});
+
+test('the last speaker is labelled and reports a render miss', () => {
+  const line = formatVoiceReadout({
+    source: 'last',
+    name: 'Clover',
+    voice: VOICE,
+    playback: { ok: true, cache: 'render' },
+    languages: LANGUAGES
+  });
+  assert.match(line, /^last · Clover · Spanish \(es\)/);
+  assert.match(line, /last miss \(render\)$/);
+});
+
+test('memory and IndexedDB restores read as cache hits', () => {
+  for (const cache of ['memory', 'idb']) {
+    const line = formatVoiceReadout({
+      source: 'card',
+      name: 'Marisol',
+      voice: VOICE,
+      playback: { ok: true, cache },
+      languages: LANGUAGES
+    });
+    assert.match(line, new RegExp(`last hit \\(${cache}\\)$`));
+  }
+});
+
+test('a failed line shows the error instead of a cache outcome', () => {
+  const line = formatVoiceReadout({
+    source: 'card',
+    name: 'Marisol',
+    voice: VOICE,
+    playback: { ok: false, cache: null, error: 'clip fetch failed (404)' },
+    languages: LANGUAGES
+  });
+  assert.match(line, /failed: clip fetch failed \(404\)$/);
+  assert.doesNotMatch(line, /hit|miss/);
+});
+
+test('an unknown language falls back to its code', () => {
+  const line = formatVoiceReadout({
+    source: 'card',
+    name: 'Marisol',
+    voice: { ...VOICE, lang: 'xx' },
+    playback: null,
+    languages: LANGUAGES
+  });
+  assert.match(line, /· xx ·/);
 });

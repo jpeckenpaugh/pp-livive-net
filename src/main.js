@@ -77,6 +77,8 @@ let npcWatchPrompt = null;
 let delegated = { host: false, runtime: false, bubbles: false };
 const sounds = new SoundBoard();
 let voice = null;
+/** Most recent character that produced a speak attempt, for the Debug readout. */
+let lastVoiceSpeaker = null;
 let audioUnlocked = false;
 const prefetchedVoices = new Set();
 /** Sessions whose settlement line has already spoken (one line per result). */
@@ -124,8 +126,7 @@ function prefetchVoiceBeat(npc, event) {
  */
 function onDialogueBeat(npc, event) {
   if (!npc || !event) return;
-  const engine = ensureVoice();
-  engine.speak(npc, event).catch(() => {});
+  speakVoiceLine(npc, event);
   // A friend's menu is the only place the invite cue can be chosen from.
   if (event === 'dialogue.friend') prefetchVoiceBeat(npc, 'minigame.invite');
   if (event !== 'dialogue.stranger') return;
@@ -147,13 +148,57 @@ function prefetchNearbyGreetings() {
   }
 }
 
-/** Speak one cue from a character that actually carries a voice. */
+/**
+ * The single awaited speak path. Only a resolved `true` counts as a played
+ * line, which is what earns the first-use cue; a mute, a prefetch, or a
+ * failure never does. The sync return keeps the old "attempted" contract that
+ * the settlement and abandon callers rely on.
+ */
 function speakVoiceLine(character, event) {
   if (!character?.voice || !event) return false;
   const engine = ensureVoice();
-  if (!engine.enabled) return false;
-  engine.speak(character, event).catch(() => {});
-  return true;
+  lastVoiceSpeaker = { name: character.name || '', voice: character.voice };
+  engine.speak(character, event)
+    .then(played => {
+      if (played) noteVoiceHint();
+      refreshDebugIfOpen();
+    })
+    .catch(() => refreshDebugIfOpen());
+  return engine.enabled;
+}
+
+/** Debug rows read live engine state, so refresh them only while visible. */
+function refreshDebugIfOpen() {
+  if ($('debug-panel') && !$('debug-panel').hidden) panels?.updateDebugUI?.();
+}
+
+/** Show the one-time language cue the first time a line actually plays. */
+function noteVoiceHint() {
+  const engine = ensureVoice();
+  if (engine.hintShown) return;
+  engine.setHintShown(true);
+  showVoiceHint();
+}
+
+/** Fill the cue from `data/voice.json` and reveal it under the speaker pills. */
+function showVoiceHint() {
+  const callout = $('voice-hint');
+  if (!callout) return;
+  const hint = voice?.policy?.hint || {};
+  const text = $('voice-hint-text');
+  callout.hidden = false;
+  if (text) text.textContent = hint.text || 'Neighbours speak their own language.';
+  const dismiss = $('voice-hint-dismiss');
+  if (dismiss) dismiss.setAttribute('aria-label', hint.dismiss || 'Dismiss voice hint');
+}
+
+/** Hide the cue and hand focus back to the speaker button when it was inside. */
+function hideVoiceHint() {
+  const callout = $('voice-hint');
+  if (!callout) return;
+  const returned = callout.contains(document.activeElement);
+  callout.hidden = true;
+  if (returned) $('voice-toggle')?.focus({ preventScroll: true });
 }
 
 /** Ambient chat limiter, built from the voice policy on first use. */
@@ -195,7 +240,7 @@ function onAmbientSay({ actorId, bubble, detail } = {}) {
   }
 
   if (!ensureChatGate().allow(actorId, npcGameNow())) return false;
-  voice.speak(actor, 'bubble.chat').catch(() => {});
+  speakVoiceLine(actor, 'bubble.chat');
   return true;
 }
 
@@ -1907,6 +1952,11 @@ function bindEvents() {
     setVoiceVolumeOpen(!isVoiceVolumeOpen());
   });
 
+  $('voice-hint-dismiss')?.addEventListener('click', hideVoiceHint);
+  $('voice-hint')?.addEventListener('keydown', event => {
+    if (event.key === 'Escape') hideVoiceHint();
+  });
+
   const volumeSlider = $('voice-volume-slider');
   const commitVoiceVolume = () => {
     voiceVolumeTimer = 0;
@@ -2064,6 +2114,9 @@ function boot() {
     getGameMetas: () => (host ? [...host.registry.values()].map(entry => entry.meta) : []),
     getHostState: () => host?.getState?.() || null,
     getHostTrace: () => host?.getTrace?.() || [],
+    getVoicePlayback: () => voice?.lastPlayback || null,
+    getLastVoiceSpeaker: () => lastVoiceSpeaker,
+    getVoiceLanguages: () => voice?.policy?.languages || [],
     getBehaviorSummary: () => behaviorRuntime?.snapshot?.() || null,
     onGrantEffects: grantAllEffects,
     onGrantNpcEffect,

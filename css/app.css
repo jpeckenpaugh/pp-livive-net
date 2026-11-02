@@ -233,6 +233,50 @@ body.wizard-open canvas#world {
   border-radius: 999px;
 }
 
+/* One-time cue, anchored under the speaker pills. */
+.voice-hint {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 41;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: min(300px, calc(100vw - 24px));
+  padding: 9px 8px 9px 12px;
+  border: 1px solid rgba(229, 244, 165, 0.42);
+  border-radius: 13px;
+  background: var(--panel);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.voice-hint[hidden] {
+  display: none;
+}
+
+.voice-hint p {
+  margin: 0;
+}
+
+.voice-hint .icon-button {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  font-size: 15px;
+}
+
+/* A first line usually plays inside the dialogue, which dims the top bar. */
+body.dialogue-open #hud .topbar #voice-hint,
+body.dialogue-open #hud .topbar #voice-hint * {
+  opacity: 1;
+  pointer-events: auto !important;
+}
+
 .friend-row.nav-focused,
 .friend-row:focus-within {
   border-color: var(--accent);
@@ -1311,6 +1355,12 @@ body.dialogue-open .topbar {
     left: 0;
     right: 0;
     width: auto;
+  }
+
+  .voice-hint {
+    left: 0;
+    right: 0;
+    max-width: none;
   }
 
   #wander-toggle .label {

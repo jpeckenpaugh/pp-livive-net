@@ -130,10 +130,10 @@ test('volume and mute persist through the injected storage', () => {
   const engine = new VoiceEngine({ storage, idbFactory: null, prefs: { enabled: true, volume: 0.5 } });
   assert.equal(engine.volume, 0.5);
   assert.equal(engine.setVolume(1.4), 1);
-  assert.deepEqual(readVoicePrefs(storage), { enabled: true, volume: 1 });
+  assert.deepEqual(readVoicePrefs(storage), { enabled: true, volume: 1, hintShown: false });
 
   assert.equal(engine.setEnabled(false), false);
-  assert.deepEqual(readVoicePrefs(storage), { enabled: false, volume: 1 });
+  assert.deepEqual(readVoicePrefs(storage), { enabled: false, volume: 1, hintShown: false });
 
   const restored = new VoiceEngine({ storage, idbFactory: null });
   assert.equal(restored.enabled, false);
@@ -145,4 +145,145 @@ test('mute stops every actor and stays a no-op with none playing', () => {
   assert.equal(engine.stopAll(), undefined);
   assert.equal(engine.stopActor('ghost'), false);
   assert.equal(engine.setEnabled(false), false);
+});
+
+/** A minimal AudioContext stand-in: enough to render and start one source. */
+function fakeAudioContext() {
+  return {
+    state: 'running',
+    destination: {},
+    createGain: () => ({ gain: { value: 0 }, connect() {}, disconnect() {} }),
+    createBuffer: (channels, frames, rate) => ({
+      duration: frames / Math.max(1, rate),
+      length: frames,
+      copyToChannel() {},
+      getChannelData: () => new Float32Array(frames)
+    }),
+    createBufferSource: () => ({
+      buffer: null,
+      connect() {},
+      disconnect() {},
+      start() {},
+      stop() {}
+    }),
+    resume: () => Promise.resolve()
+  };
+}
+
+/** Node has no AudioContext; the engine only uses it for its `supported` check. */
+function permitAudioContext(t) {
+  const previous = globalThis.AudioContext;
+  globalThis.AudioContext = function AudioContextStub() {};
+  t.after(() => {
+    if (previous === undefined) delete globalThis.AudioContext;
+    else globalThis.AudioContext = previous;
+  });
+}
+
+/** An engine that can play: fake context, fake wasm, fake clip fetch. */
+function playingEngine(overrides = {}) {
+  return new VoiceEngine({
+    storage: fakeStorage(),
+    idbFactory: null,
+    createContext: fakeAudioContext,
+    wasmLoader: async () => ({
+      default: async () => {},
+      render_params: () => new Float32Array([0.1, 0.2, 0.3, 0.4])
+    }),
+    fetchFn: async () => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) }),
+    ...overrides
+  });
+}
+
+/** A tiny IndexedDB stand-in whose records survive between engines. */
+function fakeIdb(records = new Map()) {
+  const db = {
+    objectStoreNames: { contains: () => true },
+    createObjectStore: () => ({}),
+    transaction: () => ({
+      objectStore: () => ({
+        get(key) {
+          const request = { result: records.get(key) };
+          queueMicrotask(() => request.onsuccess?.());
+          return request;
+        },
+        put(record) {
+          records.set(record.key, record);
+          const request = {};
+          queueMicrotask(() => request.onsuccess?.());
+          return request;
+        }
+      })
+    })
+  };
+  return {
+    records,
+    open() {
+      const request = { result: db };
+      queueMicrotask(() => request.onsuccess?.());
+      return request;
+    }
+  };
+}
+
+const RECORD = { id: 'npc-clover', name: 'Clover', voice: SPEC };
+
+test('last playback records the line and whether it came from the cache', async t => {
+  permitAudioContext(t);
+  const engine = playingEngine();
+  assert.equal(await engine.speak(RECORD, 'dialogue.stranger'), true);
+  assert.equal(engine.lastPlayback.ok, true);
+  assert.equal(engine.lastPlayback.cache, 'render');
+  assert.equal(engine.lastPlayback.voiceId, SPEC.voiceId);
+  assert.equal(engine.lastPlayback.lang, SPEC.lang);
+  assert.equal(engine.lastPlayback.phrase, phraseFor(SPEC, 'dialogue.stranger', 0));
+  assert.equal(engine.lastPlayback.error, null);
+  assert.ok(Number.isFinite(engine.lastPlayback.at));
+
+  assert.equal(await engine.speak(RECORD, 'dialogue.stranger'), true);
+  assert.equal(engine.lastPlayback.cache, 'memory');
+});
+
+test('a fresh engine restores a rendered line from IndexedDB', async t => {
+  permitAudioContext(t);
+  const records = new Map();
+  const first = playingEngine({ idbFactory: fakeIdb(records) });
+  assert.equal(await first.speak(RECORD, 'dialogue.stranger'), true);
+  assert.equal(first.lastPlayback.cache, 'render');
+
+  const second = playingEngine({ idbFactory: fakeIdb(records) });
+  assert.equal(await second.speak(RECORD, 'dialogue.stranger'), true);
+  assert.equal(second.lastPlayback.cache, 'idb');
+});
+
+test('a muted attempt is recorded as muted without raising lastError', async t => {
+  permitAudioContext(t);
+  const engine = playingEngine({ prefs: { enabled: false, volume: 0.8, hintShown: false } });
+  assert.equal(await engine.speak(RECORD, 'dialogue.stranger'), false);
+  assert.equal(engine.lastPlayback.ok, false);
+  assert.equal(engine.lastPlayback.cache, null);
+  assert.equal(engine.lastPlayback.error, 'muted');
+  assert.equal(engine.lastPlayback.voiceId, SPEC.voiceId);
+  assert.equal(engine.lastError, null);
+});
+
+test('a failed playback records the error message', async t => {
+  t.mock.method(console, 'info', () => {});
+  const engine = new VoiceEngine({ storage: fakeStorage(), idbFactory: null });
+  assert.equal(await engine.speak(RECORD, 'dialogue.stranger'), false);
+  assert.equal(engine.lastPlayback.ok, false);
+  assert.equal(engine.lastPlayback.cache, null);
+  assert.match(engine.lastPlayback.error, /AudioContext/);
+});
+
+test('mute and volume writes preserve the first-use hint flag', () => {
+  const storage = fakeStorage();
+  const engine = new VoiceEngine({ storage, idbFactory: null });
+  engine.setHintShown(true);
+  engine.setVolume(0.4);
+  engine.setEnabled(false);
+  assert.deepEqual(readVoicePrefs(storage), { enabled: false, volume: 0.4, hintShown: true });
+
+  const restored = new VoiceEngine({ storage, idbFactory: null });
+  assert.equal(restored.hintShown, true);
 });

@@ -29,6 +29,10 @@
   },
   "prefetchRadiusTiles": 3,
   "prefetchEvents": ["dialogue.friend", "dialogue.stranger", "bubble.chat"],
+  "hint": {
+    "text": "Neighbours speak their own language. 🗣 mutes them.",
+    "dismiss": "Dismiss voice hint"
+  },
   "chatRadiusTiles": 6,
   "chatCooldownMs": 8000,
   "chatGlobalCooldownMs": 5000

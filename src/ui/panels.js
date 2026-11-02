@@ -21,6 +21,47 @@ export function formatTraceEntry(entry = {}) {
   return `#${entry.seq ?? '?'} · ${entry.gameId || 'no game'} · ${entry.phase || '—'} · ${seat} · ${entry.action || 'event'} ${verdict}${reason}`;
 }
 
+const signed = (value, digits) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? `${number >= 0 ? '+' : ''}${number.toFixed(digits)}` : '—';
+};
+
+const fixed = (value, digits) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toFixed(digits) : '—';
+};
+
+function languageName(lang, languages = []) {
+  if (!lang) return 'no language';
+  const entry = languages.find(item => item?.id === lang);
+  return entry?.label ? `${entry.label} (${lang})` : lang;
+}
+
+/**
+ * Compact voice readout for the Debug tab: who, their language and voice id,
+ * the three knobs, then the last attempt's cache outcome or error. Pure.
+ */
+export function formatVoiceReadout({ source = 'last', name = '', voice = null, playback = null, languages = [] } = {}) {
+  if (!voice) {
+    return name
+      ? `${source === 'card' ? 'card' : 'last'} · ${name} · no voice`
+      : 'No voice activity yet — open a neighbour card or let someone speak';
+  }
+  const identity = [
+    source === 'card' ? 'card' : 'last',
+    name || 'neighbour',
+    languageName(voice.lang, languages),
+    voice.voiceId || 'no voice id',
+    `p ${signed(voice.pitchSt, 1)} · f ${fixed(voice.formantRatio, 2)} · t ${signed(voice.tiltDbPerOct, 1)}`
+  ].join(' · ');
+
+  if (!playback) return `${identity} · no line yet`;
+  if (playback.ok !== true) return `${identity} · failed: ${playback.error || 'unknown'}`;
+  const hit = playback.cache === 'memory' || playback.cache === 'idb';
+  const cache = playback.cache ? `${hit ? 'hit' : 'miss'} (${playback.cache})` : 'unknown cache';
+  return `${identity} · last ${cache}`;
+}
+
 function countLabel(count, singular, plural = `${singular}s`) {
   const value = Number.isFinite(count) ? count : 0;
   return `${value} ${value === 1 ? singular : plural}`;
@@ -1459,6 +1500,18 @@ export class PanelsUI {
     this.updateDebugUI();
   }
 
+  /**
+   * The voice readout prefers the card NPC (or the last inspected one), then
+   * the most recent speaker. The source is labelled in the row.
+   */
+  voiceDebugTarget() {
+    const npc = this.npcDebugTarget();
+    if (npc) return { source: 'card', name: npc.name || '', voice: npc.voice || null };
+    const last = this.getLastVoiceSpeaker?.() || null;
+    if (last) return { source: 'last', name: last.name || '', voice: last.voice || null };
+    return null;
+  }
+
   renderDebugExtras() {
     const list = $('debug-actions');
     if (!list) return;
@@ -1577,6 +1630,18 @@ export class PanelsUI {
       icon: '🎮',
       title: 'Game session',
       detail: hostDetail
+    });
+
+    const voiceTarget = this.voiceDebugTarget();
+    addRow({
+      id: 'debug-voice-state',
+      icon: '🗣',
+      title: 'Voice',
+      detail: formatVoiceReadout({
+        ...(voiceTarget || {}),
+        playback: this.getVoicePlayback?.() || null,
+        languages: this.getVoiceLanguages?.() || []
+      })
     });
 
     const behavior = this.getBehaviorSummary?.() || null;

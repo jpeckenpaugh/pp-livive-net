@@ -225,6 +225,7 @@ export class VoiceEngine {
     const initial = prefs || readVoicePrefs(this.storage);
     this.enabled = initial.enabled !== false;
     this.volume = clampVolume(initial.volume);
+    this.hintShown = initial.hintShown === true;
 
     this.context = null;
     this.master = null;
@@ -235,6 +236,7 @@ export class VoiceEngine {
     this.sources = new Map();
     this.lastError = null;
     this.reportedError = false;
+    this.lastPlayback = null;
   }
 
   get supported() {
@@ -269,6 +271,36 @@ export class VoiceEngine {
       } catch {
         // Console is best-effort.
       }
+    }
+    return false;
+  }
+
+  /** Snapshot one playback attempt for the Debug readout. */
+  recordPlayback(fields = {}) {
+    this.lastPlayback = {
+      at: Date.now(),
+      ok: false,
+      voiceId: null,
+      lang: null,
+      phrase: null,
+      cache: null,
+      error: null,
+      ...fields
+    };
+    return this.lastPlayback;
+  }
+
+  /**
+   * Mark an attempt as failed. `report` stays false for expected no-ops — a
+   * muted engine, an unknown event, or a missing clip — which are not
+   * failures worth logging.
+   */
+  failPlayback(playback, error, report = true) {
+    if (report) this.fail(error);
+    if (playback) {
+      playback.ok = false;
+      playback.cache = null;
+      playback.error = error instanceof Error ? error.message : String(error || 'voice failed');
     }
     return false;
   }
@@ -316,19 +348,35 @@ export class VoiceEngine {
     }
   }
 
+  /** Write the whole prefs block so unrelated fields survive a mute or volume change. */
+  persistPrefs() {
+    writeVoicePrefs(this.storage, {
+      enabled: this.enabled,
+      volume: this.volume,
+      hintShown: this.hintShown
+    });
+  }
+
   setEnabled(value) {
     this.enabled = Boolean(value);
     if (!this.enabled) this.stopAll();
     if (this.master) this.master.gain.value = this.enabled ? this.volume : 0;
-    writeVoicePrefs(this.storage, { enabled: this.enabled, volume: this.volume });
+    this.persistPrefs();
     return this.enabled;
   }
 
   setVolume(value) {
     this.volume = clampVolume(value);
     if (this.master) this.master.gain.value = this.enabled ? this.volume : 0;
-    writeVoicePrefs(this.storage, { enabled: this.enabled, volume: this.volume });
+    this.persistPrefs();
     return this.volume;
+  }
+
+  /** Remember that the first-use cue has been shown; persisted with the prefs. */
+  setHintShown(value = true) {
+    this.hintShown = Boolean(value);
+    this.persistPrefs();
+    return this.hintShown;
   }
 
   stopActor(actorId) {
@@ -402,13 +450,13 @@ export class VoiceEngine {
     const key = cacheKey(voice, phrase, this.bank?.corpusBuild);
     if (!key) return null;
     const cached = this.buffers.get(key);
-    if (cached) return cached;
+    if (cached) return { buffer: cached, cache: 'memory' };
 
     const database = await this.database();
     if (database) {
       const record = await readRecord(database, key);
       const restored = toAudioBuffer(context, record);
-      if (restored) return this.remember(key, restored);
+      if (restored) return { buffer: this.remember(key, restored), cache: 'idb' };
     }
 
     const samples = await this.renderClip(voice, phrase);
@@ -433,7 +481,7 @@ export class VoiceEngine {
         createdAt: Date.now()
       });
     }
-    return buffer;
+    return { buffer, cache: 'render' };
   }
 
   actorIdFor(target, voice) {
@@ -445,18 +493,28 @@ export class VoiceEngine {
   /**
    * Speak one beat for an NPC. `event` is a Play Park event alias or a raw bank
    * hook; `attempt` rotates through the hook's phrase candidates.
+   *
+   * Every attempt updates `lastPlayback`, including muted and failed ones, so
+   * the Debug readout can explain the outcome without console logs.
    */
   async speak(target, event, attempt = 0) {
+    const playback = this.recordPlayback();
     try {
-      if (!this.enabled) return false;
       const voice = normalizeTarget(target);
-      if (!voice) return false;
-      const phrase = phraseFor(voice, event, attempt, this.policy);
-      if (!phrase) return false;
+      const phrase = voice ? phraseFor(voice, event, attempt, this.policy) : null;
+      playback.voiceId = voice?.voiceId || null;
+      playback.lang = voice?.lang || null;
+      playback.phrase = phrase;
+
+      if (!this.enabled) return this.failPlayback(playback, 'muted', false);
+      if (!voice) return this.failPlayback(playback, 'no voice', false);
+      if (!phrase) return this.failPlayback(playback, 'no phrase', false);
+
       const context = this.unlock();
-      if (!context) return false;
-      const buffer = await this.bufferFor(context, voice, phrase);
-      if (!buffer) return false;
+      if (!context) return this.failPlayback(playback, this.lastError?.message || 'audio unavailable');
+
+      const result = await this.bufferFor(context, voice, phrase);
+      if (!result?.buffer) return this.failPlayback(playback, 'no audio buffer', false);
 
       const actorId = this.actorIdFor(target, voice);
       this.stopActor(actorId);
@@ -465,7 +523,7 @@ export class VoiceEngine {
       gain.gain.value = 1;
       gain.connect(this.master);
       const source = context.createBufferSource();
-      source.buffer = buffer;
+      source.buffer = result.buffer;
       source.connect(gain);
       source.onended = () => {
         const current = this.sources.get(actorId);
@@ -479,9 +537,13 @@ export class VoiceEngine {
       };
       this.sources.set(actorId, { source, gain });
       source.start();
+
+      playback.ok = true;
+      playback.cache = result.cache;
+      playback.error = null;
       return true;
     } catch (error) {
-      return this.fail(error);
+      return this.failPlayback(playback, error);
     }
   }
 
@@ -501,7 +563,8 @@ export class VoiceEngine {
       for (const [index, event] of list.entries()) {
         const phrase = phraseFor(voice, event, index, this.policy);
         if (!phrase) continue;
-        if (await this.bufferFor(context, voice, phrase)) ready++;
+        const result = await this.bufferFor(context, voice, phrase);
+        if (result?.buffer) ready++;
       }
       return ready;
     } catch (error) {
