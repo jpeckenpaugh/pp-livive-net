@@ -225,6 +225,15 @@ review saw a visibility gap, not a state bug.
 **Files:** `src/main.js`, `src/voice/prefs.js` (`hintShown`), `src/ui/panels.js` (Debug),
 `data/voice.json` (cue copy), tests for the flag.
 
+**Wave C decisions (2026-11-01)**
+
+- One awaited wrapper in `main.js` serves all three speak paths; the cue fires only on a resolved `true`, never on prefetch, mute, or failure.
+- The cue is a small `aria-live` callout anchored to `#voice-toggle` with a dismiss button, not a toast. Copy lives in `data/voice.json`.
+- Prefs gain `hintShown: false`; `normalizePrefs` preserves it and both setters rewrite the full block so a mute or volume change cannot clear it. No key or version bump; missing means false.
+- The engine keeps `lastPlayback = { at, ok, voiceId, lang, phrase, cache, error }`, set on every `speak` attempt; `cache` is `memory | idb | render`. `lastError` stays for compatibility.
+- The Debug row prefers the selected card NPC, falls back to the last speaker, and labels which.
+- The readout is a new read-only row after Game session; the three knobs live in its compact detail line.
+
 ---
 
 ## 7. Wave plan
