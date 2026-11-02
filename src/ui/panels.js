@@ -863,8 +863,16 @@ export class PanelsUI {
     const travels = Array.isArray(this.getTravels?.())
       ? this.getTravels()
       : [this.getTravel?.()].filter(Boolean);
+    let travelGroup = null;
     for (const travel of travels) {
       if (!travel?.label) continue;
+      if (travel.group && travel.group !== travelGroup) {
+        travelGroup = travel.group;
+        const heading = document.createElement('p');
+        heading.className = 'panel-note travel-group';
+        heading.textContent = travel.group;
+        list.append(heading);
+      }
       const travelRow = document.createElement('div');
       travelRow.className = 'friend-row travel-row';
       travelRow.setAttribute('role', 'listitem');

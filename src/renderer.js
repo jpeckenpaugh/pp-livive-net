@@ -2,6 +2,7 @@ import {
   WORLD_SIZE,
   TILE_TYPES,
   TERRAIN_COLORS,
+  terrainColorsFor,
   mulberry32,
   hashString
 } from './world.js';
@@ -17,6 +18,7 @@ import {
   itemColors,
   itemTierAccent
 } from './home_items.js';
+import { propRenderMeta } from './location_props.js';
 import sceneryAssets from '../data/nature_scenery.json' with { type: 'json' };
 
 export const TILE = 48;
@@ -57,7 +59,7 @@ export function characterEffectOwner(game, character) {
   return (game.npcs || []).find(npc => npc.id === character.buddyId) || null;
 }
 
-export function makeTileTextures() {
+export function makeTileTextures(colors = TERRAIN_COLORS) {
   const textures = {};
   const scale = 2;
   const size = TILE * scale;
@@ -69,7 +71,7 @@ export function makeTileTextures() {
       canvas.width = canvas.height = size;
       const ctx = canvas.getContext('2d');
       const random = mulberry32(hashString(`${type}:${variant}:playpark`));
-      ctx.fillStyle = TERRAIN_COLORS[type];
+      ctx.fillStyle = colors[type] || TERRAIN_COLORS[type];
       ctx.fillRect(0, 0, size, size);
 
       if (type === 'grass' || type === 'field') {
@@ -867,6 +869,318 @@ const HOME_ITEM_SHAPES = {
   'wall-clock': drawWallClock
 };
 
+/* ------------------------------------------------------------------------ *
+ * Location prop shapes. Same contract as furniture: draw inside a padded
+ * footprint box in world pixels with a `{ base, accent, trim }` palette, so a
+ * new prop type is data plus one dispatcher entry.
+ * ------------------------------------------------------------------------ */
+
+function propShadow(ctx, box) {
+  ctx.save();
+  ctx.globalAlpha = 0.4;
+  ctx.fillStyle = ITEM_SHADOW;
+  ctx.beginPath();
+  ctx.ellipse(
+    (box.left + box.right) / 2,
+    box.baseY,
+    box.width * 0.46,
+    TILE * 0.13,
+    0,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawFountain(ctx, box, colors, time = 0) {
+  propShadow(ctx, box);
+  const cx = (box.left + box.right) / 2;
+  const cy = box.baseY - box.height * 0.3;
+  ctx.fillStyle = colors.trim;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, box.width * 0.47, box.height * 0.31, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = colors.base;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - TILE * 0.05, box.width * 0.43, box.height * 0.27, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = colors.accent;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - TILE * 0.07, box.width * 0.32, box.height * 0.19, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const pulse = 0.5 + Math.sin((time || 0) * 2.4) * 0.5;
+  ctx.globalAlpha = 0.55 + pulse * 0.25;
+  ctx.strokeStyle = '#e8f7ff';
+  ctx.lineWidth = Math.max(1.5, TILE * 0.035);
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - TILE * 0.08, box.width * (0.12 + pulse * 0.08), box.height * 0.07, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  fillRoundRect(ctx, cx - TILE * 0.08, cy - TILE * 0.38, TILE * 0.16, TILE * 0.32, 3, colors.base);
+  ctx.fillStyle = '#dff6ff';
+  ctx.beginPath();
+  ctx.arc(cx, cy - TILE * 0.4, TILE * 0.08, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawBench(ctx, box, colors) {
+  propShadow(ctx, box);
+  const seatY = box.baseY - TILE * 0.34;
+  fillRoundRect(ctx, box.left + TILE * 0.05, seatY, box.width - TILE * 0.1, TILE * 0.14, 3, colors.base);
+  fillRoundRect(ctx, box.left + TILE * 0.05, seatY - TILE * 0.24, box.width - TILE * 0.1, TILE * 0.1, 3, colors.accent);
+  for (const side of [box.left + TILE * 0.12, box.right - TILE * 0.2]) {
+    fillRoundRect(ctx, side, seatY + TILE * 0.1, TILE * 0.08, TILE * 0.28, 2, colors.trim);
+  }
+}
+
+function drawLamp(ctx, box, colors) {
+  propShadow(ctx, box);
+  const cx = (box.left + box.right) / 2;
+  fillRoundRect(ctx, cx - TILE * 0.04, box.baseY - TILE * 0.78, TILE * 0.08, TILE * 0.72, 2, colors.trim);
+  fillRoundRect(ctx, cx - TILE * 0.14, box.baseY - TILE * 0.96, TILE * 0.28, TILE * 0.2, 4, colors.base);
+  ctx.fillStyle = colors.accent;
+  ctx.beginPath();
+  ctx.arc(cx, box.baseY - TILE * 0.88, TILE * 0.09, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawGate(ctx, box, colors) {
+  propShadow(ctx, box);
+  const left = box.left + TILE * 0.1;
+  const right = box.right - TILE * 0.1;
+  for (const x of [left, right - TILE * 0.14]) {
+    fillRoundRect(ctx, x, box.baseY - TILE * 0.86, TILE * 0.14, TILE * 0.8, 3, colors.base);
+    fillRoundRect(ctx, x - TILE * 0.03, box.baseY - TILE * 0.9, TILE * 0.2, TILE * 0.1, 3, colors.accent);
+  }
+  fillRoundRect(ctx, left, box.baseY - TILE * 0.72, right - left, TILE * 0.1, 2, colors.trim);
+  fillRoundRect(ctx, left + TILE * 0.1, box.baseY - TILE * 0.84, right - left - TILE * 0.2, TILE * 0.06, 2, colors.accent);
+}
+
+function drawSlide(ctx, box, colors) {
+  propShadow(ctx, box);
+  const topY = box.top + TILE * 0.4;
+  const runX = box.right - TILE * 0.12;
+  ctx.strokeStyle = colors.base;
+  ctx.lineWidth = Math.max(4, TILE * 0.12);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(box.left + TILE * 0.2, topY);
+  ctx.quadraticCurveTo(box.left + TILE * 0.55, topY + TILE * 0.4, runX, box.baseY - TILE * 0.12);
+  ctx.stroke();
+  fillRoundRect(ctx, box.left + TILE * 0.08, topY - TILE * 0.28, TILE * 0.18, TILE * 0.62, 3, colors.accent);
+  fillRoundRect(ctx, box.left + TILE * 0.26, box.baseY - TILE * 0.5, TILE * 0.06, TILE * 0.48, 2, colors.trim);
+  fillRoundRect(ctx, box.left + TILE * 0.08, box.baseY - TILE * 0.12, TILE * 0.3, TILE * 0.08, 2, colors.trim);
+}
+
+function drawSwingFrame(ctx, box, colors) {
+  propShadow(ctx, box);
+  const topY = box.top + TILE * 0.32;
+  ctx.strokeStyle = colors.base;
+  ctx.lineWidth = Math.max(3, TILE * 0.09);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(box.left + TILE * 0.12, box.baseY);
+  ctx.lineTo(box.left + TILE * 0.32, topY);
+  ctx.lineTo(box.right - TILE * 0.32, topY);
+  ctx.lineTo(box.right - TILE * 0.12, box.baseY);
+  ctx.stroke();
+  fillRoundRect(ctx, box.left + TILE * 0.28, topY, box.width - TILE * 0.56, TILE * 0.09, 3, colors.accent);
+  for (const offset of [0.34, 0.62]) {
+    const x = box.left + box.width * offset;
+    ctx.strokeStyle = colors.trim;
+    ctx.lineWidth = Math.max(1.5, TILE * 0.035);
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(x + side * TILE * 0.18, topY + TILE * 0.06);
+      ctx.lineTo(x + side * TILE * 0.1, box.baseY - TILE * 0.26);
+      ctx.stroke();
+    }
+    fillRoundRect(ctx, x - TILE * 0.2, box.baseY - TILE * 0.28, TILE * 0.4, TILE * 0.07, 3, colors.base);
+  }
+}
+
+function drawAmphitheatreTier(ctx, box, colors) {
+  for (let index = 0; index < 3; index += 1) {
+    const inset = index * TILE * 0.08;
+    fillRoundRect(
+      ctx,
+      box.left + inset,
+      box.baseY - TILE * (0.26 + index * 0.16),
+      box.width - inset * 2,
+      TILE * 0.16,
+      4,
+      index % 2 === 0 ? colors.base : colors.accent
+    );
+  }
+  fillRoundRect(ctx, box.left, box.baseY - TILE * 0.08, box.width, TILE * 0.08, 2, colors.trim);
+}
+
+function drawBuilding(ctx, box, colors) {
+  propShadow(ctx, box);
+  const roofY = box.top + TILE * 0.18;
+  fillRoundRect(ctx, box.left, roofY + TILE * 0.24, box.width, box.baseY - roofY - TILE * 0.24, 5, colors.base);
+  ctx.fillStyle = colors.accent;
+  ctx.beginPath();
+  ctx.moveTo(box.left - TILE * 0.08, roofY + TILE * 0.3);
+  ctx.lineTo((box.left + box.right) / 2, roofY - TILE * 0.22);
+  ctx.lineTo(box.right + TILE * 0.08, roofY + TILE * 0.3);
+  ctx.closePath();
+  ctx.fill();
+  fillRoundRect(ctx, box.left, roofY + TILE * 0.22, box.width, TILE * 0.1, 2, colors.trim);
+  const doorWidth = TILE * 0.62;
+  const doorX = (box.left + box.right) / 2 - doorWidth / 2;
+  fillRoundRect(ctx, doorX, box.baseY - TILE * 1.02, doorWidth, TILE * 0.98, 3, colors.trim);
+  ctx.fillStyle = '#f0d48a';
+  ctx.beginPath();
+  ctx.arc(doorX + doorWidth * 0.76, box.baseY - TILE * 0.52, TILE * 0.045, 0, Math.PI * 2);
+  ctx.fill();
+  const windowWidth = Math.max(TILE * 0.34, box.width * 0.12);
+  for (const x of [box.left + TILE * 0.18, box.right - TILE * 0.18 - windowWidth]) {
+    fillRoundRect(ctx, x, box.baseY - TILE * 1.24, windowWidth, TILE * 0.4, 3, '#7fa9b8');
+    fillRoundRect(ctx, x + windowWidth * 0.44, box.baseY - TILE * 1.24, 2, TILE * 0.4, 0, colors.trim);
+  }
+}
+
+function drawPier(ctx, box, colors) {
+  const planks = Math.max(2, Math.round(box.height / (TILE * 0.42)));
+  for (let index = 0; index < planks; index += 1) {
+    const y = box.top + (index / planks) * box.height;
+    fillRoundRect(
+      ctx,
+      box.left,
+      y + 1,
+      box.width,
+      box.height / planks - 2,
+      2,
+      index % 2 === 0 ? colors.base : colors.accent
+    );
+  }
+  for (const x of [box.left + box.width * 0.16, box.right - box.width * 0.16]) {
+    ctx.strokeStyle = colors.trim;
+    ctx.lineWidth = Math.max(2, TILE * 0.05);
+    ctx.beginPath();
+    ctx.moveTo(x, box.top);
+    ctx.lineTo(x, box.bottom);
+    ctx.stroke();
+  }
+}
+
+function drawPalm(ctx, box, colors) {
+  propShadow(ctx, box);
+  const cx = (box.left + box.right) / 2;
+  const baseY = box.baseY;
+  ctx.strokeStyle = colors.base;
+  ctx.lineWidth = Math.max(4, TILE * 0.1);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(cx, baseY);
+  ctx.quadraticCurveTo(cx + TILE * 0.14, baseY - TILE * 0.6, cx + TILE * 0.04, baseY - TILE * 1.12);
+  ctx.stroke();
+  const crownY = baseY - TILE * 1.14;
+  for (let index = 0; index < 6; index += 1) {
+    const angle = (Math.PI * 2 * index) / 6 - Math.PI / 2;
+    ctx.strokeStyle = index % 2 === 0 ? colors.accent : colors.trim;
+    ctx.lineWidth = Math.max(3, TILE * 0.07);
+    ctx.beginPath();
+    ctx.moveTo(cx, crownY);
+    ctx.quadraticCurveTo(
+      cx + Math.cos(angle) * TILE * 0.34,
+      crownY + Math.sin(angle) * TILE * 0.18,
+      cx + Math.cos(angle) * TILE * 0.58,
+      crownY + Math.sin(angle) * TILE * 0.3
+    );
+    ctx.stroke();
+  }
+}
+
+function drawUmbrella(ctx, box, colors) {
+  propShadow(ctx, box);
+  const cx = (box.left + box.right) / 2;
+  const baseY = box.baseY - TILE * 0.18;
+  fillRoundRect(ctx, cx - TILE * 0.035, box.top + TILE * 0.42, TILE * 0.07, baseY - box.top - TILE * 0.42, 2, colors.trim);
+  const radius = box.width * 0.48;
+  ctx.fillStyle = colors.base;
+  ctx.beginPath();
+  ctx.ellipse(cx, box.top + TILE * 0.5, radius, box.height * 0.28, 0, Math.PI, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = colors.accent;
+  ctx.beginPath();
+  ctx.ellipse(cx, box.top + TILE * 0.5, radius * 0.62, box.height * 0.2, 0, Math.PI, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = colors.trim;
+  ctx.beginPath();
+  ctx.ellipse(cx, box.top + TILE * 0.52, radius, TILE * 0.05, 0, 0, Math.PI);
+  ctx.fill();
+}
+
+function drawDesk(ctx, box, colors) {
+  propShadow(ctx, box);
+  const topY = box.baseY - TILE * 0.48;
+  fillRoundRect(ctx, box.left, topY, box.width, TILE * 0.16, 3, colors.base);
+  fillRoundRect(ctx, box.left + TILE * 0.08, topY + TILE * 0.16, TILE * 0.1, TILE * 0.34, 2, colors.trim);
+  fillRoundRect(ctx, box.right - TILE * 0.18, topY + TILE * 0.16, TILE * 0.1, TILE * 0.34, 2, colors.trim);
+  fillRoundRect(ctx, box.left + box.width * 0.42, topY - TILE * 0.08, TILE * 0.34, TILE * 0.2, 2, colors.accent);
+  fillRoundRect(ctx, box.left + box.width * 0.46, topY + TILE * 0.01, TILE * 0.26, TILE * 0.02, 1, colors.trim);
+}
+
+function drawPropBookshelf(ctx, box, colors) {
+  propShadow(ctx, box);
+  fillRoundRect(ctx, box.left, box.top + TILE * 0.12, box.width, box.height - TILE * 0.18, 3, colors.base);
+  for (let row = 0; row < 2; row += 1) {
+    const shelfY = box.top + TILE * 0.24 + row * (box.height - TILE * 0.44) / 2;
+    const books = 4;
+    for (let index = 0; index < books; index += 1) {
+      const bookW = (box.width - TILE * 0.16) / books;
+      ctx.fillStyle = index % 2 === 0 ? colors.accent : colors.trim;
+      ctx.fillRect(
+        box.left + TILE * 0.08 + index * bookW,
+        shelfY,
+        bookW - 2,
+        Math.max(3, (box.height - TILE * 0.5) / 2 - 4)
+      );
+    }
+    fillRoundRect(ctx, box.left, shelfY + Math.max(3, (box.height - TILE * 0.5) / 2), box.width, 2, 1, colors.trim);
+  }
+}
+
+function drawPlanter(ctx, box, colors) {
+  propShadow(ctx, box);
+  fillRoundRect(ctx, box.left + TILE * 0.16, box.baseY - TILE * 0.42, box.width - TILE * 0.32, TILE * 0.4, 4, colors.base);
+  fillRoundRect(ctx, box.left + TILE * 0.22, box.baseY - TILE * 0.38, box.width - TILE * 0.44, TILE * 0.08, 2, colors.trim);
+  for (let index = 0; index < 4; index += 1) {
+    const x = box.left + box.width * (0.28 + index * 0.14);
+    ctx.fillStyle = index % 2 === 0 ? colors.accent : colors.trim;
+    ctx.beginPath();
+    ctx.ellipse(x, box.baseY - TILE * 0.56 - (index % 2) * TILE * 0.06, TILE * 0.11, TILE * 0.18, index * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawGenericProp(ctx, box, colors) {
+  propShadow(ctx, box);
+  fillRoundRect(ctx, box.left, box.top + TILE * 0.18, box.width, box.height - TILE * 0.24, 5, colors.base);
+  fillRoundRect(ctx, box.left + TILE * 0.08, box.top + TILE * 0.28, box.width - TILE * 0.16, TILE * 0.1, 3, colors.accent);
+  fillRoundRect(ctx, box.left + TILE * 0.08, box.baseY - TILE * 0.18, box.width - TILE * 0.16, TILE * 0.08, 3, colors.trim);
+}
+
+const LOCATION_PROP_SHAPES = {
+  fountain: drawFountain,
+  bench: drawBench,
+  lamp: drawLamp,
+  gate: drawGate,
+  slide: drawSlide,
+  'swing-frame': drawSwingFrame,
+  'amphitheatre-tier': drawAmphitheatreTier,
+  building: drawBuilding,
+  pier: drawPier,
+  palm: drawPalm,
+  umbrella: drawUmbrella,
+  desk: drawDesk,
+  bookshelf: drawPropBookshelf,
+  planter: drawPlanter
+};
+
 export class WorldRenderer {
   constructor({ canvas, minimap } = {}) {
     this.canvas = canvas;
@@ -874,6 +1188,7 @@ export class WorldRenderer {
     this.minimap = minimap;
     this.mctx = minimap?.getContext?.('2d') || null;
     this.tileTextures = null;
+    this.tileTextureCache = new Map();
     this.minimapBase = null;
     this.sceneryImages = new Map();
     this.sceneryOpacity = new Map(); // id -> current rendered opacity (0 to 1)
@@ -890,21 +1205,25 @@ export class WorldRenderer {
     }
   }
 
-  initTextures() {
-    if (!this.tileTextures && typeof document !== 'undefined') {
-      this.tileTextures = makeTileTextures();
+  initTextures(theme = null) {
+    if (typeof document === 'undefined') return;
+    const key = theme ? JSON.stringify(theme) : '';
+    if (!this.tileTextureCache.has(key)) {
+      this.tileTextureCache.set(key, makeTileTextures(terrainColorsFor(theme)));
     }
+    this.tileTextures = this.tileTextureCache.get(key);
   }
 
-  buildMinimapBase(terrain) {
+  buildMinimapBase(terrain, theme = null) {
     if (!terrain || typeof document === 'undefined') return;
     const scale = 4;
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = WORLD_SIZE * scale;
     const ctx = canvas.getContext('2d');
+    const colors = terrainColorsFor(theme);
     for (let y = 0; y < WORLD_SIZE; y++) {
       for (let x = 0; x < WORLD_SIZE; x++) {
-        ctx.fillStyle = TERRAIN_COLORS[terrain[y][x]];
+        ctx.fillStyle = colors[terrain[y][x]] || TERRAIN_COLORS[terrain[y][x]];
         ctx.fillRect(x * scale, y * scale, scale, scale);
       }
     }
@@ -924,7 +1243,7 @@ export class WorldRenderer {
       dpr: game.dpr,
       tileSize: TILE
     })) return;
-    this.initTextures();
+    this.initTextures(game.theme);
     const { ctx } = this;
     const { width, height, camera, terrain } = game;
 
@@ -1057,6 +1376,19 @@ export class WorldRenderer {
       }
     }
 
+    // Location props (fountains, benches, facades) sort with actors on their
+    // footprint's bottom row, so a character in front draws over them.
+    for (const record of game.locationProps || []) {
+      const meta = propRenderMeta(record);
+      if (!meta) continue;
+      renderables.push({
+        type: 'location-prop',
+        y: meta.sortY,
+        x: meta.x,
+        entity: record
+      });
+    }
+
     if (Array.isArray(game.scenery)) {
       // Delta time calculation for smooth scenery fade tweening
       const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -1130,6 +1462,8 @@ export class WorldRenderer {
         this.drawForageItem(game, item.entity);
       } else if (item.type === 'home-item') {
         this.drawHomeItem(item.entity, game, { draft: Boolean(item.draft) });
+      } else if (item.type === 'location-prop') {
+        this.drawLocationProp(item.entity, game);
       } else {
         this.drawSceneryItem(ctx, item.entity, item.opacity);
       }
@@ -1408,6 +1742,26 @@ export class WorldRenderer {
       this.drawTvStatic(ctx, box, game?.time || 0);
     }
     drawItemTierAccent(ctx, bounds, entry);
+    ctx.restore();
+  }
+
+  /** One outdoor prop, drawn inside its rotated footprint. */
+  drawLocationProp(record, game = null) {
+    const meta = propRenderMeta(record);
+    if (!meta) return;
+    const { ctx } = this;
+    const bounds = {
+      left: meta.x * TILE,
+      top: meta.y * TILE,
+      right: (meta.x + meta.size.w) * TILE,
+      bottom: (meta.y + meta.size.h) * TILE,
+      width: meta.size.w * TILE,
+      height: meta.size.h * TILE
+    };
+    const box = itemPad(bounds);
+    const draw = LOCATION_PROP_SHAPES[meta.shape] || drawGenericProp;
+    ctx.save();
+    draw(ctx, box, meta.colors, game?.time || 0);
     ctx.restore();
   }
 

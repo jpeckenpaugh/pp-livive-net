@@ -372,7 +372,10 @@ export function captureLocationRecord({
   const encodedTerrain = Array.isArray(terrain) ? encodeTerrain(terrain) : terrain;
   const nextPlayer = migratePlayerPosition(player) ?? base.player ?? undefined;
   const nextNpcs = Array.isArray(npcs)
-    ? npcs.filter(isObject).map(serializeNpcRecord)
+    ? npcs
+      .filter(isObject)
+      .filter(npc => npc.resident !== true)
+      .map(serializeNpcRecord)
     : (Array.isArray(base.npcs) ? base.npcs : []);
   // `decor` is legacy Home-only data. It is captured when passed (older callers)
   // and otherwise preserved verbatim as a downgrade hedge; Wave 7a never writes

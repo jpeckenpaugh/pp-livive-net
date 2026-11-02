@@ -405,21 +405,66 @@ test('home_items.json defines the furnished room and a testable default layout',
 
 test('world.json locations resolve ids, doors, spawns, and the Home flag', () => {
   const worldConfig = readJson('world.json');
+  const propsConfig = readJson('location_props.json');
   assert.equal(worldConfig.version, 1);
   assert.equal(typeof worldConfig.travel.confirm, 'string');
   assert.equal(typeof worldConfig.travel.cancel, 'string');
 
+  const templates = new Set(['interior', 'house', 'central-park', 'town', 'beach']);
   for (const [id, def] of Object.entries(worldConfig.locations)) {
     assert.equal(def.id, id, `locations.${id} id must match its key`);
     assert.equal(typeof def.label, 'string', `${id} needs a label`);
     assert.equal(typeof def.enabled, 'boolean', `${id} enabled must be explicit`);
     assert.equal(typeof def.mapLabel, 'string', `${id} needs a map label`);
     assert.ok(def.menu && typeof def.menu.label === 'string' && def.menu.label, `${id} needs a menu row label`);
-    assert.ok(def.door && typeof def.door.to === 'string', `${id} needs a door target`);
-    assert.ok(worldConfig.locations[def.door.to], `${id} door targets unknown location ${def.door.to}`);
-    assert.ok(Number.isInteger(def.door.x) && Number.isInteger(def.door.y), `${id} door tile`);
-    assert.ok(typeof def.door.prompt === 'string' && def.door.prompt.trim(), `${id} door prompt`);
+    if (def.template !== undefined) {
+      assert.ok(templates.has(def.template), `${id} names unknown template ${def.template}`);
+    }
+
+    const travelDoors = [
+      ...(def.door ? [def.door] : []),
+      ...(Array.isArray(def.doors) ? def.doors.filter(door => door.kind === 'travel') : [])
+    ];
+    assert.ok(travelDoors.length > 0, `${id} needs a travel door`);
+    for (const door of travelDoors) {
+      assert.ok(typeof door.to === 'string', `${id} door target`);
+      assert.ok(worldConfig.locations[door.to], `${id} door targets unknown location ${door.to}`);
+      assert.ok(Number.isInteger(door.x) && Number.isInteger(door.y), `${id} door tile`);
+      assert.ok(typeof door.prompt === 'string' && door.prompt.trim(), `${id} door prompt`);
+    }
+    for (const door of Array.isArray(def.doors) ? def.doors : []) {
+      if (door.kind !== 'activity') continue;
+      assert.ok(typeof door.activityId === 'string' && door.activityId, `${id} activity door id`);
+      assert.ok(Number.isInteger(door.x) && Number.isInteger(door.y), `${id} activity door tile`);
+    }
     assert.ok(Number.isInteger(def.spawn?.x) && Number.isInteger(def.spawn?.y), `${id} spawn tile`);
+
+    for (const prop of Array.isArray(def.props) ? def.props : []) {
+      assert.ok(propsConfig.types[prop.type], `${id} prop names unknown type ${prop.type}`);
+      assert.ok(Number.isInteger(prop.x) && Number.isInteger(prop.y), `${id} prop tile`);
+      assert.ok(prop.x >= 0 && prop.x < 64 && prop.y >= 0 && prop.y < 64, `${id} prop is in the world`);
+    }
+    const residentIds = new Set();
+    for (const resident of Array.isArray(def.residents) ? def.residents : []) {
+      assert.ok(typeof resident.id === 'string' && resident.id, `${id} resident id`);
+      assert.ok(!residentIds.has(resident.id), `${id} resident id ${resident.id} is duplicated`);
+      residentIds.add(resident.id);
+      assert.ok(typeof resident.name === 'string' && resident.name, `${id} resident name`);
+      assert.ok(Number.isInteger(resident.x) && Number.isInteger(resident.y), `${id} resident tile`);
+      assert.ok(
+        resident.x >= 0 && resident.x < 64 && resident.y >= 0 && resident.y < 64,
+        `${id} resident ${resident.id} is in the world`
+      );
+    }
+    if (def.theme) {
+      for (const [key, value] of Object.entries(def.theme)) {
+        assert.ok(
+          ['grass', 'dirt', 'sand', 'water', 'field', 'wall', 'floor'].includes(key),
+          `${id} theme key ${key}`
+        );
+        assert.ok(typeof value === 'string' && value, `${id} theme ${key} colour`);
+      }
+    }
   }
 
   // The Home slice is complete: the flag is on and the door is reachable.

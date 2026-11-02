@@ -17,15 +17,19 @@ import {
 } from './world.js';
 import {
   DEFAULT_LOCATION,
+  LOCATIONS,
   SHOPKEEPER_ID,
   allowsForage,
   arrivalTile,
   createHomeLocation,
-  createShopLocation,
+  createLocationRecord,
   doorsFor,
   isLocationEnabled,
   locationDef,
   locationLabel,
+  locationTheme,
+  propsForLocation,
+  residentsFor,
   travelTargets,
   worldFor
 } from './locations.js';
@@ -69,6 +73,7 @@ import {
   toggleHomeItem,
   upgradeHomeItem
 } from './home_items.js';
+import { locationBlockedTiles } from './location_props.js';
 import { castVoice } from './voice/casting.js';
 import { VoiceEngine } from './voice/engine.js';
 import { DialogueManager } from './dialogue.js';
@@ -479,9 +484,10 @@ function resolveCharacter(id) {
 function behaviorActors() {
   if (!game) return [];
   // Shopkeepers and other fixed characters are scenery with dialogue, not
-  // wanderers, so the Park's behaviour runtime never schedules them.
+  // wanderers, so the Park's behaviour runtime never schedules them. Residents
+  // declared by a location use the lighter wander in `Game.updateNpc`.
   return [...(game.npcs || []), ...(game.companions || [])]
-    .filter(actor => !actor?.stationary && !actor?.shopkeeper);
+    .filter(actor => !actor?.stationary && !actor?.shopkeeper && !actor?.resident);
 }
 
 function showToast(message) {
@@ -2106,7 +2112,12 @@ function applyState(state) {
   const sharedPlayer = state.player && typeof state.player === 'object' ? state.player : {};
   const worldData = worldFor(locationId, locationState.seed);
   const terrain = decodeTerrain(locationState.terrain) || worldData.grid;
-  const scenery = worldData.scenery || [];
+  const theme = locationTheme(locationId);
+  const locationProps = propsForLocation(locationId);
+  const locationBlocked = locationBlockedTiles(locationProps);
+  // Scenery belongs to generated ground: never leave a tree inside a building.
+  const scenery = (worldData.scenery || [])
+    .filter(item => !locationBlocked.has(`${item.x},${item.y}`));
   const locationSpawn = locationDef(locationId)?.spawn || worldData.spawn || { x: 32, y: 32 };
   const arrival = arrivalTile(locationId, { player: locationState.player });
   const rawPlayer = {
@@ -2143,13 +2154,11 @@ function applyState(state) {
   const homeDoorLane = homeMode
     ? doorLaneTiles({ house: worldData.house, door: worldData.door })
     : new Set();
-  if (homeMode && homeBlocked.has(`${rawPlayer.x},${rawPlayer.y}`)) {
-    const spot = findOpenTile(
-      terrain,
-      locationDef(locationId)?.spawn || worldData.spawn,
-      homeBlocked,
-      0
-    );
+  // Solid props and furniture share the landing check: neither may trap a
+  // player who saved inside a footprint that has since grown.
+  const blockedLanding = new Set([...homeBlocked, ...locationBlocked]);
+  if (blockedLanding.size && blockedLanding.has(`${rawPlayer.x},${rawPlayer.y}`)) {
+    const spot = findOpenTile(terrain, locationSpawn, blockedLanding, 0);
     rawPlayer.x = spot.x;
     rawPlayer.y = spot.y;
   }
@@ -2177,15 +2186,57 @@ function applyState(state) {
         shopkeeper: isKeeper,
         stationary: isKeeper
       };
-      if (!isWalkable(terrain[entry.y]?.[entry.x])) {
-        const spot = findOpenTile(terrain, { x: rawPlayer.x, y: rawPlayer.y });
+      if (!isWalkable(terrain[entry.y]?.[entry.x])
+        || locationBlocked.has(`${entry.x},${entry.y}`)) {
+        const spot = findOpenTile(terrain, { x: rawPlayer.x, y: rawPlayer.y }, locationBlocked);
         entry.x = spot.x;
         entry.y = spot.y;
       }
       return entry;
     });
 
-  const occupiedPositions = new Set([`${rawPlayer.x},${rawPlayer.y}`]);
+  // Data-declared residents are instantiated fresh on every arrival and are
+  // never written into the save. Their stable ids carry friendships and trades.
+  const residentBlocked = new Set([
+    `${rawPlayer.x},${rawPlayer.y}`,
+    ...locationBlocked,
+    ...homeBlocked
+  ]);
+  for (const npc of npcs) residentBlocked.add(`${npc.x},${npc.y}`);
+  const residentIds = new Set(npcs.map(npc => npc.id));
+  for (const resident of residentsFor(locationId)) {
+    if (residentIds.has(resident.id)) continue;
+    const entry = {
+      ...resident,
+      // No voice in data: cast one deterministically from the stable id.
+      voice: resident.voice || castVoice({ id: resident.id }),
+      inventory: createStarterInventory(),
+      equipped: [],
+      effectGhosts: [],
+      coins: 0,
+      stabledCompanions: []
+    };
+    if (!isWalkable(terrain[entry.y]?.[entry.x])
+      || residentBlocked.has(`${entry.x},${entry.y}`)) {
+      const spot = findOpenTile(
+        terrain,
+        { x: rawPlayer.x, y: rawPlayer.y },
+        residentBlocked,
+        1
+      );
+      entry.x = spot.x;
+      entry.y = spot.y;
+    }
+    residentIds.add(entry.id);
+    residentBlocked.add(`${entry.x},${entry.y}`);
+    npcs.push(entry);
+  }
+
+  const occupiedPositions = new Set([
+    `${rawPlayer.x},${rawPlayer.y}`,
+    ...homeBlocked,
+    ...locationBlocked
+  ]);
   for (const npc of npcs) {
     let key = `${npc.x},${npc.y}`;
     if (occupiedPositions.has(key)) {
@@ -2232,7 +2283,8 @@ function applyState(state) {
   if (!homeMode) {
     const companionTiles = new Set([
       `${rawPlayer.x},${rawPlayer.y}`,
-      ...npcs.map(npc => `${npc.x},${npc.y}`)
+      ...npcs.map(npc => `${npc.x},${npc.y}`),
+      ...locationBlocked
     ]);
     companions = companions.map(comp => {
       const x = Math.round(Number(comp.x));
@@ -2293,6 +2345,8 @@ function applyState(state) {
     homeBuddies,
     homeRoomTiles: roomTiles,
     homeRugTiles,
+    locationProps,
+    theme,
     wander: state.wander !== false
   });
   game.homeOverflow = homeSelection.overflow;
@@ -2354,6 +2408,12 @@ function knownNpcIds(state, currentNpcs) {
       for (const npc of Array.isArray(record?.npcs) ? record.npcs : []) {
         if (npc?.id) ids.add(npc.id);
       }
+    }
+  }
+  // Residents are not saved, but their stable ids still own friendships.
+  for (const def of Object.values(LOCATIONS)) {
+    for (const resident of Array.isArray(def?.residents) ? def.residents : []) {
+      if (resident?.id) ids.add(resident.id);
     }
   }
   return ids;
@@ -2420,7 +2480,8 @@ function captureLocation() {
     seed: game.worldSeed,
     terrain: game.terrain,
     player: game.player,
-    npcs: game.npcs,
+    // Location residents are instantiated from data on every arrival.
+    npcs: (game.npcs || []).filter(npc => !npc.resident),
     forage: game.forage,
     items: currentLocationId === 'home' ? game.homeItems : null,
     storage: currentLocationId === 'home' ? activeHomeStorage() : null
@@ -2539,11 +2600,11 @@ function travelTo(targetId) {
   const carriedBasket = game.forage?.basket;
   captureLocation();
   captureCompanions();
-  if (targetId === 'home' && !locationStates.home) {
-    locationStates.home = createHomeLocation({ basket: carriedBasket });
-  }
-  if (targetId === 'shop' && !locationStates.shop) {
-    locationStates.shop = createShopLocation({ basket: carriedBasket });
+  // A location not visited since the save was written gets a fresh record from
+  // its template; the basket carried in is preserved either way.
+  if (!locationStates[targetId]) {
+    const fresh = createLocationRecord(targetId, { basket: carriedBasket });
+    if (fresh) locationStates[targetId] = fresh;
   }
   // The basket travels with the player, so Park apples are bakeable at Home and
   // a pie baked at Home spends the same count back in the Park.
@@ -3894,7 +3955,8 @@ function boot() {
         id: target.id,
         label: target.label,
         note: target.note,
-        icon: target.id === 'shop' ? '🛍️' : (target.id === 'home' ? '🏠' : '🚪')
+        icon: target.id === 'shop' ? '🛍️' : (target.id === 'home' ? '🏠' : '🚪'),
+        group: target.nearby ? 'Nearby' : 'All destinations'
       })),
     onTravel: targetId => {
       panels?.closeMenu();

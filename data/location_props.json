@@ -1,0 +1,174 @@
+{
+  "version": 1,
+  "types": {
+    "fountain": {
+      "id": "fountain",
+      "label": "Fountain",
+      "size": { "w": 3, "h": 3 },
+      "solid": true,
+      "shape": "fountain",
+      "colors": { "base": "#9aa0a6", "accent": "#5fa8c9", "trim": "#6d7378" },
+      "variants": [
+        { "name": "stone", "colors": { "base": "#9aa0a6", "trim": "#6d7378" } },
+        { "name": "mossy", "colors": { "base": "#8d9c86", "accent": "#5c9c8f", "trim": "#5d6b4f" } }
+      ]
+    },
+    "bench": {
+      "id": "bench",
+      "label": "Bench",
+      "size": { "w": 2, "h": 1 },
+      "solid": true,
+      "shape": "bench",
+      "colors": { "base": "#a77c4b", "accent": "#c99a5d", "trim": "#5a4128" },
+      "variants": [
+        { "name": "oak", "colors": { "base": "#a77c4b", "accent": "#c99a5d" } },
+        { "name": "painted green", "colors": { "base": "#5f8158", "accent": "#7fa273", "trim": "#3d5638" } }
+      ]
+    },
+    "lamp": {
+      "id": "lamp",
+      "label": "Lamp",
+      "size": { "w": 1, "h": 1 },
+      "solid": true,
+      "shape": "lamp",
+      "colors": { "base": "#4c5150", "accent": "#f0d48a", "trim": "#2f3332" },
+      "variants": [
+        { "name": "iron", "colors": { "base": "#4c5150", "accent": "#f0d48a" } },
+        { "name": "copper", "colors": { "base": "#8a5c3d", "accent": "#ffd9a0", "trim": "#573823" } }
+      ]
+    },
+    "gate": {
+      "id": "gate",
+      "label": "Gate",
+      "size": { "w": 3, "h": 1 },
+      "solid": true,
+      "shape": "gate",
+      "colors": { "base": "#8a6a44", "accent": "#d9c08a", "trim": "#4d3a24" },
+      "variants": [
+        { "name": "wood", "colors": { "base": "#8a6a44", "accent": "#d9c08a" } },
+        { "name": "stone", "colors": { "base": "#9aa0a6", "accent": "#c9d0d4", "trim": "#62676a" } }
+      ]
+    },
+    "slide": {
+      "id": "slide",
+      "label": "Slide",
+      "size": { "w": 2, "h": 3 },
+      "solid": true,
+      "shape": "slide",
+      "colors": { "base": "#c95f4e", "accent": "#f0c46a", "trim": "#7d3b31" },
+      "variants": [
+        { "name": "red", "colors": { "base": "#c95f4e", "accent": "#f0c46a" } },
+        { "name": "blue", "colors": { "base": "#4f7fa8", "accent": "#d8e6f2", "trim": "#2f4f6b" } }
+      ]
+    },
+    "swing-frame": {
+      "id": "swing-frame",
+      "label": "Swing frame",
+      "size": { "w": 3, "h": 2 },
+      "solid": true,
+      "shape": "swing-frame",
+      "colors": { "base": "#8a6a44", "accent": "#d9c08a", "trim": "#4d3a24" },
+      "variants": [
+        { "name": "timber", "colors": { "base": "#8a6a44", "accent": "#d9c08a" } },
+        { "name": "painted", "colors": { "base": "#5f8158", "accent": "#e5f4a5", "trim": "#3d5638" } }
+      ]
+    },
+    "amphitheatre-tier": {
+      "id": "amphitheatre-tier",
+      "label": "Amphitheatre tier",
+      "size": { "w": 5, "h": 1 },
+      "solid": true,
+      "shape": "amphitheatre-tier",
+      "colors": { "base": "#a49c8d", "accent": "#c9c1af", "trim": "#6d675c" },
+      "variants": [
+        { "name": "limestone", "colors": { "base": "#a49c8d", "accent": "#c9c1af" } },
+        { "name": "granite", "colors": { "base": "#8a9095", "accent": "#b7bec2", "trim": "#5a6064" } }
+      ]
+    },
+    "building": {
+      "id": "building",
+      "label": "Building",
+      "size": { "w": 6, "h": 4 },
+      "solid": true,
+      "shape": "building",
+      "colors": { "base": "#c8a978", "accent": "#7d5f43", "trim": "#4a3a2b" },
+      "variants": [
+        { "name": "cream", "colors": { "base": "#c8a978", "accent": "#7d5f43" } },
+        { "name": "brick", "colors": { "base": "#a9614f", "accent": "#6f3f33", "trim": "#3f2822" } },
+        { "name": "sage", "colors": { "base": "#9aae8c", "accent": "#5f7357", "trim": "#3d4b37" } }
+      ]
+    },
+    "pier": {
+      "id": "pier",
+      "label": "Pier",
+      "size": { "w": 2, "h": 4 },
+      "solid": false,
+      "shape": "pier",
+      "colors": { "base": "#a98255", "accent": "#c9a878", "trim": "#5f472d" },
+      "variants": [
+        { "name": "weathered", "colors": { "base": "#a98255", "accent": "#c9a878" } },
+        { "name": "dark", "colors": { "base": "#7b5f42", "accent": "#9c7d58", "trim": "#463322" } }
+      ]
+    },
+    "palm": {
+      "id": "palm",
+      "label": "Palm",
+      "size": { "w": 1, "h": 1 },
+      "solid": true,
+      "shape": "palm",
+      "colors": { "base": "#7a5a38", "accent": "#5fa05a", "trim": "#3f6e3c" },
+      "variants": [
+        { "name": "green", "colors": { "base": "#7a5a38", "accent": "#5fa05a" } },
+        { "name": "golden", "colors": { "base": "#7a5a38", "accent": "#b7a34e", "trim": "#7a6b2e" } }
+      ]
+    },
+    "umbrella": {
+      "id": "umbrella",
+      "label": "Umbrella",
+      "size": { "w": 2, "h": 2 },
+      "solid": false,
+      "shape": "umbrella",
+      "colors": { "base": "#e07a6b", "accent": "#f4e3c1", "trim": "#7d443c" },
+      "variants": [
+        { "name": "coral", "colors": { "base": "#e07a6b", "accent": "#f4e3c1" } },
+        { "name": "teal", "colors": { "base": "#4f9a9a", "accent": "#e9f4f0", "trim": "#2d5f5f" } }
+      ]
+    },
+    "desk": {
+      "id": "desk",
+      "label": "Desk",
+      "size": { "w": 2, "h": 1 },
+      "solid": true,
+      "shape": "desk",
+      "colors": { "base": "#8a6844", "accent": "#b48f60", "trim": "#4f3924" },
+      "variants": [
+        { "name": "oak", "colors": { "base": "#8a6844", "accent": "#b48f60" } },
+        { "name": "walnut", "colors": { "base": "#6b4a33", "accent": "#8c6647", "trim": "#3a2619" } }
+      ]
+    },
+    "bookshelf": {
+      "id": "bookshelf",
+      "label": "Bookshelf",
+      "size": { "w": 2, "h": 1 },
+      "solid": true,
+      "shape": "bookshelf",
+      "colors": { "base": "#7a5a3d", "accent": "#c9a878", "trim": "#3f2d1c" },
+      "variants": [
+        { "name": "oak", "colors": { "base": "#7a5a3d", "accent": "#c9a878" } },
+        { "name": "painted", "colors": { "base": "#5f7357", "accent": "#d9c08a", "trim": "#3d4b37" } }
+      ]
+    },
+    "planter": {
+      "id": "planter",
+      "label": "Planter",
+      "size": { "w": 1, "h": 1 },
+      "solid": true,
+      "shape": "planter",
+      "colors": { "base": "#8a6a44", "accent": "#77b36f", "trim": "#4d3a24" },
+      "variants": [
+        { "name": "terracotta", "colors": { "base": "#b0714d", "accent": "#77b36f" } },
+        { "name": "wood", "colors": { "base": "#8a6a44", "accent": "#9fcf7a" } }
+      ]
+    }
+  }
+}

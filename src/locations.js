@@ -10,12 +10,16 @@ import activitiesData from '../data/activities.json' with { type: 'json' };
 import {
   generateWorld,
   generateHome,
+  generateCentralPark,
+  generateTown,
+  generateBeach,
   encodeTerrain,
   findOpenTile,
   isWalkable,
   typeAt
 } from './world.js';
 import { FORAGE_MUSHROOM_TYPES } from './forage.js';
+import { normalizeLocationProps } from './location_props.js';
 
 export const WORLD_CONFIG = worldData;
 export const LOCATIONS = worldData.locations || {};
@@ -49,9 +53,11 @@ export function allowsForage(id) {
 
 /**
  * Destinations the player menu may offer from `fromId`. A disabled location is
- * absent here, which is how the flag keeps Home unreachable.
+ * absent here, which is how the flag keeps Home unreachable. Targets directly
+ * reachable through a travel door are marked `nearby` and sorted first.
  */
 export function travelTargets(fromId, { isEnabled = isLocationEnabled } = {}) {
+  const nearby = nearbyTargetIds(fromId, { isEnabled });
   return Object.values(LOCATIONS)
     .filter(def => def && def.id !== fromId && isEnabled(def.id))
     .filter(def => def.menu && typeof def.menu.label === 'string' && def.menu.label)
@@ -59,22 +65,41 @@ export function travelTargets(fromId, { isEnabled = isLocationEnabled } = {}) {
       id: def.id,
       label: def.menu.label,
       note: def.menu.note || '',
-      mapLabel: def.mapLabel || `${def.label || def.id} map`
-    }));
+      mapLabel: def.mapLabel || `${def.label || def.id} map`,
+      nearby: nearby.has(def.id)
+    }))
+    .sort((a, b) => Number(b.nearby) - Number(a.nearby));
 }
 
-/** Build the terrain for a location. Interior lots use the Home builder. */
+/** Location ids one of this location's travel doors leads to. */
+export function nearbyTargetIds(id, { isEnabled = isLocationEnabled } = {}) {
+  const def = locationDef(id);
+  const targets = new Set();
+  for (const door of travelDoorEntries(def)) {
+    if (isEnabled(door.to)) targets.add(door.to);
+  }
+  return targets;
+}
+
+/** Build the terrain for a location. Template dispatch keeps new themes out of `worldFor`. */
 export function worldFor(id, seed) {
   const def = locationDef(id);
-  if (def?.house) {
-    const world = generateHome(seed ?? def.seed, def);
+  const template = def?.template || (def?.house ? 'interior' : null);
+  const builtSeed = seed ?? def?.seed;
+
+  if (template === 'interior' || template === 'house') {
+    const world = generateHome(builtSeed, def);
     // Rooms that opt out of forage never grow mushrooms either.
     return {
       ...world,
+      template: 'interior',
       scenery: (world.scenery || []).filter(item => !FORAGE_MUSHROOM_TYPES.includes(item.type))
     };
   }
-  return generateWorld(seed);
+  if (template === 'central-park') return generateCentralPark(builtSeed);
+  if (template === 'town') return generateTown(builtSeed);
+  if (template === 'beach') return generateBeach(builtSeed);
+  return generateWorld(builtSeed);
 }
 
 /**
@@ -101,33 +126,68 @@ function doorTile(def, door, terrain, spawn, occupied = new Set()) {
 }
 
 /**
- * The travel door the player can bump in `id`, or null when its destination is
- * off. Park terrain is generated from a seed, so a declared door tile that
- * landed in water falls back to the nearest open tile instead of stranding the
- * player.
+ * Every raw travel entry a definition declares: the legacy single `door` first,
+ * then `doors` entries with `kind: 'travel'`. Keeping the legacy form first
+ * means `doorFor` still answers with the old door.
  */
-export function doorFor(id, { terrain, spawn, isEnabled = isLocationEnabled } = {}) {
-  const def = locationDef(id);
-  const door = def?.door;
-  if (!door || !isEnabled(door.to)) return null;
-  const target = locationDef(door.to);
-  if (!target) return null;
-
-  const { x, y } = doorTile(def, door, terrain, spawn);
-  return {
-    x,
-    y,
-    to: door.to,
-    prompt: door.prompt || `Go to ${locationLabel(door.to)}?`,
-    confirm: TRAVEL_CONFIRM,
-    cancel: TRAVEL_CANCEL
-  };
+function travelDoorEntries(def) {
+  const entries = [];
+  if (def?.door && typeof def.door.to === 'string' && def.door.to) entries.push(def.door);
+  for (const extra of Array.isArray(def?.doors) ? def.doors : []) {
+    if (extra && extra.kind === 'travel' && typeof extra.to === 'string' && extra.to) {
+      entries.push(extra);
+    }
+  }
+  return entries;
 }
 
 /**
- * Every bumpable door in `id`: the travel door plus any activity entrances
- * declared under `doors`. Activity doors carry `kind: 'activity'` and an
- * `activityId`; the shell starts a session instead of swapping locations.
+ * Build every enabled travel door for a location (id or definition object).
+ * Declared tiles that land in water, or on a tile another door already uses,
+ * fall back to the nearest open tile near the spawn.
+ */
+export function travelDoorsFor(id, {
+  terrain,
+  spawn,
+  isEnabled = isLocationEnabled,
+  used = null
+} = {}) {
+  const def = typeof id === 'string' ? locationDef(id) : id;
+  if (!def) return [];
+  const taken = used instanceof Set ? used : new Set(used || []);
+  const doors = [];
+  for (const entry of travelDoorEntries(def)) {
+    if (!isEnabled(entry.to)) continue;
+    if (!locationDef(entry.to)) continue;
+    const { x, y } = doorTile(def, entry, terrain, spawn, taken);
+    taken.add(`${x},${y}`);
+    doors.push({
+      x,
+      y,
+      to: entry.to,
+      kind: 'travel',
+      id: entry.id || entry.to,
+      prompt: entry.prompt || `Go to ${locationLabel(entry.to)}?`,
+      confirm: entry.confirm || TRAVEL_CONFIRM,
+      cancel: entry.cancel || TRAVEL_CANCEL
+    });
+  }
+  return doors;
+}
+
+/**
+ * The travel door the player can bump in `id`, or null when its destination is
+ * off. A definition with several travel doors answers with the first enabled
+ * one; `doorsFor` is the multi-door API.
+ */
+export function doorFor(id, options = {}) {
+  return travelDoorsFor(id, options)[0] || null;
+}
+
+/**
+ * Every bumpable door in `id`: all enabled travel doors plus any activity
+ * entrances declared under `doors`. Activity doors carry `kind: 'activity'` and
+ * an `activityId`; the shell starts a session instead of swapping locations.
  */
 export function doorsFor(id, {
   terrain,
@@ -137,13 +197,8 @@ export function doorsFor(id, {
 } = {}) {
   const def = locationDef(id);
   if (!def) return [];
-  const doors = [];
   const used = new Set();
-  const travel = doorFor(id, { terrain, spawn, isEnabled });
-  if (travel) {
-    doors.push({ ...travel, kind: 'travel', id: travel.to });
-    used.add(`${travel.x},${travel.y}`);
-  }
+  const doors = travelDoorsFor(def, { terrain, spawn, isEnabled, used });
 
   for (const extra of Array.isArray(def.doors) ? def.doors : []) {
     if (!extra || extra.kind !== 'activity') continue;
@@ -163,6 +218,47 @@ export function doorsFor(id, {
   }
 
   return doors;
+}
+
+/** Fixed residents declared by a location, in stable data order. */
+export function residentsFor(id) {
+  const def = locationDef(id);
+  if (!Array.isArray(def?.residents)) return [];
+  const spawn = def?.spawn || { x: 32, y: 32 };
+  const seen = new Set();
+  const residents = [];
+  for (const resident of def.residents) {
+    if (!resident || typeof resident !== 'object') continue;
+    const residentId = typeof resident.id === 'string' ? resident.id : '';
+    if (!residentId || seen.has(residentId)) continue;
+    seen.add(residentId);
+    const x = Number.isFinite(Number(resident.x)) ? Math.round(Number(resident.x)) : spawn.x;
+    const y = Number.isFinite(Number(resident.y)) ? Math.round(Number(resident.y)) : spawn.y;
+    const look = resident.look && typeof resident.look === 'object' && !Array.isArray(resident.look)
+      ? resident.look
+      : {};
+    residents.push({
+      id: residentId,
+      name: resident.name || residentId,
+      recipe: { seed: resident.seed || residentId, look },
+      x,
+      y,
+      direction: Number.isFinite(Number(resident.direction)) ? Number(resident.direction) : 0,
+      resident: true
+    });
+  }
+  return residents;
+}
+
+/** Normalised prop records declared by a location. */
+export function propsForLocation(id) {
+  return normalizeLocationProps(locationDef(id)?.props);
+}
+
+/** Optional per-location tile colour overrides. */
+export function locationTheme(id) {
+  const theme = locationDef(id)?.theme;
+  return theme && typeof theme === 'object' && !Array.isArray(theme) ? theme : null;
 }
 
 /** Last known position in a location, falling back to its declared spawn. */
@@ -194,7 +290,28 @@ export function createHomeLocation({ seed = locationDef('home')?.seed, basket = 
   };
 }
 
-function emptyForage(basket = null) {
+/**
+ * A fresh location record. Home and Shop keep their bespoke builders; every
+ * other location uses its template with an empty resident-free record.
+ */
+export function createLocationRecord(id, { basket = null } = {}) {
+  const def = locationDef(id);
+  if (!def) return null;
+  if (id === 'home') return createHomeLocation({ basket });
+  if (id === 'shop') return createShopLocation({ basket });
+  const seed = def.seed || `${id}-01`;
+  const world = worldFor(id, seed);
+  return {
+    seed,
+    terrain: encodeTerrain(world.grid),
+    player: { x: world.spawn.x, y: world.spawn.y, direction: 0 },
+    npcs: [],
+    // Outdoor locations seed their own apple crop on first arrival.
+    forage: emptyForage(basket, { seeded: !allowsForage(id) })
+  };
+}
+
+function emptyForage(basket = null, { seeded = true } = {}) {
   return {
     apples: [],
     basket: {
@@ -203,7 +320,7 @@ function emptyForage(basket = null) {
     },
     harvested: {},
     nextAppleAt: 0,
-    seeded: true
+    seeded
   };
 }
 

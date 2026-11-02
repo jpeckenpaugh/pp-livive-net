@@ -40,6 +40,7 @@
       "label": "Home",
       "enabled": true,
       "mapLabel": "Home map",
+      "template": "interior",
       "seed": "acorn-hearth-01",
       "spawn": {
         "x": 32,
@@ -68,6 +69,7 @@
       "label": "Shop",
       "enabled": true,
       "mapLabel": "Shop map",
+      "template": "interior",
       "seed": "corner-shop-01",
       "spawn": {
         "x": 32,

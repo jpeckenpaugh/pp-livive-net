@@ -12,6 +12,30 @@ export const TERRAIN_COLORS = {
   'home-wall': '#5c5148'
 };
 
+/**
+ * Theme keys are location-facing names; tile types are internal. Locations may
+ * override any subset in `data/world.json` under `theme`.
+ */
+const THEME_TILE_KEYS = {
+  grass: 'grass',
+  dirt: 'dirt',
+  sand: 'sand',
+  water: 'water',
+  field: 'field',
+  wall: 'home-wall',
+  floor: 'home-floor'
+};
+
+export function terrainColorsFor(theme) {
+  if (!theme || typeof theme !== 'object') return TERRAIN_COLORS;
+  const colors = { ...TERRAIN_COLORS };
+  for (const [key, tile] of Object.entries(THEME_TILE_KEYS)) {
+    const value = theme[key];
+    if (typeof value === 'string' && value) colors[tile] = value;
+  }
+  return colors;
+}
+
 export const DIRS = [
   { dx: 0, dy: 1, dir: 0 },
   { dx: 1, dy: 0, dir: 1 },
@@ -239,6 +263,23 @@ export function generateWorld(seed) {
     componentKeys: new Set(safeComponent.map(cell => `${cell.x},${cell.y}`)),
     scenery: generateScenery(grid, seed, safeSpawn)
   };
+}
+
+/**
+ * Slice A template stubs. The real Central Park, Town, and Beach layouts land
+ * in later slices; until then each template returns the seeded world so the
+ * dispatch, location ids, and saves stay valid.
+ */
+export function generateCentralPark(seed) {
+  return { ...generateWorld(seed), template: 'central-park' };
+}
+
+export function generateTown(seed) {
+  return { ...generateWorld(seed), template: 'town' };
+}
+
+export function generateBeach(seed) {
+  return { ...generateWorld(seed), template: 'beach' };
 }
 
 export function generateScenery(grid, seed, spawn = { x: 32, y: 32 }) {

@@ -20,6 +20,7 @@ import { resolveFx } from './effects.js';
 import { focusOptionsFor, focusPointFor } from './camera-focus.js';
 import { tickHomeBuddy } from './home.js';
 import { blockedTiles as homeFurnitureBlockedTiles, homeItemAtTop } from './home_items.js';
+import { locationBlockedTiles as propBlockedTiles } from './location_props.js';
 import engineConfig from '../data/engine_config.json' with { type: 'json' };
 
 export {
@@ -270,6 +271,9 @@ export class Game {
     this.homeRugTiles = [];
     this.homeItems = [];
     this.homeBlockedTiles = new Set();
+    this.locationProps = [];
+    this.locationBlockedTiles = new Set();
+    this.theme = null;
     this.homeDraft = null;
     this.hoveredItem = null;
     this.homeOverflow = 0;
@@ -486,7 +490,9 @@ export class Game {
     homeMode = false,
     homeBuddies = [],
     homeRoomTiles = [],
-    homeRugTiles = []
+    homeRugTiles = [],
+    locationProps = [],
+    theme = null
   }) {
     this.terrain = terrain;
     this.worldSeed = worldSeed;
@@ -500,6 +506,9 @@ export class Game {
       : new Set();
     this.homeRoomTiles = Array.isArray(homeRoomTiles) ? homeRoomTiles : [];
     this.homeRugTiles = Array.isArray(homeRugTiles) ? homeRugTiles : [];
+    this.locationProps = Array.isArray(locationProps) ? locationProps : [];
+    this.locationBlockedTiles = propBlockedTiles(this.locationProps);
+    this.theme = theme && typeof theme === 'object' ? theme : null;
     this.homeDraft = null;
     this.hoveredItem = null;
     this.homeOverflow = 0;
@@ -539,7 +548,7 @@ export class Game {
     this.previewFocus = this.player
       ? { x: this.player.x, y: this.player.y }
       : { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 };
-    this.renderer.buildMinimapBase(terrain);
+    this.renderer.buildMinimapBase(terrain, this.theme);
     this.cameraSnap = true;
     this.cameraTarget = null;
   }
@@ -559,6 +568,9 @@ export class Game {
     this.homeRugTiles = [];
     this.homeItems = [];
     this.homeBlockedTiles = new Set();
+    this.locationProps = [];
+    this.locationBlockedTiles = new Set();
+    this.theme = null;
     this.homeDraft = null;
     this.hoveredItem = null;
     this.homeOverflow = 0;
@@ -888,6 +900,17 @@ export class Game {
     return this.isCharacterOnMiniGameBoard(character);
   }
 
+  /**
+   * Solid Home furniture and location props share one collision question.
+   * Both sets are empty outside their own world, so the Park keeps its rules.
+   */
+  blockedTile(x, y) {
+    const key = `${x},${y}`;
+    if (this.homeBlockedTiles?.size && this.homeBlockedTiles.has(key)) return true;
+    if (this.locationBlockedTiles?.size && this.locationBlockedTiles.has(key)) return true;
+    return false;
+  }
+
   tryStep(character, dx, dy, duration) {
     if (!this.terrain) return false;
     const fx = this.resolveFxFor(character);
@@ -911,9 +934,9 @@ export class Game {
     // Flying lets a character cross water; solid board footprints and other
     // characters still block below.
 
-    // Solid Home furniture blocks every walker, flyer, and teleport landing.
-    // The set is empty outside Home, so Park collision is untouched.
-    if (this.homeBlockedTiles.size && this.homeBlockedTiles.has(`${nx},${ny}`)) {
+    // Solid Home furniture and location props block every walker, flyer, and
+    // teleport landing. Both sets are empty outside their own world.
+    if (this.blockedTile(nx, ny)) {
       return false;
     }
 
@@ -983,7 +1006,7 @@ export class Game {
       const tx = character.x + dx * distance;
       const ty = character.y + dy * distance;
       if (tx < 0 || tx >= WORLD_SIZE || ty < 0 || ty >= WORLD_SIZE) break;
-      if (this.homeBlockedTiles.size && this.homeBlockedTiles.has(`${tx},${ty}`)) continue;
+      if (this.blockedTile(tx, ty)) continue;
       if (this.miniGameHost?.blocksStep?.(character, tx, ty)) continue;
       if (reservationAtTile(collidingObstacles, tx, ty)) continue;
       landing = { x: tx, y: ty, distance };
@@ -1144,9 +1167,10 @@ export class Game {
       return;
     }
 
-    // Behavior runtime owns wander decisions when present. Movement completion
-    // and inMiniGame staging above still run every frame.
-    if (this.behaviorRuntime) return;
+    // Behavior runtime owns wander decisions when present. Residents use the
+    // lightweight fallback below even while the runtime exists, because they
+    // are not registered as Park behaviour actors.
+    if (this.behaviorRuntime && !npc.resident) return;
 
     if (!this.wander) return;
     npc.wait -= dt;
@@ -1565,6 +1589,8 @@ export class Game {
       blocked.add(`${npc.x},${npc.y}`);
       if (npc.moving) blocked.add(`${npc.toX},${npc.toY}`);
     }
+    for (const key of this.locationBlockedTiles) blocked.add(key);
+    for (const key of this.homeBlockedTiles) blocked.add(key);
     const path = findPath(
       this.terrain,
       { x: this.player.x, y: this.player.y },
