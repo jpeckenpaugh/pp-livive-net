@@ -245,6 +245,17 @@ each gate. No new dependencies or binary assets.
 `apple-pie` in `data/items.json` (value 6, tradeable, icon 🥧); a `radio-tune` cue in
 `data/sounds.json`; and a transient `homePose` on the player for sleep/sit.
 
+**Wave 7b decisions (autopilot, 2026-11-01)**
+
+- **Card:** a new `#home-item-card` aside, positioned from the item's screen rectangle, viewport-clamped, hidden when Furnish opens. Use receives focus on open.
+- **Hit-testing:** a pure `homeItemAtTop` in `home_items.js`, mirroring the renderer's bottom-row/left tie-break in reverse; the rug ranks below actors. Tested.
+- **Furnish ownership:** `main.js` owns `{ uid, draft }` and intercepts canvas clicks before `handlePointerDown`; `Game.interactive` is untouched; Escape cancels.
+- **Poses:** `homePose = { kind, uid }`; the player keeps its logical tile and the renderer offsets the sprite over the seat or bed. Movement wakes/stands. Never saved.
+- **Pie:** a plain `apple-pie` catalog entry with no use action. The basket becomes **shared across locations** — travel carries the counts — so apples picked in the Park are bakeable at Home. A test covers the carry.
+- **Radio:** one-shot `radio-tune` on turn-on, silence on off, no loop; respects the existing mute and unlock.
+- **Toggles:** `on` is the only persisted state; TV static derives from `game.time`, the lamp is a radial pass over lit items.
+- **Enter priority in Home:** dialogue → player menu → facing item → door → player menu (opened). Asserted in a test.
+
 ---
 
 ## 6. Risks
