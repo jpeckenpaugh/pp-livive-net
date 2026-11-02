@@ -187,6 +187,15 @@ course genuinely needs it; ladders are cheap, swinging is not.
 
 **Estimate:** 4–6 dev days for a playable slice, plus tuning.
 
+**Wave 3 spike decisions (autopilot, 2026-11-01)**
+
+- Fixed 120 Hz accumulator with a five-step catch-up cap; no interpolation for the grey box.
+- Horizontal follow only; the course fits one screen height so vertical scroll never becomes a crutch.
+- Course target 25–35 s for a clean run: about five platforms, one gap that needs a running jump, one one-way ledge.
+- Physics constants live in a hardcoded block at the top of the spike file and are reported as a copyable set for `data/engine_config.json` in Wave 4.
+- Ghost is an authored constant-speed path with fixed jump timestamps, drawn as a hollow outline; it doubles as par time.
+- Evidence bar: at least five first-time runs on desktop and 360 px, finish rate, time spread, plus explicit answers to "did you restart unprompted?" and "what did you want to change first?"
+
 ---
 
 ## 6. Milestone 3 — NPC trading (Phase 4)
