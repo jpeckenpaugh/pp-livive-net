@@ -692,8 +692,24 @@ test('a saved building keeps its own door instead of re-linking a stale one', ()
 });
 
 
+test('a moved building leaves no stale door at its old tile', () => {
+  const { props } = townSetup();
+  const shop = props.find(record => record.label === 'Shop');
+  // Move the shop far away; its original tile no longer sits in a footprint.
+  const moved = props.map(record => (
+    record.uid === shop.uid ? { ...record, x: 30, y: 60 } : record
+  ));
+  const travel = [
+    { to: 'shop', x: 8, y: 17, prompt: 'Step into the shop?' },
+    { to: 'park', x: 2, y: 31, prompt: 'Head into the park?' }
+  ];
+  const linked = linkBuildingDoors(moved, travel);
+  assert.equal(linked.doors.some(door => door.to === 'shop'), false, 'stale shop door is dropped');
+  assert.equal(linked.doors.some(door => door.to === 'park'), true, 'unrelated fixed door is kept');
+});
+
+
 /* ------------------------------------------------------------------------ *
- * Free building movement: hard blockers, soft scoots, doors, reset, no swap.
  * ------------------------------------------------------------------------ */
 
 function buildingPlanBase(extra = {}) {

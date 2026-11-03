@@ -277,6 +277,16 @@ export function linkBuildingDoors(props, doors = []) {
   }
 
   const leftovers = [];
+  // A building that already carries a door owns that destination. The data-file
+  // door that originally linked it is stale once the building moves — its old
+  // tile is no longer inside the footprint, but it must not become a standalone
+  // door at the previous location.
+  const claimedTargets = new Set();
+  for (const record of next) {
+    if (isWorldBuilding(record) && isRecord(record.door) && typeof record.door.to === 'string' && record.door.to) {
+      claimedTargets.add(record.door.to);
+    }
+  }
   for (const door of Array.isArray(doors) ? doors : []) {
     if (!isRecord(door) || door.kind === 'activity') {
       leftovers.push(door);
@@ -286,6 +296,9 @@ export function linkBuildingDoors(props, doors = []) {
     const y = finiteTile(door.y);
     const index = x === null || y === null ? undefined : hosts.get(`${x},${y}`);
     if (index === undefined) {
+      // A moved building leaves its declarative door behind; drop it rather
+      // than draw a second doorway at the old tile.
+      if (typeof door.to === 'string' && claimedTargets.has(door.to)) continue;
       leftovers.push(door);
       continue;
     }
