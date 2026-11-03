@@ -302,6 +302,7 @@ export function propRenderMeta(record) {
     label: typeof record?.label === 'string' && record.label ? record.label : (prop.label || prop.id),
     shape: prop.shape || prop.id,
     solid: prop.solid === true,
+    ground: prop.ground === true,
     // A seeded trim tone recolours the finish without claiming a new variant.
     colors: detail?.trim ? { ...colors, trim: detail.trim } : colors,
     detail,

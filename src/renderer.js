@@ -2857,6 +2857,11 @@ export class WorldRenderer {
     this.drawHomeItemsGround(ctx, game);
     // A lit lamp casts a warm pool before actors and furniture draw over it.
     this.drawHomeLampGlow(ctx, game);
+    // Floor coverings (rugs, blankets, towels, flower beds) paint below doors
+    // and every object/actor, so nothing is sorted on top of them.
+    for (const record of game.locationProps || []) {
+      if (propRenderMeta(record)?.ground) this.drawLocationProp(record, game);
+    }
 
     // Travel doors sit above the ground and below every actor, so a character
     // standing in the doorway is drawn in front of it. Doors cut into a solid
@@ -2969,11 +2974,10 @@ export class WorldRenderer {
     // footprint's bottom row, so a character in front draws over them.
     for (const record of game.locationProps || []) {
       const meta = propRenderMeta(record);
-      if (!meta) continue;
+      if (!meta || meta.ground) continue;
       renderables.push({
         type: 'location-prop',
-        // A rug is floor cover: draw it at its top row so actors stand on it.
-        y: meta.shape === 'rug' ? meta.y : meta.sortY,
+        y: meta.sortY,
         x: meta.x,
         entity: record
       });
@@ -3063,12 +3067,8 @@ export class WorldRenderer {
       }
     }
 
-    // Interior door markers float above their building, so the roof can never
-    // swallow the one tile the player needs to bump.
-    for (const [door, host] of doorHosts) {
-      const meta = propRenderMeta(host);
-      if (meta) this.drawInteriorDoorMarker(ctx, door, meta, game.time);
-    }
+    // Interior door triggers are intentionally unlabelled: the doorway art in
+    // the facade is the cue, and a floating ENTER pill would clutter the town.
 
     // Overlay layer (tokens, hover highlights) sits above characters.
     if (game.miniGameHost) {

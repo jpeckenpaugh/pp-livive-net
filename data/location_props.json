@@ -175,6 +175,7 @@
       "label": "Picnic blanket",
       "size": { "w": 2, "h": 2 },
       "solid": false,
+      "ground": true,
       "shape": "picnic-blanket",
       "colors": { "base": "#d97f6a", "accent": "#f2e2bd", "trim": "#8c4f42" },
       "variants": [
@@ -187,6 +188,7 @@
       "label": "Rug",
       "size": { "w": 3, "h": 3 },
       "solid": false,
+      "ground": true,
       "shape": "rug",
       "colors": { "base": "#8e5a4c", "accent": "#d9b98c", "trim": "#4a2f28" },
       "variants": [
@@ -485,6 +487,7 @@
       "label": "Flower bed",
       "size": { "w": 2, "h": 2 },
       "solid": false,
+      "ground": true,
       "shape": "flower-bed",
       "colors": { "base": "#8a6a44", "accent": "#d97f6a", "trim": "#4d3a24" },
       "variants": [
@@ -550,6 +553,7 @@
       "label": "Beach towel",
       "size": { "w": 2, "h": 2 },
       "solid": false,
+      "ground": true,
       "shape": "towel",
       "colors": { "base": "#4f9a9a", "accent": "#e9f4f0", "trim": "#2d5f5f" },
       "variants": [
