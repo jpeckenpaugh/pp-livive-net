@@ -48,6 +48,7 @@ import {
 import {
   serializeSave,
   captureLocationRecord,
+  SAVE_VERSION,
   saveState,
   loadSave,
   clearSave,
@@ -2040,7 +2041,7 @@ function buildLiveNpcs() {
 async function enterPark() {
   const button = $('enter-park');
   button.disabled = true;
-  button.textContent = 'Opening the gate…';
+  button.textContent = 'Opening the door…';
 
   const npcs = buildLiveNpcs();
   const companions = [];
@@ -2071,20 +2072,32 @@ async function enterPark() {
   ]);
 
   const playerName = draft.playerName.trim() || 'You';
+  // New games open at Home. The park the wizard generated is stored as its own
+  // location record so the neighbours, terrain, and spawn are waiting when the
+  // player walks out to town and across to the park.
+  const parkRecord = captureLocationRecord({
+    seed: draft.worldSeed,
+    layout: draft.layout || locationLayout('park'),
+    terrain: draft.world.grid,
+    player: { x: draft.world.spawn.x, y: draft.world.spawn.y, direction: 0 },
+    npcs,
+    forage: null
+  });
+  const homeRecord = createLocationRecord('home');
   const state = {
-    version: 1,
-    worldSeed: draft.worldSeed,
-    layout: draft.layout || null,
-    terrain: encodeTerrain(draft.world.grid),
+    version: SAVE_VERSION,
+    currentLocation: 'home',
+    locations: {
+      park: parkRecord,
+      home: homeRecord
+    },
     playerName,
     playerRecipe: draft.playerRecipe,
     player: {
-      x: draft.world.spawn.x,
-      y: draft.world.spawn.y,
       inventory: draft.playerInventory || createStarterInventory(),
-      equipped: []
+      equipped: [],
+      coins: STARTING_COINS
     },
-    npcs,
     companions,
     friends: [],
     wander: true
@@ -2098,9 +2111,9 @@ async function enterPark() {
   updateWanderButton();
   updateMeta();
   saveNow();
-  showToast(`Welcome to the park, ${playerName}. Check your Bag for toys!`);
+  showToast(`Welcome home, ${playerName}. Check your Bag, then head out when you're ready.`);
   button.disabled = false;
-  button.textContent = 'Enter the park';
+  button.textContent = 'Move in';
 }
 
 function applyBehaviorState(state) {
