@@ -370,7 +370,31 @@
         { "type": "palm", "x": 57, "y": 37, "variant": 1 },
         { "type": "palm", "x": 62, "y": 37 },
         { "type": "umbrella", "x": 59, "y": 33 },
-        { "type": "picnic-blanket", "x": 60, "y": 35, "variant": 1 }
+        { "type": "picnic-blanket", "x": 60, "y": 35, "variant": 1 },
+
+        { "type": "fence", "x": 12, "y": 23 },
+        { "type": "fence", "x": 27, "y": 23, "variant": 1 },
+        { "type": "hedge", "x": 42, "y": 23 },
+        { "type": "hedge", "x": 57, "y": 23, "variant": 1 },
+
+        { "type": "bin", "x": 10, "y": 19 },
+        { "type": "bin", "x": 54, "y": 29, "variant": 1 },
+        { "type": "mailbox", "x": 13, "y": 19 },
+        { "type": "mailbox", "x": 55, "y": 29, "variant": 1 },
+        { "type": "signpost", "x": 14, "y": 19 },
+        { "type": "signpost", "x": 19, "y": 29, "variant": 1 },
+        { "type": "bike-rack", "x": 33, "y": 19 },
+        { "type": "bike-rack", "x": 49, "y": 29, "variant": 1 },
+
+        { "type": "notice-board", "x": 28, "y": 28 },
+        { "type": "string-lights", "x": 29, "y": 29 },
+        { "type": "string-lights", "x": 33, "y": 33, "variant": 1 },
+        { "type": "statue", "x": 31, "y": 26 },
+        { "type": "flower-bed", "x": 24, "y": 34 },
+        { "type": "flower-bed", "x": 37, "y": 33, "variant": 1 },
+        { "type": "market-stall", "x": 25, "y": 31 },
+        { "type": "market-stall", "x": 35, "y": 31, "variant": 1 },
+        { "type": "bus-stop", "x": 22, "y": 32 }
       ],
       "residents": [
         {
@@ -513,7 +537,15 @@
         { "type": "lamp", "x": 40, "y": 29, "variant": 1 },
 
         { "type": "planter", "x": 26, "y": 34, "variant": 1 },
-        { "type": "planter", "x": 38, "y": 34 }
+        { "type": "planter", "x": 38, "y": 34 },
+
+        { "type": "globe", "x": 23, "y": 20 },
+        { "type": "chalkboard", "x": 28, "y": 20 },
+        { "type": "easel", "x": 24, "y": 24 },
+        { "type": "locker", "x": 39, "y": 30 },
+        { "type": "reading-table", "x": 28, "y": 31 },
+        { "type": "beanbag", "x": 34, "y": 31 },
+        { "type": "science-bench", "x": 36, "y": 33 }
       ],
       "residents": [
         {
@@ -588,7 +620,26 @@
         { "type": "picnic-blanket", "x": 20, "y": 42 },
         { "type": "picnic-blanket", "x": 29, "y": 46, "variant": 1 },
 
-        { "type": "pier", "x": 43, "y": 30, "rot": 1 }
+        { "type": "pier", "x": 43, "y": 30, "rot": 1 },
+
+        { "type": "deck-chair", "x": 14, "y": 26 },
+        { "type": "deck-chair", "x": 36, "y": 22, "variant": 1 },
+        { "type": "towel", "x": 12, "y": 28 },
+        { "type": "towel", "x": 35, "y": 26, "variant": 1 },
+        { "type": "cooler", "x": 16, "y": 27 },
+        { "type": "cooler", "x": 37, "y": 23, "variant": 1 },
+        { "type": "sandcastle", "x": 22, "y": 33 },
+        { "type": "surfboard", "x": 36, "y": 33 },
+        { "type": "surfboard", "x": 41, "y": 33, "variant": 1 },
+        { "type": "buoy", "x": 40, "y": 36 },
+        { "type": "shell-pile", "x": 19, "y": 45 },
+        { "type": "shell-pile", "x": 27, "y": 48, "variant": 1 },
+        { "type": "beach-ball", "x": 28, "y": 34 },
+        { "type": "beach-ball", "x": 33, "y": 39, "variant": 1 },
+        { "type": "kite", "x": 31, "y": 22 },
+        { "type": "kite", "x": 12, "y": 49, "variant": 1 },
+        { "type": "shower-post", "x": 12, "y": 32 },
+        { "type": "shower-post", "x": 41, "y": 32, "variant": 1 }
       ],
       "residents": [
         {
@@ -638,10 +689,17 @@
         "floor": "#c7a578"
       },
       "props": [
-        { "type": "rug", "x": 30, "y": 28 },
-        { "type": "desk", "x": 28, "y": 27 },
-        { "type": "desk", "x": 34, "y": 27, "variant": 1 },
-        { "type": "planter", "x": 36, "y": 32, "variant": 1 }
+        { "type": "awning", "x": 34, "y": 26, "seed": "cafe-awning" },
+        { "type": "cafe-counter", "x": 34, "y": 27, "seed": "cafe-counter" },
+        { "type": "stool", "x": 35, "y": 28, "seed": "cafe-stool-by-counter" },
+        { "type": "bookshelf", "x": 36, "y": 29, "rot": 1, "seed": "cafe-shelf" },
+        { "type": "rug", "x": 29, "y": 29, "seed": "cafe-rug" },
+        { "type": "cafe-table", "x": 30, "y": 30, "seed": "cafe-table" },
+        { "type": "stool", "x": 29, "y": 30, "variant": 1, "seed": "cafe-stool-left" },
+        { "type": "stool", "x": 31, "y": 30, "seed": "cafe-stool-right" },
+        { "type": "armchair", "x": 27, "y": 27, "seed": "cafe-armchair" },
+        { "type": "couch", "x": 27, "y": 32, "seed": "cafe-couch" },
+        { "type": "planter", "x": 36, "y": 32 }
       ],
       "residents": [
         {
@@ -684,10 +742,18 @@
         "floor": "#d9b98c"
       },
       "props": [
-        { "type": "desk", "x": 28, "y": 27 },
-        { "type": "desk", "x": 31, "y": 27, "variant": 1 },
-        { "type": "bookshelf", "x": 36, "y": 27, "variant": 1 },
-        { "type": "planter", "x": 27, "y": 33 }
+        { "type": "oven", "x": 35, "y": 27, "seed": "bakery-oven" },
+        { "type": "display-case", "x": 33, "y": 30, "seed": "bakery-case" },
+        { "type": "counter", "x": 36, "y": 31, "seed": "bakery-counter" },
+        { "type": "flour-sack", "x": 34, "y": 32, "seed": "bakery-sack-left" },
+        { "type": "flour-sack", "x": 35, "y": 33, "variant": 1, "seed": "bakery-sack-right" },
+        { "type": "rug", "x": 27, "y": 28, "seed": "bakery-rug" },
+        { "type": "dining-table", "x": 28, "y": 29, "seed": "bakery-table" },
+        { "type": "chair", "x": 27, "y": 30, "seed": "bakery-chair-left" },
+        { "type": "chair", "x": 30, "y": 30, "variant": 1, "seed": "bakery-chair-right" },
+        { "type": "chair", "x": 28, "y": 31, "seed": "bakery-chair-front" },
+        { "type": "bookshelf", "x": 27, "y": 32, "rot": 1, "seed": "bakery-shelf" },
+        { "type": "planter", "x": 37, "y": 34 }
       ],
       "residents": [
         {
@@ -730,10 +796,15 @@
         "floor": "#c9d6cf"
       },
       "props": [
-        { "type": "desk", "x": 28, "y": 28 },
-        { "type": "bookshelf", "x": 27, "y": 31, "rot": 1 },
-        { "type": "bench", "x": 35, "y": 32, "variant": 1 },
-        { "type": "planter", "x": 36, "y": 34 }
+        { "type": "exam-bed", "x": 35, "y": 31, "seed": "clinic-bed" },
+        { "type": "supply-cabinet", "x": 36, "y": 27, "seed": "clinic-cabinet" },
+        { "type": "privacy-screen", "x": 33, "y": 29, "seed": "clinic-screen" },
+        { "type": "desk", "x": 27, "y": 27, "seed": "clinic-desk" },
+        { "type": "armchair", "x": 27, "y": 30, "seed": "clinic-chair" },
+        { "type": "bookshelf", "x": 27, "y": 32, "rot": 1, "seed": "clinic-shelf" },
+        { "type": "chair", "x": 30, "y": 28, "seed": "clinic-visitor-chair" },
+        { "type": "rug", "x": 30, "y": 31, "seed": "clinic-rug" },
+        { "type": "planter", "x": 37, "y": 34 }
       ],
       "residents": [
         {
@@ -776,10 +847,16 @@
         "floor": "#d3b2a4"
       },
       "props": [
-        { "type": "rug", "x": 30, "y": 29, "variant": 1 },
-        { "type": "bench", "x": 27, "y": 32 },
-        { "type": "planter", "x": 36, "y": 32, "variant": 1 },
-        { "type": "lamp", "x": 34, "y": 27 }
+        { "type": "bed", "x": 35, "y": 29, "seed": "rose-bed" },
+        { "type": "wardrobe", "x": 36, "y": 27, "seed": "rose-wardrobe" },
+        { "type": "dresser", "x": 27, "y": 27, "seed": "rose-dresser" },
+        { "type": "vanity", "x": 27, "y": 29, "seed": "rose-vanity" },
+        { "type": "lamp", "x": 34, "y": 27, "seed": "rose-lamp" },
+        { "type": "bookshelf", "x": 27, "y": 32, "rot": 1, "seed": "rose-shelf" },
+        { "type": "rug", "x": 30, "y": 29, "seed": "rose-rug" },
+        { "type": "armchair", "x": 30, "y": 32, "seed": "rose-armchair" },
+        { "type": "chair", "x": 33, "y": 32, "seed": "rose-chair" },
+        { "type": "planter", "x": 37, "y": 34 }
       ],
       "residents": [
         {
@@ -822,9 +899,14 @@
         "floor": "#c2a377"
       },
       "props": [
-        { "type": "desk", "x": 27, "y": 27 },
-        { "type": "bookshelf", "x": 35, "y": 27 },
-        { "type": "bench", "x": 35, "y": 31, "variant": 1 },
+        { "type": "workbench", "x": 35, "y": 27, "seed": "workshop-north-bench" },
+        { "type": "tool-rack", "x": 27, "y": 27, "seed": "workshop-north-tools" },
+        { "type": "counter", "x": 36, "y": 31, "seed": "workshop-north-counter" },
+        { "type": "stool", "x": 34, "y": 30, "seed": "workshop-north-stool" },
+        { "type": "bookshelf", "x": 27, "y": 30, "rot": 1, "seed": "workshop-north-shelf" },
+        { "type": "armchair", "x": 30, "y": 28, "seed": "workshop-north-seat" },
+        { "type": "rug", "x": 29, "y": 31, "seed": "workshop-north-rug" },
+        { "type": "chair", "x": 30, "y": 33, "seed": "workshop-north-chair" },
         { "type": "planter", "x": 27, "y": 33 }
       ],
       "residents": [
@@ -868,10 +950,16 @@
         "floor": "#c9a878"
       },
       "props": [
-        { "type": "rug", "x": 30, "y": 28 },
-        { "type": "bookshelf", "x": 27, "y": 31, "rot": 1 },
-        { "type": "bench", "x": 35, "y": 32 },
-        { "type": "lamp", "x": 36, "y": 27 }
+        { "type": "bed", "x": 36, "y": 30, "seed": "maple-bed" },
+        { "type": "wardrobe", "x": 36, "y": 27, "seed": "maple-wardrobe" },
+        { "type": "dresser", "x": 27, "y": 27, "seed": "maple-dresser" },
+        { "type": "vanity", "x": 27, "y": 29, "seed": "maple-vanity" },
+        { "type": "bookshelf", "x": 35, "y": 27, "rot": 1, "seed": "maple-shelf" },
+        { "type": "dining-table", "x": 27, "y": 32, "seed": "maple-table" },
+        { "type": "chair", "x": 30, "y": 32, "seed": "maple-chair" },
+        { "type": "rug", "x": 30, "y": 28, "seed": "maple-rug" },
+        { "type": "armchair", "x": 30, "y": 31, "seed": "maple-armchair" },
+        { "type": "planter", "x": 37, "y": 34 }
       ],
       "residents": [
         {
@@ -914,10 +1002,15 @@
         "floor": "#b9a98a"
       },
       "props": [
-        { "type": "desk", "x": 34, "y": 27 },
-        { "type": "desk", "x": 28, "y": 31, "variant": 1 },
-        { "type": "planter", "x": 36, "y": 33 },
-        { "type": "lamp", "x": 27, "y": 28 }
+        { "type": "workbench", "x": 35, "y": 32, "seed": "workshop-south-bench" },
+        { "type": "tool-rack", "x": 36, "y": 27, "seed": "workshop-south-tools" },
+        { "type": "counter", "x": 27, "y": 27, "seed": "workshop-south-counter" },
+        { "type": "stool", "x": 34, "y": 30, "seed": "workshop-south-stool" },
+        { "type": "desk", "x": 33, "y": 27, "seed": "workshop-south-desk" },
+        { "type": "bookshelf", "x": 27, "y": 30, "rot": 1, "seed": "workshop-south-shelf" },
+        { "type": "rug", "x": 30, "y": 28, "seed": "workshop-south-rug" },
+        { "type": "chair", "x": 30, "y": 31, "seed": "workshop-south-chair" },
+        { "type": "planter", "x": 37, "y": 34 }
       ],
       "residents": [
         {
@@ -960,10 +1053,15 @@
         "floor": "#c3cfb2"
       },
       "props": [
-        { "type": "rug", "x": 29, "y": 27, "variant": 1 },
-        { "type": "planter", "x": 27, "y": 32 },
-        { "type": "planter", "x": 36, "y": 31, "variant": 1 },
-        { "type": "bench", "x": 34, "y": 33, "variant": 1 }
+        { "type": "bed", "x": 27, "y": 28, "seed": "willow-bed" },
+        { "type": "wardrobe", "x": 27, "y": 27, "seed": "willow-wardrobe" },
+        { "type": "vanity", "x": 36, "y": 27, "seed": "willow-vanity" },
+        { "type": "dresser", "x": 36, "y": 30, "seed": "willow-dresser" },
+        { "type": "rug", "x": 30, "y": 29, "seed": "willow-rug" },
+        { "type": "armchair", "x": 30, "y": 32, "seed": "willow-armchair" },
+        { "type": "chair", "x": 33, "y": 31, "seed": "willow-chair" },
+        { "type": "dining-table", "x": 34, "y": 32, "seed": "willow-table" },
+        { "type": "planter", "x": 27, "y": 33 }
       ],
       "residents": [
         {
@@ -1006,10 +1104,16 @@
         "floor": "#cdb48d"
       },
       "props": [
-        { "type": "bench", "x": 28, "y": 32 },
-        { "type": "bookshelf", "x": 35, "y": 27 },
-        { "type": "lamp", "x": 27, "y": 27, "variant": 1 },
-        { "type": "planter", "x": 36, "y": 33 }
+        { "type": "bed", "x": 35, "y": 30, "seed": "hill-bed" },
+        { "type": "wardrobe", "x": 36, "y": 28, "seed": "hill-wardrobe" },
+        { "type": "vanity", "x": 27, "y": 27, "seed": "hill-vanity" },
+        { "type": "dresser", "x": 27, "y": 29, "seed": "hill-dresser" },
+        { "type": "bookshelf", "x": 35, "y": 27, "rot": 1, "seed": "hill-shelf" },
+        { "type": "rug", "x": 30, "y": 28, "seed": "hill-rug" },
+        { "type": "armchair", "x": 30, "y": 31, "seed": "hill-armchair" },
+        { "type": "chair", "x": 33, "y": 33, "seed": "hill-chair" },
+        { "type": "planter", "x": 27, "y": 33 },
+        { "type": "lamp", "x": 37, "y": 34, "seed": "hill-lamp" }
       ],
       "residents": [
         {

@@ -193,6 +193,565 @@
         { "name": "woven", "colors": { "base": "#8e5a4c", "accent": "#d9b98c" } },
         { "name": "sage", "colors": { "base": "#5f7357", "accent": "#d9c08a", "trim": "#3d4b37" } }
       ]
+    },
+    "cafe-counter": {
+      "id": "cafe-counter",
+      "label": "Café counter",
+      "size": { "w": 3, "h": 1 },
+      "solid": true,
+      "shape": "cafe-counter",
+      "colors": { "base": "#8a6844", "accent": "#e2cfa8", "trim": "#4f3924" },
+      "variants": [
+        { "name": "oak", "colors": { "base": "#8a6844", "accent": "#e2cfa8" } },
+        { "name": "sage", "colors": { "base": "#5f7357", "accent": "#dce6c4", "trim": "#3d4b37" } }
+      ],
+      "use": { "verb": "Order", "kind": "brew", "line": "the barista slides a cup across the counter." }
+    },
+    "stool": {
+      "id": "stool",
+      "label": "Stool",
+      "size": { "w": 1, "h": 1 },
+      "solid": true,
+      "shape": "stool",
+      "colors": { "base": "#a98255", "accent": "#c9a878", "trim": "#5f472d" },
+      "variants": [
+        { "name": "oak", "colors": { "base": "#a98255", "accent": "#c9a878" } },
+        { "name": "red", "colors": { "base": "#a4483c", "accent": "#d97f6a", "trim": "#5f2a23" } }
+      ],
+      "use": { "verb": "Sit", "kind": "sit", "line": "you hop onto the stool." }
+    },
+    "cafe-table": {
+      "id": "cafe-table",
+      "label": "Café table",
+      "size": { "w": 1, "h": 1 },
+      "solid": true,
+      "shape": "cafe-table",
+      "colors": { "base": "#b08d63", "accent": "#f0e2c8", "trim": "#62492f" },
+      "variants": [
+        { "name": "marble", "colors": { "base": "#b08d63", "accent": "#f0e2c8" } },
+        { "name": "slate", "colors": { "base": "#6d7378", "accent": "#c9d0d4", "trim": "#3f4548" } }
+      ],
+      "use": { "verb": "Sit", "kind": "sit", "line": "the little table is just your size." }
+    },
+    "awning": {
+      "id": "awning",
+      "label": "Awning",
+      "size": { "w": 3, "h": 1 },
+      "solid": false,
+      "shape": "awning",
+      "colors": { "base": "#d97f6a", "accent": "#f4e3c1", "trim": "#8c4f42" },
+      "variants": [
+        { "name": "coral", "colors": { "base": "#d97f6a", "accent": "#f4e3c1" } },
+        { "name": "teal", "colors": { "base": "#4f9a9a", "accent": "#e9f4f0", "trim": "#2d5f5f" } }
+      ],
+      "use": { "verb": "Look", "kind": "look", "line": "the striped canvas shades the window." }
+    },
+    "display-case": {
+      "id": "display-case",
+      "label": "Display case",
+      "size": { "w": 2, "h": 1 },
+      "solid": true,
+      "shape": "display-case",
+      "colors": { "base": "#8a6844", "accent": "#cfe3ea", "trim": "#4f3924" },
+      "variants": [
+        { "name": "brass", "colors": { "base": "#8a6844", "accent": "#d8c48c" } },
+        { "name": "pale wood", "colors": { "base": "#b99a70", "accent": "#eef4f4", "trim": "#7a6244" } }
+      ],
+      "use": { "verb": "Open", "kind": "open", "line": "warm pastries sit behind the glass." }
+    },
+    "oven": {
+      "id": "oven",
+      "label": "Brick oven",
+      "size": { "w": 2, "h": 2 },
+      "solid": true,
+      "shape": "oven",
+      "colors": { "base": "#9c6a4f", "accent": "#e8b06a", "trim": "#5a3a2a" },
+      "variants": [
+        { "name": "brick", "colors": { "base": "#9c6a4f", "accent": "#e8b06a" } },
+        { "name": "clay", "colors": { "base": "#b0714d", "accent": "#f0c46a", "trim": "#6d432c" } }
+      ],
+      "use": { "verb": "Bake", "kind": "brew", "line": "the oven breathes out warm bread air." }
+    },
+    "flour-sack": {
+      "id": "flour-sack",
+      "label": "Flour sack",
+      "size": { "w": 1, "h": 1 },
+      "solid": true,
+      "shape": "flour-sack",
+      "colors": { "base": "#e6dcc4", "accent": "#c9b98f", "trim": "#8a7856" },
+      "variants": [
+        { "name": "linen", "colors": { "base": "#e6dcc4", "accent": "#c9b98f" } },
+        { "name": "rye", "colors": { "base": "#d8c6a5", "accent": "#a98f6c", "trim": "#6d5a3f" } }
+      ],
+      "use": { "verb": "Open", "kind": "open", "line": "a soft puff of flour escapes." }
+    },
+    "exam-bed": {
+      "id": "exam-bed",
+      "label": "Exam bed",
+      "size": { "w": 2, "h": 3 },
+      "solid": true,
+      "shape": "exam-bed",
+      "colors": { "base": "#7fa8b8", "accent": "#eef4f4", "trim": "#4f6f7a" },
+      "variants": [
+        { "name": "mint", "colors": { "base": "#7fa8b8", "accent": "#eef4f4" } },
+        { "name": "sage", "colors": { "base": "#7f9c86", "accent": "#f0f4e6", "trim": "#4f6a57" } }
+      ],
+      "use": { "verb": "Rest", "kind": "heal", "line": "the paper sheet crinkles softly." }
+    },
+    "supply-cabinet": {
+      "id": "supply-cabinet",
+      "label": "Supply cabinet",
+      "size": { "w": 2, "h": 1 },
+      "solid": true,
+      "shape": "supply-cabinet",
+      "colors": { "base": "#d8e2dc", "accent": "#7fa8b8", "trim": "#5f6f68" },
+      "variants": [
+        { "name": "white", "colors": { "base": "#d8e2dc", "accent": "#7fa8b8" } },
+        { "name": "green", "colors": { "base": "#9aae8c", "accent": "#eef4e6", "trim": "#5f7357" } }
+      ],
+      "use": { "verb": "Open", "kind": "open", "line": "bandages and little bottles are neatly stacked." }
+    },
+    "privacy-screen": {
+      "id": "privacy-screen",
+      "label": "Privacy screen",
+      "size": { "w": 2, "h": 1 },
+      "solid": true,
+      "shape": "privacy-screen",
+      "colors": { "base": "#e6e0d2", "accent": "#9fb2a4", "trim": "#6d5a3f" },
+      "variants": [
+        { "name": "linen", "colors": { "base": "#e6e0d2", "accent": "#9fb2a4" } },
+        { "name": "rose", "colors": { "base": "#e2cfc8", "accent": "#b08d8a", "trim": "#6d4f4f" } }
+      ],
+      "use": { "verb": "Peek", "kind": "look", "line": "the folding screen keeps consultations cosy." }
+    },
+    "workbench": {
+      "id": "workbench",
+      "label": "Workbench",
+      "size": { "w": 3, "h": 1 },
+      "solid": true,
+      "shape": "workbench",
+      "colors": { "base": "#8a6844", "accent": "#b48f60", "trim": "#3f2d1c" },
+      "variants": [
+        { "name": "oak", "colors": { "base": "#8a6844", "accent": "#b48f60" } },
+        { "name": "dark", "colors": { "base": "#6b4a33", "accent": "#8c6647", "trim": "#33251a" } }
+      ],
+      "use": { "verb": "Tinker", "kind": "repair", "line": "the vice holds a half-finished handle." }
+    },
+    "tool-rack": {
+      "id": "tool-rack",
+      "label": "Tool rack",
+      "size": { "w": 2, "h": 1 },
+      "solid": true,
+      "shape": "tool-rack",
+      "colors": { "base": "#7a5a3d", "accent": "#9aa0a6", "trim": "#3f2d1c" },
+      "variants": [
+        { "name": "pegboard", "colors": { "base": "#7a5a3d", "accent": "#9aa0a6" } },
+        { "name": "painted", "colors": { "base": "#5f7357", "accent": "#c9d0d4", "trim": "#3d4b37" } }
+      ],
+      "use": { "verb": "Browse", "kind": "open", "line": "every tool has a little painted outline." }
+    },
+    "wardrobe": {
+      "id": "wardrobe",
+      "label": "Wardrobe",
+      "size": { "w": 2, "h": 1 },
+      "solid": true,
+      "shape": "wardrobe",
+      "colors": { "base": "#7a5b3d", "accent": "#b08d63", "trim": "#4e3a27" },
+      "variants": [
+        { "name": "oak", "colors": { "base": "#7a5b3d", "accent": "#b08d63" } },
+        { "name": "painted green", "colors": { "base": "#5f7357", "accent": "#d9c08a", "trim": "#3d4b37" } }
+      ],
+      "use": { "verb": "Open", "kind": "open", "line": "the wardrobe smells of cedar and old coats." }
+    },
+    "vanity": {
+      "id": "vanity",
+      "label": "Vanity",
+      "size": { "w": 2, "h": 1 },
+      "solid": true,
+      "shape": "vanity",
+      "colors": { "base": "#a98255", "accent": "#d9e3e8", "trim": "#5f472d" },
+      "variants": [
+        { "name": "birch", "colors": { "base": "#a98255", "accent": "#d9e3e8" } },
+        { "name": "walnut", "colors": { "base": "#6b4a33", "accent": "#e2e7ec", "trim": "#3a2619" } }
+      ],
+      "use": { "verb": "Look", "kind": "look", "line": "the little mirror catches the window light." }
+    },
+    "fence": {
+      "id": "fence",
+      "label": "Fence",
+      "size": { "w": 2, "h": 1 },
+      "solid": true,
+      "shape": "fence",
+      "colors": { "base": "#8a6a44", "accent": "#c9a878", "trim": "#4d3a24" },
+      "variants": [
+        { "name": "picket", "colors": { "base": "#8a6a44", "accent": "#c9a878" } },
+        { "name": "painted white", "colors": { "base": "#d8d2c0", "accent": "#f0e6cf", "trim": "#8a8474" } }
+      ],
+      "use": { "verb": "Look", "kind": "look", "line": "the little fence keeps the lawn tidy." }
+    },
+    "hedge": {
+      "id": "hedge",
+      "label": "Hedge",
+      "size": { "w": 2, "h": 1 },
+      "solid": true,
+      "shape": "hedge",
+      "colors": { "base": "#4f7d4e", "accent": "#77b36f", "trim": "#2f5233" },
+      "variants": [
+        { "name": "boxwood", "colors": { "base": "#4f7d4e", "accent": "#77b36f" } },
+        { "name": "variegated", "colors": { "base": "#5f8f52", "accent": "#b7cf7a", "trim": "#3d5f33" } }
+      ],
+      "use": { "verb": "Look", "kind": "look", "line": "the hedge is trimmed in a neat line." }
+    },
+    "bin": {
+      "id": "bin",
+      "label": "Litter bin",
+      "size": { "w": 1, "h": 1 },
+      "solid": true,
+      "shape": "bin",
+      "colors": { "base": "#4b5d52", "accent": "#7f9c86", "trim": "#2c3830" },
+      "variants": [
+        { "name": "park green", "colors": { "base": "#4b5d52", "accent": "#7f9c86" } },
+        { "name": "navy", "colors": { "base": "#40556b", "accent": "#8fa8bd", "trim": "#283544" } }
+      ],
+      "use": { "verb": "Open", "kind": "open", "line": "the bin lid swings open with a soft clang." }
+    },
+    "mailbox": {
+      "id": "mailbox",
+      "label": "Mailbox",
+      "size": { "w": 1, "h": 1 },
+      "solid": true,
+      "shape": "mailbox",
+      "colors": { "base": "#4f7fa8", "accent": "#d9c08a", "trim": "#2f4f6b" },
+      "variants": [
+        { "name": "blue", "colors": { "base": "#4f7fa8", "accent": "#d9c08a" } },
+        { "name": "red", "colors": { "base": "#b04f45", "accent": "#f0e2c8", "trim": "#6d2f28" } }
+      ],
+      "use": { "verb": "Open", "kind": "open", "line": "a folded letter waits inside." }
+    },
+    "signpost": {
+      "id": "signpost",
+      "label": "Signpost",
+      "size": { "w": 1, "h": 1 },
+      "solid": true,
+      "shape": "signpost",
+      "colors": { "base": "#8a6a44", "accent": "#e5d3a5", "trim": "#4d3a24" },
+      "variants": [
+        { "name": "oak", "colors": { "base": "#8a6a44", "accent": "#e5d3a5" } },
+        { "name": "weathered", "colors": { "base": "#7a6a58", "accent": "#d8cfae", "trim": "#4a4036" } }
+      ],
+      "use": { "verb": "Read", "kind": "read", "line": "the arrows point to the plaza and the pier." }
+    },
+    "market-stall": {
+      "id": "market-stall",
+      "label": "Market stall",
+      "size": { "w": 3, "h": 2 },
+      "solid": true,
+      "shape": "market-stall",
+      "colors": { "base": "#a9614f", "accent": "#f0e2c8", "trim": "#5f2a23" },
+      "variants": [
+        { "name": "coral", "colors": { "base": "#a9614f", "accent": "#f0e2c8" } },
+        { "name": "teal", "colors": { "base": "#3f7f7d", "accent": "#e9f4f0", "trim": "#2a5553" } }
+      ],
+      "use": { "verb": "Browse", "kind": "open", "line": "the stallkeeper offers a basket of glossy apples." }
+    },
+    "bus-stop": {
+      "id": "bus-stop",
+      "label": "Bus stop",
+      "size": { "w": 2, "h": 1 },
+      "solid": true,
+      "shape": "bus-stop",
+      "colors": { "base": "#4f7fa8", "accent": "#dce6ec", "trim": "#2f4f6b" },
+      "variants": [
+        { "name": "blue", "colors": { "base": "#4f7fa8", "accent": "#dce6ec" } },
+        { "name": "green", "colors": { "base": "#5f8158", "accent": "#e6efdc", "trim": "#3d5638" } }
+      ],
+      "use": { "verb": "Wait", "kind": "look", "line": "the timetable says the next bus is soon." }
+    },
+    "statue": {
+      "id": "statue",
+      "label": "Statue",
+      "size": { "w": 2, "h": 2 },
+      "solid": true,
+      "shape": "statue",
+      "colors": { "base": "#a49c8d", "accent": "#c9c1af", "trim": "#6d675c" },
+      "variants": [
+        { "name": "limestone", "colors": { "base": "#a49c8d", "accent": "#c9c1af" } },
+        { "name": "bronze", "colors": { "base": "#7f8a6a", "accent": "#a9b58c", "trim": "#4f5a42" } }
+      ],
+      "use": { "verb": "Look", "kind": "look", "line": "a small stone figure holds a lantern aloft." }
+    },
+    "flower-bed": {
+      "id": "flower-bed",
+      "label": "Flower bed",
+      "size": { "w": 2, "h": 2 },
+      "solid": false,
+      "shape": "flower-bed",
+      "colors": { "base": "#8a6a44", "accent": "#d97f6a", "trim": "#4d3a24" },
+      "variants": [
+        { "name": "coral", "colors": { "base": "#8a6a44", "accent": "#d97f6a" } },
+        { "name": "golden", "colors": { "base": "#8a6a44", "accent": "#e8b06a", "trim": "#5f472d" } }
+      ],
+      "use": { "verb": "Look", "kind": "look", "line": "bees hum over the bright little flowers." }
+    },
+    "string-lights": {
+      "id": "string-lights",
+      "label": "String lights",
+      "size": { "w": 3, "h": 1 },
+      "solid": false,
+      "shape": "string-lights",
+      "colors": { "base": "#e8b06a", "accent": "#f4e3c1", "trim": "#6d5a3f" },
+      "variants": [
+        { "name": "warm", "colors": { "base": "#e8b06a", "accent": "#f4e3c1" } },
+        { "name": "festival", "colors": { "base": "#d97f6a", "accent": "#a8c4a0", "trim": "#6d5a3f" } }
+      ],
+      "use": { "verb": "Look", "kind": "look", "line": "the bulbs sway gently between the poles." }
+    },
+    "notice-board": {
+      "id": "notice-board",
+      "label": "Notice board",
+      "size": { "w": 2, "h": 1 },
+      "solid": true,
+      "shape": "notice-board",
+      "colors": { "base": "#7a5a3d", "accent": "#e6dcc4", "trim": "#3f2d1c" },
+      "variants": [
+        { "name": "cork", "colors": { "base": "#7a5a3d", "accent": "#e6dcc4" } },
+        { "name": "painted green", "colors": { "base": "#5f7357", "accent": "#eef0c9", "trim": "#3d4b37" } }
+      ],
+      "use": { "verb": "Read", "kind": "read", "line": "a poster advertises the summer picnic." }
+    },
+    "bike-rack": {
+      "id": "bike-rack",
+      "label": "Bike rack",
+      "size": { "w": 2, "h": 1 },
+      "solid": true,
+      "shape": "bike-rack",
+      "colors": { "base": "#6d7378", "accent": "#c9d0d4", "trim": "#3f4548" },
+      "variants": [
+        { "name": "steel", "colors": { "base": "#6d7378", "accent": "#c9d0d4" } },
+        { "name": "black", "colors": { "base": "#3f4548", "accent": "#9aa0a6", "trim": "#24292b" } }
+      ],
+      "use": { "verb": "Look", "kind": "look", "line": "one little bicycle is parked neatly." }
+    },
+    "deck-chair": {
+      "id": "deck-chair",
+      "label": "Deck chair",
+      "size": { "w": 2, "h": 1 },
+      "solid": true,
+      "shape": "deck-chair",
+      "colors": { "base": "#d97f6a", "accent": "#f4e3c1", "trim": "#8c4f42" },
+      "variants": [
+        { "name": "coral stripe", "colors": { "base": "#d97f6a", "accent": "#f4e3c1" } },
+        { "name": "teal stripe", "colors": { "base": "#4f9a9a", "accent": "#e9f4f0", "trim": "#2d5f5f" } }
+      ],
+      "use": { "verb": "Sit", "kind": "sit", "line": "the canvas seat is warm from the sun." }
+    },
+    "towel": {
+      "id": "towel",
+      "label": "Beach towel",
+      "size": { "w": 2, "h": 2 },
+      "solid": false,
+      "shape": "towel",
+      "colors": { "base": "#4f9a9a", "accent": "#e9f4f0", "trim": "#2d5f5f" },
+      "variants": [
+        { "name": "teal stripe", "colors": { "base": "#4f9a9a", "accent": "#e9f4f0" } },
+        { "name": "sunset", "colors": { "base": "#d97f6a", "accent": "#f7d9a8", "trim": "#8c4f42" } }
+      ],
+      "use": { "verb": "Sit", "kind": "sit", "line": "the towel is soft and still a little warm." }
+    },
+    "cooler": {
+      "id": "cooler",
+      "label": "Cooler",
+      "size": { "w": 1, "h": 1 },
+      "solid": true,
+      "shape": "cooler",
+      "colors": { "base": "#4f7fa8", "accent": "#eef4f4", "trim": "#2f4f6b" },
+      "variants": [
+        { "name": "blue", "colors": { "base": "#4f7fa8", "accent": "#eef4f4" } },
+        { "name": "red", "colors": { "base": "#b04f45", "accent": "#f4e3c1", "trim": "#6d2f28" } }
+      ],
+      "use": { "verb": "Open", "kind": "open", "line": "cold drinks and a paper-wrapped sandwich." }
+    },
+    "sandcastle": {
+      "id": "sandcastle",
+      "label": "Sandcastle",
+      "size": { "w": 2, "h": 2 },
+      "solid": true,
+      "shape": "sandcastle",
+      "colors": { "base": "#d9c08a", "accent": "#f0e2c8", "trim": "#8a6a44" },
+      "variants": [
+        { "name": "golden", "colors": { "base": "#d9c08a", "accent": "#f0e2c8" } },
+        { "name": "pale", "colors": { "base": "#e6d3a1", "accent": "#f7efd8", "trim": "#a8825a" } }
+      ],
+      "use": { "verb": "Look", "kind": "look", "line": "the towers are crowned with tiny shells." }
+    },
+    "surfboard": {
+      "id": "surfboard",
+      "label": "Surfboard",
+      "size": { "w": 1, "h": 2 },
+      "solid": true,
+      "shape": "surfboard",
+      "colors": { "base": "#e07a6b", "accent": "#f4e3c1", "trim": "#7d443c" },
+      "variants": [
+        { "name": "coral", "colors": { "base": "#e07a6b", "accent": "#f4e3c1" } },
+        { "name": "teal", "colors": { "base": "#4f9a9a", "accent": "#e9f4f0", "trim": "#2d5f5f" } }
+      ],
+      "use": { "verb": "Look", "kind": "look", "line": "the board leans ready for the next wave." }
+    },
+    "buoy": {
+      "id": "buoy",
+      "label": "Buoy",
+      "size": { "w": 1, "h": 1 },
+      "solid": false,
+      "shape": "buoy",
+      "colors": { "base": "#d94f4f", "accent": "#f4e3c1", "trim": "#7d2a2a" },
+      "variants": [
+        { "name": "red", "colors": { "base": "#d94f4f", "accent": "#f4e3c1" } },
+        { "name": "yellow", "colors": { "base": "#e8b06a", "accent": "#f4e3c1", "trim": "#8a6230" } }
+      ],
+      "use": { "verb": "Look", "kind": "look", "line": "the buoy bobs on a lazy blue swell." }
+    },
+    "shell-pile": {
+      "id": "shell-pile",
+      "label": "Shell pile",
+      "size": { "w": 1, "h": 1 },
+      "solid": false,
+      "shape": "shell-pile",
+      "colors": { "base": "#f0e2c8", "accent": "#d9b98c", "trim": "#a8825a" },
+      "variants": [
+        { "name": "pink", "colors": { "base": "#f0e2c8", "accent": "#e2b7a6" } },
+        { "name": "pearl", "colors": { "base": "#eef4f4", "accent": "#cfe3ea", "trim": "#9fb2b8" } }
+      ],
+      "use": { "verb": "Look", "kind": "look", "line": "a little heap of pink and pearl shells." }
+    },
+    "beach-ball": {
+      "id": "beach-ball",
+      "label": "Beach ball",
+      "size": { "w": 1, "h": 1 },
+      "solid": false,
+      "shape": "beach-ball",
+      "colors": { "base": "#f0c46a", "accent": "#4f9a9a", "trim": "#c95f4e" },
+      "variants": [
+        { "name": "sunny", "colors": { "base": "#f0c46a", "accent": "#4f9a9a", "trim": "#c95f4e" } },
+        { "name": "coral", "colors": { "base": "#e07a6b", "accent": "#f4e3c1", "trim": "#4f7fa8" } }
+      ],
+      "use": { "verb": "Kick", "kind": "look", "line": "the ball skips away across the sand." }
+    },
+    "kite": {
+      "id": "kite",
+      "label": "Kite",
+      "size": { "w": 1, "h": 1 },
+      "solid": false,
+      "shape": "kite",
+      "colors": { "base": "#c95f4e", "accent": "#f0c46a", "trim": "#7d3b31" },
+      "variants": [
+        { "name": "red", "colors": { "base": "#c95f4e", "accent": "#f0c46a" } },
+        { "name": "blue", "colors": { "base": "#4f7fa8", "accent": "#e5f4a5", "trim": "#2f4f6b" } }
+      ],
+      "use": { "verb": "Look", "kind": "look", "line": "the kite tugs at its string above the dunes." }
+    },
+    "shower-post": {
+      "id": "shower-post",
+      "label": "Shower post",
+      "size": { "w": 1, "h": 1 },
+      "solid": true,
+      "shape": "shower-post",
+      "colors": { "base": "#7fa8b8", "accent": "#d9e3e8", "trim": "#4f6f7a" },
+      "variants": [
+        { "name": "mint", "colors": { "base": "#7fa8b8", "accent": "#d9e3e8" } },
+        { "name": "brass", "colors": { "base": "#a98255", "accent": "#d9c08a", "trim": "#5f472d" } }
+      ],
+      "use": { "verb": "Rinse", "kind": "open", "line": "cool water patters onto the sand." }
+    },
+    "globe": {
+      "id": "globe",
+      "label": "Globe",
+      "size": { "w": 1, "h": 1 },
+      "solid": true,
+      "shape": "globe",
+      "colors": { "base": "#8a6844", "accent": "#5f9ab8", "trim": "#4f3924" },
+      "variants": [
+        { "name": "ocean blue", "colors": { "base": "#8a6844", "accent": "#5f9ab8" } },
+        { "name": "antique", "colors": { "base": "#a98255", "accent": "#c9b98f", "trim": "#5f472d" } }
+      ],
+      "use": { "verb": "Spin", "kind": "look", "line": "the world turns slowly under your finger." }
+    },
+    "chalkboard": {
+      "id": "chalkboard",
+      "label": "Chalkboard",
+      "size": { "w": 2, "h": 1 },
+      "solid": true,
+      "shape": "chalkboard",
+      "colors": { "base": "#4f5d52", "accent": "#e6e0d2", "trim": "#7a5a3d" },
+      "variants": [
+        { "name": "slate", "colors": { "base": "#4f5d52", "accent": "#e6e0d2" } },
+        { "name": "green", "colors": { "base": "#3d5f4a", "accent": "#d8e2dc", "trim": "#7a5a3d" } }
+      ],
+      "use": { "verb": "Read", "kind": "read", "line": "today's lesson is half erased and full of arrows." }
+    },
+    "locker": {
+      "id": "locker",
+      "label": "Locker",
+      "size": { "w": 2, "h": 1 },
+      "solid": true,
+      "shape": "locker",
+      "colors": { "base": "#7f9c86", "accent": "#d8e2dc", "trim": "#4f6a57" },
+      "variants": [
+        { "name": "sage", "colors": { "base": "#7f9c86", "accent": "#d8e2dc" } },
+        { "name": "blue", "colors": { "base": "#7fa8b8", "accent": "#eef4f4", "trim": "#4f6f7a" } }
+      ],
+      "use": { "verb": "Open", "kind": "open", "line": "a spare scarf and a half-finished drawing." }
+    },
+    "reading-table": {
+      "id": "reading-table",
+      "label": "Reading table",
+      "size": { "w": 3, "h": 2 },
+      "solid": true,
+      "shape": "reading-table",
+      "colors": { "base": "#8a6844", "accent": "#e2cfa8", "trim": "#4f3924" },
+      "variants": [
+        { "name": "oak", "colors": { "base": "#8a6844", "accent": "#e2cfa8" } },
+        { "name": "walnut", "colors": { "base": "#6b4a33", "accent": "#c9b98f", "trim": "#3a2619" } }
+      ],
+      "use": { "verb": "Read", "kind": "read", "line": "an atlas lies open at a map of islands." }
+    },
+    "beanbag": {
+      "id": "beanbag",
+      "label": "Beanbag",
+      "size": { "w": 1, "h": 1 },
+      "solid": false,
+      "shape": "beanbag",
+      "colors": { "base": "#c97f5f", "accent": "#f0e2c8", "trim": "#7d4f37" },
+      "variants": [
+        { "name": "rust", "colors": { "base": "#c97f5f", "accent": "#f0e2c8" } },
+        { "name": "sage", "colors": { "base": "#7f9c86", "accent": "#d8e2dc", "trim": "#4f6a57" } }
+      ],
+      "use": { "verb": "Sit", "kind": "sit", "line": "you sink into the beanbag with a soft huff." }
+    },
+    "easel": {
+      "id": "easel",
+      "label": "Easel",
+      "size": { "w": 1, "h": 1 },
+      "solid": true,
+      "shape": "easel",
+      "colors": { "base": "#a98255", "accent": "#eef4f4", "trim": "#5f472d" },
+      "variants": [
+        { "name": "birch", "colors": { "base": "#a98255", "accent": "#eef4f4" } },
+        { "name": "walnut", "colors": { "base": "#6b4a33", "accent": "#f0e2c8", "trim": "#3a2619" } }
+      ],
+      "use": { "verb": "Look", "kind": "look", "line": "a half-painted seaside sits on the canvas." }
+    },
+    "science-bench": {
+      "id": "science-bench",
+      "label": "Science bench",
+      "size": { "w": 3, "h": 1 },
+      "solid": true,
+      "shape": "science-bench",
+      "colors": { "base": "#6d7378", "accent": "#9fd6c8", "trim": "#3f4548" },
+      "variants": [
+        { "name": "steel", "colors": { "base": "#6d7378", "accent": "#9fd6c8" } },
+        { "name": "enamel", "colors": { "base": "#8a9095", "accent": "#e8b06a", "trim": "#4f5559" } }
+      ],
+      "use": { "verb": "Experiment", "kind": "look", "line": "little glass bottles fizz in a neat row." }
     }
   }
 }

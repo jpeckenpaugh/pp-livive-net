@@ -1018,34 +1018,52 @@ function drawAmphitheatreTier(ctx, box, colors) {
 
 /** A small painted sign so shop, home, library, and shells read apart. */
 function drawBuildingSign(ctx, box, meta, roofY, colors) {
-  const label = typeof meta?.label === 'string' ? meta.label : '';
-  if (!label || label === 'Building') return;
+  const rawLabel = typeof meta?.label === 'string' ? meta.label : '';
+  if (!rawLabel || rawLabel === 'Building') return;
+  const style = meta?.detail?.sign || 'plaque';
+  let text = style === 'plaque' ? rawLabel : rawLabel.toUpperCase();
   const maxWidth = box.width * 0.82;
-  const fontSize = Math.max(8, Math.round(TILE * 0.18));
+  const fontSize = Math.max(8, Math.round(TILE * (style === 'painted' ? 0.2 : 0.18)));
   ctx.save();
-  ctx.font = `700 ${fontSize}px system-ui, -apple-system, sans-serif`;
+  ctx.font = `${style === 'painted' ? 800 : 700} ${fontSize}px system-ui, -apple-system, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  let text = label;
   let width = ctx.measureText(text).width;
   while (width > maxWidth - TILE * 0.18 && text.length > 3) {
     text = text.slice(0, -1);
     width = ctx.measureText(text).width;
   }
+  const cx = (box.left + box.right) / 2;
+  if (style === 'painted') {
+    // Painted straight onto the facade: a dark outline keeps it legible.
+    const top = roofY + TILE * 0.44;
+    ctx.lineWidth = Math.max(2, fontSize * 0.28);
+    ctx.strokeStyle = 'rgba(32, 22, 16, 0.55)';
+    ctx.strokeText(text, cx, top + fontSize / 2);
+    ctx.fillStyle = '#f4e3ae';
+    ctx.fillText(text, cx, top + fontSize / 2);
+    ctx.restore();
+    return;
+  }
   const plaqueWidth = Math.min(maxWidth, width + TILE * 0.22);
   const plaqueHeight = Math.max(11, TILE * 0.25);
-  const cx = (box.left + box.right) / 2;
   const top = roofY + TILE * 0.42;
-  fillRoundRect(
-    ctx,
-    cx - plaqueWidth / 2,
-    top,
-    plaqueWidth,
-    plaqueHeight,
-    plaqueHeight / 2,
-    colors.trim
-  );
-  ctx.fillStyle = '#f4e3ae';
+  if (style === 'board') {
+    fillRoundRect(ctx, cx - plaqueWidth / 2, top, plaqueWidth, plaqueHeight, 2, '#2f3b32');
+    strokeRoundRect(
+      ctx,
+      cx - plaqueWidth / 2 + 1.5,
+      top + 1.5,
+      plaqueWidth - 3,
+      plaqueHeight - 3,
+      1,
+      colors.trim,
+      1.5
+    );
+  } else {
+    fillRoundRect(ctx, cx - plaqueWidth / 2, top, plaqueWidth, plaqueHeight, plaqueHeight / 2, colors.trim);
+  }
+  ctx.fillStyle = style === 'board' ? '#f0e6cf' : '#f4e3ae';
   ctx.fillText(text, cx, top + plaqueHeight / 2 + 0.5);
   ctx.restore();
 }
@@ -1294,6 +1312,1374 @@ function drawRug(ctx, box, colors) {
   ctx.fill();
 }
 
+/* ------------------------------------------------------------------------ *
+ * Wave 1 interior props. Same contract: draw inside a padded footprint with a
+ * `{ base, accent, trim }` palette. These cover cafés, bakeries, clinics,
+ * workshops, and cottage bedrooms without new assets.
+ * ------------------------------------------------------------------------ */
+
+function drawCafeCounter(ctx, box, colors) {
+  propShadow(ctx, box);
+  const height = TILE * 0.82;
+  const y = box.baseY - height;
+  fillRoundRect(ctx, box.left, y, box.width, height, 4, colors.base);
+  fillRoundRect(ctx, box.left - 3, y - TILE * 0.05, box.width + 6, TILE * 0.16, 4, colors.accent);
+  const panels = Math.max(2, Math.round(box.width / TILE));
+  const panelWidth = box.width / panels;
+  for (let index = 0; index < panels; index += 1) {
+    strokeRoundRect(
+      ctx,
+      box.left + index * panelWidth + 3,
+      y + TILE * 0.2,
+      panelWidth - 6,
+      height - TILE * 0.26,
+      2,
+      colors.trim,
+      1.5
+    );
+  }
+  // Cup, saucer, and a little pastry dome on the counter top.
+  const top = y - TILE * 0.06;
+  fillRoundRect(ctx, box.left + box.width * 0.18, top - TILE * 0.13, TILE * 0.14, TILE * 0.13, 2, colors.accent);
+  ctx.beginPath();
+  ctx.arc(box.left + box.width * 0.25, top - TILE * 0.02, TILE * 0.09, 0, Math.PI * 2);
+  ctx.fillStyle = colors.trim;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(box.left + box.width * 0.68, top - TILE * 0.05, TILE * 0.11, Math.PI, Math.PI * 2);
+  ctx.fillStyle = colors.accent;
+  ctx.fill();
+}
+
+function drawStool(ctx, box, colors) {
+  propShadow(ctx, box);
+  const cx = (box.left + box.right) / 2;
+  const seatY = box.baseY - TILE * 0.34;
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = Math.max(2, TILE * 0.045);
+  ctx.lineCap = 'round';
+  for (const dx of [-0.14, 0.14]) {
+    ctx.beginPath();
+    ctx.moveTo(cx + dx * TILE, seatY + TILE * 0.06);
+    ctx.lineTo(cx + dx * TILE * 1.5, box.baseY - TILE * 0.02);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.moveTo(cx - TILE * 0.16, seatY + TILE * 0.26);
+  ctx.lineTo(cx + TILE * 0.16, seatY + TILE * 0.26);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(cx, seatY, TILE * 0.25, TILE * 0.1, 0, 0, Math.PI * 2);
+  ctx.fillStyle = colors.base;
+  ctx.fill();
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(cx, seatY - TILE * 0.02, TILE * 0.17, TILE * 0.06, 0, 0, Math.PI * 2);
+  ctx.fillStyle = colors.accent;
+  ctx.fill();
+}
+
+function drawCafeTable(ctx, box, colors) {
+  propShadow(ctx, box);
+  const cx = (box.left + box.right) / 2;
+  const topY = box.baseY - TILE * 0.52;
+  fillRoundRect(ctx, cx - TILE * 0.04, topY + TILE * 0.08, TILE * 0.08, TILE * 0.38, 2, colors.trim);
+  fillRoundRect(ctx, cx - TILE * 0.16, box.baseY - TILE * 0.06, TILE * 0.32, TILE * 0.05, 2, colors.trim);
+  ctx.beginPath();
+  ctx.ellipse(cx, topY, TILE * 0.3, TILE * 0.13, 0, 0, Math.PI * 2);
+  ctx.fillStyle = colors.base;
+  ctx.fill();
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(cx, topY - TILE * 0.02, TILE * 0.22, TILE * 0.09, 0, 0, Math.PI * 2);
+  ctx.fillStyle = colors.accent;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx + TILE * 0.08, topY - TILE * 0.03, TILE * 0.05, 0, Math.PI * 2);
+  ctx.fillStyle = colors.trim;
+  ctx.fill();
+}
+
+/** Wall-mounted café canopy, walkable floor cover with a scalloped valance. */
+function drawAwning(ctx, box, colors) {
+  const top = box.top + TILE * 0.16;
+  const height = TILE * 0.42;
+  const stripes = 6;
+  const stripeWidth = box.width / stripes;
+  for (let index = 0; index < stripes; index += 1) {
+    ctx.fillStyle = index % 2 === 0 ? colors.base : colors.accent;
+    ctx.fillRect(box.left + index * stripeWidth, top, stripeWidth + 0.5, height);
+  }
+  for (let index = 0; index < stripes; index += 1) {
+    ctx.beginPath();
+    ctx.arc(
+      box.left + (index + 0.5) * stripeWidth,
+      top + height,
+      stripeWidth / 2,
+      0,
+      Math.PI
+    );
+    ctx.fillStyle = index % 2 === 0 ? colors.base : colors.accent;
+    ctx.fill();
+  }
+  fillRoundRect(ctx, box.left, top - TILE * 0.05, box.width, TILE * 0.08, 2, colors.trim);
+}
+
+function drawDisplayCase(ctx, box, colors) {
+  propShadow(ctx, box);
+  const cabinetHeight = TILE * 0.34;
+  const cabinetY = box.baseY - cabinetHeight;
+  fillRoundRect(ctx, box.left, cabinetY, box.width, cabinetHeight, 3, colors.base);
+  strokeRoundRect(ctx, box.left + 4, cabinetY + 4, box.width - 8, cabinetHeight - 8, 2, colors.trim, 1.5);
+  const glassTop = cabinetY - TILE * 0.5;
+  ctx.save();
+  ctx.globalAlpha = 0.32;
+  fillRoundRect(ctx, box.left + 2, glassTop, box.width - 4, TILE * 0.5, 4, colors.accent);
+  ctx.restore();
+  strokeRoundRect(ctx, box.left + 2, glassTop, box.width - 4, TILE * 0.5, 4, colors.trim, 2);
+  for (const offset of [0.22, 0.55, 0.82]) {
+    ctx.beginPath();
+    ctx.ellipse(box.left + box.width * offset, cabinetY - TILE * 0.08, TILE * 0.1, TILE * 0.06, 0, 0, Math.PI * 2);
+    ctx.fillStyle = colors.base;
+    ctx.fill();
+    ctx.strokeStyle = colors.trim;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.moveTo(box.left + 4, glassTop + TILE * 0.3);
+  ctx.lineTo(box.right - 4, glassTop + TILE * 0.3);
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+function drawOven(ctx, box, colors) {
+  propShadow(ctx, box);
+  const width = Math.min(box.width * 0.92, TILE * 1.7);
+  const height = TILE * 1.22;
+  const x = (box.left + box.right) / 2 - width / 2;
+  const y = box.baseY - height;
+  fillRoundRect(ctx, x, y + TILE * 0.18, width, height - TILE * 0.18, 6, colors.base);
+  ctx.beginPath();
+  ctx.moveTo(x, y + TILE * 0.36);
+  ctx.quadraticCurveTo((x + x + width) / 2, y - TILE * 0.08, x + width, y + TILE * 0.36);
+  ctx.closePath();
+  ctx.fillStyle = colors.base;
+  ctx.fill();
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // Arched mouth with a banked ember glow.
+  const mouthW = width * 0.46;
+  const mouthH = TILE * 0.44;
+  const mouthX = x + width / 2 - mouthW / 2;
+  const mouthY = box.baseY - mouthH - TILE * 0.08;
+  ctx.beginPath();
+  ctx.moveTo(mouthX, box.baseY - TILE * 0.08);
+  ctx.lineTo(mouthX, mouthY + mouthH * 0.4);
+  ctx.quadraticCurveTo(mouthX + mouthW / 2, mouthY - mouthH * 0.35, mouthX + mouthW, mouthY + mouthH * 0.4);
+  ctx.lineTo(mouthX + mouthW, box.baseY - TILE * 0.08);
+  ctx.closePath();
+  ctx.fillStyle = colors.trim;
+  ctx.fill();
+  ctx.save();
+  ctx.globalAlpha = 0.6;
+  fillRoundRect(
+    ctx,
+    mouthX + 4,
+    box.baseY - TILE * 0.24,
+    mouthW - 8,
+    TILE * 0.12,
+    3,
+    colors.accent
+  );
+  ctx.restore();
+  fillRoundRect(ctx, x + 4, y + TILE * 0.3, width - 8, TILE * 0.09, 2, colors.trim);
+  for (let index = 0; index < 5; index += 1) {
+    const brickY = y + TILE * 0.5 + index * TILE * 0.13;
+    ctx.beginPath();
+    ctx.moveTo(x + 3, brickY);
+    ctx.lineTo(x + width - 3, brickY);
+    ctx.strokeStyle = `rgba(0, 0, 0, 0.16)`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+}
+
+function drawFlourSack(ctx, box, colors) {
+  propShadow(ctx, box);
+  const cx = (box.left + box.right) / 2;
+  const width = Math.min(box.width * 0.62, TILE * 0.6);
+  const bodyTop = box.baseY - TILE * 0.58;
+  ctx.beginPath();
+  ctx.moveTo(cx - width * 0.32, bodyTop + TILE * 0.1);
+  ctx.quadraticCurveTo(cx - width * 0.55, box.baseY - TILE * 0.18, cx - width * 0.4, box.baseY - TILE * 0.02);
+  ctx.lineTo(cx + width * 0.4, box.baseY - TILE * 0.02);
+  ctx.quadraticCurveTo(cx + width * 0.55, box.baseY - TILE * 0.18, cx + width * 0.32, bodyTop + TILE * 0.1);
+  ctx.closePath();
+  ctx.fillStyle = colors.base;
+  ctx.fill();
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  fillRoundRect(ctx, cx - width * 0.3, bodyTop, width * 0.6, TILE * 0.1, 3, colors.accent);
+  fillRoundRect(ctx, cx - width * 0.08, bodyTop + TILE * 0.02, width * 0.16, TILE * 0.06, 2, colors.trim);
+  ctx.save();
+  ctx.globalAlpha = 0.4;
+  ctx.fillStyle = colors.accent;
+  ctx.beginPath();
+  ctx.ellipse(cx, box.baseY - TILE * 0.2, width * 0.26, TILE * 0.1, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawExamBed(ctx, box, colors) {
+  propShadow(ctx, box);
+  fillRoundRect(ctx, box.left + TILE * 0.08, box.top + TILE * 0.1, box.width - TILE * 0.16, box.height - TILE * 0.16, 5, colors.trim);
+  fillRoundRect(
+    ctx,
+    box.left + TILE * 0.1,
+    box.top + TILE * 0.16,
+    box.width - TILE * 0.2,
+    box.height - TILE * 0.34,
+    4,
+    colors.accent
+  );
+  fillRoundRect(ctx, box.left + TILE * 0.16, box.top + TILE * 0.22, box.width - TILE * 0.32, TILE * 0.28, 5, '#ffffff');
+  fillRoundRect(
+    ctx,
+    box.left + TILE * 0.12,
+    box.top + TILE * 0.6,
+    box.width - TILE * 0.24,
+    box.height - TILE * 0.76,
+    4,
+    colors.base
+  );
+  ctx.beginPath();
+  ctx.moveTo(box.left + TILE * 0.1, box.baseY - TILE * 0.2);
+  ctx.lineTo(box.left + TILE * 0.1, box.baseY - TILE * 0.02);
+  ctx.moveTo(box.right - TILE * 0.1, box.baseY - TILE * 0.2);
+  ctx.lineTo(box.right - TILE * 0.1, box.baseY - TILE * 0.02);
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = Math.max(2, TILE * 0.05);
+  ctx.stroke();
+}
+
+function drawSupplyCabinet(ctx, box, colors) {
+  propShadow(ctx, box);
+  const height = TILE * 0.94;
+  const y = box.baseY - height;
+  fillRoundRect(ctx, box.left, y, box.width, height, 3, colors.base);
+  fillRoundRect(ctx, box.left - 2, y - TILE * 0.04, box.width + 4, TILE * 0.1, 2, colors.accent);
+  const doors = 2;
+  const doorWidth = box.width / doors;
+  for (let index = 0; index < doors; index += 1) {
+    strokeRoundRect(
+      ctx,
+      box.left + index * doorWidth + 4,
+      y + TILE * 0.12,
+      doorWidth - 8,
+      height - TILE * 0.2,
+      2,
+      colors.trim,
+      1.5
+    );
+  }
+  // Health cross on the left door.
+  const cx = box.left + doorWidth * 0.5;
+  const cy = y + height * 0.48;
+  const arm = TILE * 0.045;
+  const span = TILE * 0.16;
+  ctx.fillStyle = colors.accent;
+  ctx.fillRect(cx - arm, cy - span, arm * 2, span * 2);
+  ctx.fillRect(cx - span, cy - arm, span * 2, arm * 2);
+}
+
+function drawPrivacyScreen(ctx, box, colors) {
+  propShadow(ctx, box);
+  const panels = 3;
+  const panelWidth = box.width / panels;
+  const top = box.top + TILE * 0.1;
+  const height = box.height - TILE * 0.16;
+  for (let index = 0; index < panels; index += 1) {
+    const x = box.left + index * panelWidth;
+    const lean = index % 2 === 0 ? TILE * 0.05 : -TILE * 0.05;
+    ctx.beginPath();
+    ctx.moveTo(x + lean, top);
+    ctx.lineTo(x + panelWidth + lean, top);
+    ctx.lineTo(x + panelWidth - lean, top + height);
+    ctx.lineTo(x - lean, top + height);
+    ctx.closePath();
+    ctx.fillStyle = index % 2 === 0 ? colors.base : colors.accent;
+    ctx.fill();
+    ctx.strokeStyle = colors.trim;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+  fillRoundRect(ctx, box.left, top, box.width, TILE * 0.05, 2, colors.trim);
+}
+
+function drawWorkbench(ctx, box, colors) {
+  propShadow(ctx, box);
+  const topY = box.baseY - TILE * 0.56;
+  fillRoundRect(ctx, box.left, topY, box.width, TILE * 0.16, 3, colors.accent);
+  fillRoundRect(ctx, box.left + TILE * 0.06, topY + TILE * 0.16, TILE * 0.1, TILE * 0.38, 2, colors.trim);
+  fillRoundRect(ctx, box.right - TILE * 0.16, topY + TILE * 0.16, TILE * 0.1, TILE * 0.38, 2, colors.trim);
+  // Vice on the left, saw and mallet laid across the top.
+  fillRoundRect(ctx, box.left + TILE * 0.04, topY - TILE * 0.12, TILE * 0.2, TILE * 0.12, 2, colors.trim);
+  fillRoundRect(ctx, box.left + TILE * 0.06, topY - TILE * 0.16, TILE * 0.05, TILE * 0.06, 1, colors.base);
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = Math.max(2, TILE * 0.035);
+  ctx.beginPath();
+  ctx.moveTo(box.left + box.width * 0.36, topY + TILE * 0.02);
+  ctx.lineTo(box.left + box.width * 0.72, topY + TILE * 0.02);
+  ctx.stroke();
+  fillRoundRect(ctx, box.left + box.width * 0.7, topY - TILE * 0.06, TILE * 0.18, TILE * 0.08, 2, colors.base);
+}
+
+function drawToolRack(ctx, box, colors) {
+  propShadow(ctx, box);
+  const top = box.top + TILE * 0.16;
+  const height = TILE * 0.72;
+  fillRoundRect(ctx, box.left, top, box.width, height, 3, colors.base);
+  strokeRoundRect(ctx, box.left + 4, top + 4, box.width - 8, height - 8, 2, colors.trim, 1.5);
+  for (let index = 0; index < 3; index += 1) {
+    const x = box.left + box.width * (0.22 + index * 0.28);
+    ctx.fillStyle = colors.accent;
+    if (index === 0) {
+      // Hammer.
+      fillRoundRect(ctx, x - TILE * 0.02, top + TILE * 0.14, TILE * 0.04, TILE * 0.34, 1, colors.trim);
+      fillRoundRect(ctx, x - TILE * 0.08, top + TILE * 0.12, TILE * 0.16, TILE * 0.08, 2, colors.accent);
+    } else if (index === 1) {
+      // Wrench.
+      ctx.strokeStyle = colors.accent;
+      ctx.lineWidth = Math.max(2, TILE * 0.04);
+      ctx.beginPath();
+      ctx.moveTo(x, top + TILE * 0.14);
+      ctx.lineTo(x, top + TILE * 0.42);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x, top + TILE * 0.12, TILE * 0.06, 0, Math.PI * 1.4);
+      ctx.stroke();
+    } else {
+      // Saw.
+      ctx.beginPath();
+      ctx.moveTo(x - TILE * 0.09, top + TILE * 0.16);
+      ctx.lineTo(x + TILE * 0.09, top + TILE * 0.24);
+      ctx.lineTo(x + TILE * 0.09, top + TILE * 0.42);
+      ctx.closePath();
+      ctx.fillStyle = colors.accent;
+      ctx.fill();
+      fillRoundRect(ctx, x - TILE * 0.11, top + TILE * 0.14, TILE * 0.05, TILE * 0.09, 2, colors.trim);
+    }
+  }
+  for (let index = 0; index < 4; index += 1) {
+    ctx.beginPath();
+    ctx.arc(box.left + TILE * 0.12 + index * (box.width - TILE * 0.24) / 3, top + height - TILE * 0.08, 1.4, 0, Math.PI * 2);
+    ctx.fillStyle = colors.trim;
+    ctx.fill();
+  }
+}
+
+function drawWardrobe(ctx, box, colors) {
+  propShadow(ctx, box);
+  const height = TILE * 1.7;
+  const y = box.baseY - height;
+  fillRoundRect(ctx, box.left, y, box.width, height, 4, colors.trim);
+  fillRoundRect(ctx, box.left + 3, y + 3, box.width - 6, height - 6, 3, colors.base);
+  fillRoundRect(ctx, box.left - 2, y - TILE * 0.04, box.width + 4, TILE * 0.12, 3, colors.accent);
+  const doorWidth = box.width / 2;
+  for (let index = 0; index < 2; index += 1) {
+    strokeRoundRect(
+      ctx,
+      box.left + index * doorWidth + 4,
+      y + TILE * 0.14,
+      doorWidth - 8,
+      height - TILE * 0.24,
+      2,
+      colors.trim,
+      1.5
+    );
+  }
+  ctx.fillStyle = colors.accent;
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.arc((box.left + box.right) / 2 + side * TILE * 0.05, y + height * 0.56, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  fillRoundRect(ctx, box.left + 4, box.baseY - TILE * 0.08, box.width - 8, TILE * 0.06, 2, colors.trim);
+}
+
+function drawVanity(ctx, box, colors) {
+  propShadow(ctx, box);
+  const bodyHeight = TILE * 0.5;
+  const y = box.baseY - bodyHeight;
+  fillRoundRect(ctx, box.left, y, box.width, bodyHeight, 3, colors.base);
+  fillRoundRect(ctx, box.left - 2, y - TILE * 0.04, box.width + 4, TILE * 0.1, 2, colors.accent);
+  const cx = (box.left + box.right) / 2;
+  // Oval mirror above the desk.
+  ctx.beginPath();
+  ctx.ellipse(cx, y - TILE * 0.34, box.width * 0.24, TILE * 0.27, 0, 0, Math.PI * 2);
+  ctx.fillStyle = colors.trim;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx, y - TILE * 0.34, box.width * 0.19, TILE * 0.22, 0, 0, Math.PI * 2);
+  ctx.fillStyle = colors.accent;
+  ctx.fill();
+  strokeRoundRect(ctx, box.left + 4, y + TILE * 0.12, box.width - 8, bodyHeight - TILE * 0.18, 2, colors.trim, 1.5);
+  ctx.beginPath();
+  ctx.arc(cx, y + bodyHeight * 0.62, 1.8, 0, Math.PI * 2);
+  ctx.fillStyle = colors.accent;
+  ctx.fill();
+}
+
+/* ------------------------------------------------------------------------ *
+ * Wave 2 street and town props. Block edges, pavements, and the plaza.
+ * ------------------------------------------------------------------------ */
+
+function drawFence(ctx, box, colors) {
+  propShadow(ctx, box);
+  const postWidth = TILE * 0.1;
+  for (const offset of [0.05, 0.5, 0.95]) {
+    const x = box.left + box.width * offset - postWidth / 2;
+    fillRoundRect(ctx, x, box.baseY - TILE * 0.64, postWidth, TILE * 0.62, 2, colors.base);
+    fillRoundRect(ctx, x - 1, box.baseY - TILE * 0.68, postWidth + 2, TILE * 0.08, 2, colors.accent);
+  }
+  for (const lift of [0.26, 0.46]) {
+    fillRoundRect(
+      ctx,
+      box.left,
+      box.baseY - TILE * lift,
+      box.width,
+      TILE * 0.07,
+      2,
+      colors.accent
+    );
+  }
+}
+
+function drawHedge(ctx, box, colors) {
+  propShadow(ctx, box);
+  const cy = box.baseY - TILE * 0.3;
+  for (let index = 0; index < 6; index += 1) {
+    const cx = box.left + box.width * (0.09 + index * 0.165);
+    ctx.fillStyle = index % 2 === 0 ? colors.base : colors.accent;
+    ctx.beginPath();
+    ctx.ellipse(
+      cx,
+      cy + Math.sin(index * 1.7) * TILE * 0.03,
+      TILE * 0.19,
+      TILE * 0.3,
+      index * 0.16,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  }
+  fillRoundRect(ctx, box.left, box.baseY - TILE * 0.14, box.width, TILE * 0.12, 3, colors.trim);
+  ctx.save();
+  ctx.globalAlpha = 0.45;
+  ctx.fillStyle = colors.accent;
+  for (let index = 0; index < 4; index += 1) {
+    ctx.beginPath();
+    ctx.arc(box.left + box.width * (0.18 + index * 0.22), cy - TILE * 0.14, TILE * 0.035, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawBin(ctx, box, colors) {
+  propShadow(ctx, box);
+  const width = box.width * 0.54;
+  const x = (box.left + box.right) / 2 - width / 2;
+  const top = box.baseY - TILE * 0.68;
+  fillRoundRect(ctx, x, top, width, TILE * 0.62, 4, colors.base);
+  fillRoundRect(ctx, x - 2, top - TILE * 0.08, width + 4, TILE * 0.12, 3, colors.accent);
+  fillRoundRect(ctx, x + width * 0.24, top + TILE * 0.04, width * 0.52, TILE * 0.05, 1, colors.trim);
+  fillRoundRect(ctx, x + width * 0.16, top + TILE * 0.26, width * 0.68, TILE * 0.03, 1, colors.accent);
+  fillRoundRect(ctx, x + width * 0.2, box.baseY - TILE * 0.08, width * 0.6, TILE * 0.05, 2, colors.trim);
+}
+
+function drawMailbox(ctx, box, colors) {
+  propShadow(ctx, box);
+  const cx = (box.left + box.right) / 2;
+  fillRoundRect(ctx, cx - TILE * 0.035, box.baseY - TILE * 0.48, TILE * 0.07, TILE * 0.44, 2, colors.trim);
+  const width = box.width * 0.66;
+  const left = cx - width / 2;
+  const top = box.baseY - TILE * 0.8;
+  fillRoundRect(ctx, left, top, width, TILE * 0.4, TILE * 0.16, colors.base);
+  fillRoundRect(ctx, left + 3, top + 4, width - 6, TILE * 0.08, 2, colors.accent);
+  fillRoundRect(ctx, left + width * 0.24, top + TILE * 0.22, width * 0.52, TILE * 0.04, 1, colors.trim);
+  // Raised flag on the right.
+  fillRoundRect(ctx, left + width - 3, top + TILE * 0.06, TILE * 0.04, TILE * 0.2, 1, colors.trim);
+  fillRoundRect(ctx, left + width - TILE * 0.12, top + TILE * 0.05, TILE * 0.14, TILE * 0.09, 1, colors.accent);
+}
+
+function drawSignpost(ctx, box, colors) {
+  propShadow(ctx, box);
+  const cx = (box.left + box.right) / 2;
+  fillRoundRect(ctx, cx - TILE * 0.04, box.top + TILE * 0.28, TILE * 0.08, box.height - TILE * 0.32, 2, colors.trim);
+  const boardH = TILE * 0.16;
+  // Two arrows point opposite ways so the post reads as a junction sign.
+  ctx.fillStyle = colors.accent;
+  ctx.beginPath();
+  ctx.moveTo(box.left + TILE * 0.06, box.top + TILE * 0.34);
+  ctx.lineTo(box.right - TILE * 0.14, box.top + TILE * 0.34);
+  ctx.lineTo(box.right - TILE * 0.04, box.top + TILE * 0.34 + boardH / 2);
+  ctx.lineTo(box.right - TILE * 0.14, box.top + TILE * 0.34 + boardH);
+  ctx.lineTo(box.left + TILE * 0.06, box.top + TILE * 0.34 + boardH);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = colors.base;
+  ctx.beginPath();
+  ctx.moveTo(box.right - TILE * 0.06, box.top + TILE * 0.59);
+  ctx.lineTo(box.left + TILE * 0.14, box.top + TILE * 0.59);
+  ctx.lineTo(box.left + TILE * 0.04, box.top + TILE * 0.59 + boardH / 2);
+  ctx.lineTo(box.left + TILE * 0.14, box.top + TILE * 0.59 + boardH);
+  ctx.lineTo(box.right - TILE * 0.06, box.top + TILE * 0.59 + boardH);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = colors.trim;
+  for (const y of [0.4, 0.65]) {
+    ctx.fillRect(box.left + TILE * 0.16, box.top + TILE * y, TILE * 0.34, TILE * 0.025);
+  }
+}
+
+function drawMarketStall(ctx, box, colors) {
+  propShadow(ctx, box);
+  // Striped canopy.
+  const top = box.top + TILE * 0.16;
+  const canopyH = TILE * 0.42;
+  const stripes = 6;
+  const stripeW = box.width / stripes;
+  for (let index = 0; index < stripes; index += 1) {
+    ctx.fillStyle = index % 2 === 0 ? colors.base : colors.accent;
+    ctx.fillRect(box.left + index * stripeW, top, stripeW + 0.5, canopyH);
+    ctx.beginPath();
+    ctx.arc(box.left + (index + 0.5) * stripeW, top + canopyH, stripeW / 2, 0, Math.PI);
+    ctx.fill();
+  }
+  fillRoundRect(ctx, box.left - 2, top - TILE * 0.05, box.width + 4, TILE * 0.08, 2, colors.trim);
+  // Corner posts and counter.
+  for (const x of [box.left + TILE * 0.06, box.right - TILE * 0.12]) {
+    fillRoundRect(ctx, x, top + canopyH * 0.6, TILE * 0.06, box.baseY - top - canopyH * 0.56, 2, colors.trim);
+  }
+  fillRoundRect(ctx, box.left + TILE * 0.05, box.baseY - TILE * 0.44, box.width - TILE * 0.1, TILE * 0.4, 3, colors.base);
+  fillRoundRect(ctx, box.left + TILE * 0.02, box.baseY - TILE * 0.5, box.width - TILE * 0.04, TILE * 0.1, 2, colors.accent);
+  // Baskets of produce on the counter.
+  for (const offset of [0.28, 0.52, 0.76]) {
+    const cx = box.left + box.width * offset;
+    ctx.fillStyle = colors.trim;
+    ctx.beginPath();
+    ctx.ellipse(cx, box.baseY - TILE * 0.53, TILE * 0.14, TILE * 0.05, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = colors.accent;
+    for (const dx of [-0.05, 0.03]) {
+      ctx.beginPath();
+      ctx.arc(cx + dx * TILE, box.baseY - TILE * 0.58, TILE * 0.05, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+function drawBusStop(ctx, box, colors) {
+  propShadow(ctx, box);
+  const top = box.top + TILE * 0.12;
+  fillRoundRect(ctx, box.left + TILE * 0.04, top, box.width - TILE * 0.18, TILE * 0.12, 3, colors.base);
+  fillRoundRect(ctx, box.left + TILE * 0.02, top - TILE * 0.04, box.width - TILE * 0.14, TILE * 0.06, 2, colors.trim);
+  // Glass back panel.
+  ctx.save();
+  ctx.globalAlpha = 0.34;
+  fillRoundRect(ctx, box.left + TILE * 0.08, top + TILE * 0.12, box.width - TILE * 0.26, TILE * 0.58, 3, colors.accent);
+  ctx.restore();
+  for (const x of [box.left + TILE * 0.08, box.right - TILE * 0.22]) {
+    fillRoundRect(ctx, x, top + TILE * 0.1, TILE * 0.05, TILE * 0.66, 2, colors.trim);
+  }
+  // Bench and a little timetable sign.
+  fillRoundRect(ctx, box.left + TILE * 0.16, box.baseY - TILE * 0.26, box.width - TILE * 0.4, TILE * 0.08, 2, colors.base);
+  fillRoundRect(ctx, box.left + TILE * 0.2, box.baseY - TILE * 0.18, TILE * 0.05, TILE * 0.14, 1, colors.trim);
+  fillRoundRect(ctx, box.right - TILE * 0.2, box.baseY - TILE * 0.18, TILE * 0.05, TILE * 0.14, 1, colors.trim);
+  fillRoundRect(ctx, box.right - TILE * 0.11, top + TILE * 0.12, TILE * 0.04, TILE * 0.64, 1, colors.trim);
+  fillRoundRect(ctx, box.right - TILE * 0.18, top + TILE * 0.08, TILE * 0.18, TILE * 0.18, 2, colors.accent);
+  fillRoundRect(ctx, box.right - TILE * 0.14, top + TILE * 0.13, TILE * 0.1, TILE * 0.03, 1, colors.base);
+}
+
+function drawStatue(ctx, box, colors) {
+  propShadow(ctx, box);
+  const cx = (box.left + box.right) / 2;
+  fillRoundRect(ctx, box.left + TILE * 0.1, box.baseY - TILE * 0.24, box.width - TILE * 0.2, TILE * 0.22, 3, colors.trim);
+  fillRoundRect(ctx, box.left + TILE * 0.2, box.baseY - TILE * 0.46, box.width - TILE * 0.4, TILE * 0.24, 2, colors.base);
+  // Simple robed figure with a raised lantern.
+  fillRoundRect(ctx, cx - TILE * 0.15, box.baseY - TILE * 0.98, TILE * 0.3, TILE * 0.54, 4, colors.base);
+  ctx.beginPath();
+  ctx.arc(cx, box.baseY - TILE * 1.06, TILE * 0.11, 0, Math.PI * 2);
+  ctx.fillStyle = colors.accent;
+  ctx.fill();
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = Math.max(2, TILE * 0.035);
+  ctx.beginPath();
+  ctx.moveTo(cx + TILE * 0.12, box.baseY - TILE * 0.9);
+  ctx.lineTo(cx + TILE * 0.26, box.baseY - TILE * 1.12);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx + TILE * 0.27, box.baseY - TILE * 1.16, TILE * 0.08, 0, Math.PI * 2);
+  ctx.fillStyle = colors.accent;
+  ctx.fill();
+  ctx.strokeStyle = colors.trim;
+  ctx.stroke();
+  fillRoundRect(ctx, cx - TILE * 0.2, box.baseY - TILE * 0.98, TILE * 0.4, TILE * 0.05, 2, colors.accent);
+}
+
+function drawFlowerBed(ctx, box, colors) {
+  fillRoundRect(ctx, box.left + 2, box.top + 2, box.width - 4, box.height - 4, 5, colors.base);
+  fillRoundRect(ctx, box.left + 6, box.top + 6, box.width - 12, box.height - 12, 4, colors.trim);
+  const cols = 3;
+  const rows = 3;
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      const cx = box.left + box.width * ((col + 0.5) / cols);
+      const cy = box.top + box.height * ((row + 0.5) / rows);
+      ctx.strokeStyle = colors.accent;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy + TILE * 0.06);
+      ctx.lineTo(cx - TILE * 0.04, cy + TILE * 0.12);
+      ctx.moveTo(cx, cy + TILE * 0.06);
+      ctx.lineTo(cx + TILE * 0.04, cy + TILE * 0.12);
+      ctx.stroke();
+      ctx.fillStyle = (row + col) % 2 === 0 ? colors.accent : '#f4e3c1';
+      for (let petal = 0; petal < 4; petal += 1) {
+        const angle = (Math.PI / 2) * petal;
+        ctx.beginPath();
+        ctx.ellipse(
+          cx + Math.cos(angle) * TILE * 0.045,
+          cy + Math.sin(angle) * TILE * 0.045,
+          TILE * 0.04,
+          TILE * 0.025,
+          angle,
+          0,
+          Math.PI * 2
+        );
+        ctx.fill();
+      }
+      ctx.fillStyle = '#f0c46a';
+      ctx.beginPath();
+      ctx.arc(cx, cy, TILE * 0.025, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+function drawStringLights(ctx, box, colors) {
+  const left = box.left + TILE * 0.12;
+  const right = box.right - TILE * 0.12;
+  const baseY = box.baseY - TILE * 0.08;
+  for (const x of [left, right]) {
+    fillRoundRect(ctx, x - TILE * 0.03, box.top + TILE * 0.16, TILE * 0.06, baseY - box.top - TILE * 0.16, 2, colors.trim);
+  }
+  const wireY = box.top + TILE * 0.28;
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = Math.max(1.5, TILE * 0.03);
+  ctx.beginPath();
+  ctx.moveTo(left, wireY);
+  ctx.quadraticCurveTo((left + right) / 2, wireY + TILE * 0.3, right, wireY);
+  ctx.stroke();
+  for (let index = 1; index <= 4; index += 1) {
+    const t = index / 5;
+    const x = left + (right - left) * t;
+    const y = wireY + Math.sin(Math.PI * t) * TILE * 0.15;
+    ctx.save();
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = colors.base;
+    ctx.beginPath();
+    ctx.arc(x, y + TILE * 0.06, TILE * 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = index % 2 === 0 ? colors.accent : colors.base;
+    ctx.beginPath();
+    ctx.ellipse(x, y + TILE * 0.06, TILE * 0.045, TILE * 0.06, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawNoticeBoard(ctx, box, colors) {
+  propShadow(ctx, box);
+  const top = box.top + TILE * 0.1;
+  for (const x of [box.left + TILE * 0.14, box.right - TILE * 0.2]) {
+    fillRoundRect(ctx, x, top + TILE * 0.34, TILE * 0.06, box.height - TILE * 0.4, 2, colors.trim);
+  }
+  fillRoundRect(ctx, box.left, top, box.width, TILE * 0.58, 3, colors.base);
+  fillRoundRect(ctx, box.left + 4, top + 4, box.width - 8, TILE * 0.5, 2, colors.accent);
+  // Pinned notes in a loose grid.
+  const notes = [
+    { dx: 0.14, dy: 0.12, w: 0.22, h: 0.2 },
+    { dx: 0.42, dy: 0.1, w: 0.18, h: 0.24 },
+    { dx: 0.66, dy: 0.14, w: 0.2, h: 0.18 },
+    { dx: 0.2, dy: 0.42, w: 0.26, h: 0.16 },
+    { dx: 0.56, dy: 0.44, w: 0.18, h: 0.14 }
+  ];
+  for (const note of notes) {
+    fillRoundRect(
+      ctx,
+      box.left + box.width * note.dx,
+      top + TILE * 0.58 * note.dy,
+      box.width * note.w,
+      TILE * note.h,
+      1,
+      '#f7efd8'
+    );
+    ctx.fillStyle = colors.trim;
+    ctx.beginPath();
+    ctx.arc(
+      box.left + box.width * (note.dx + note.w / 2),
+      top + TILE * 0.58 * note.dy + 2,
+      1.5,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  }
+}
+
+function drawBikeRack(ctx, box, colors) {
+  propShadow(ctx, box);
+  const baseY = box.baseY - TILE * 0.04;
+  fillRoundRect(ctx, box.left + TILE * 0.06, baseY - TILE * 0.08, box.width - TILE * 0.12, TILE * 0.07, 2, colors.trim);
+  ctx.strokeStyle = colors.accent;
+  ctx.lineWidth = Math.max(3, TILE * 0.07);
+  ctx.lineCap = 'round';
+  for (const offset of [0.28, 0.56, 0.84]) {
+    const cx = box.left + box.width * offset;
+    ctx.beginPath();
+    ctx.arc(cx, baseY - TILE * 0.1, TILE * 0.17, Math.PI, 0);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - TILE * 0.17, baseY - TILE * 0.1);
+    ctx.lineTo(cx - TILE * 0.17, baseY - TILE * 0.02);
+    ctx.moveTo(cx + TILE * 0.17, baseY - TILE * 0.1);
+    ctx.lineTo(cx + TILE * 0.17, baseY - TILE * 0.02);
+    ctx.stroke();
+  }
+  ctx.fillStyle = colors.trim;
+  ctx.beginPath();
+  ctx.arc(box.left + box.width * 0.2, baseY - TILE * 0.22, TILE * 0.07, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/* ------------------------------------------------------------------------ *
+ * Wave 3 beach and leisure props: sand, boardwalk, and pier.
+ * ------------------------------------------------------------------------ */
+
+function drawDeckChair(ctx, box, colors) {
+  propShadow(ctx, box);
+  const left = box.left + TILE * 0.06;
+  const right = box.right - TILE * 0.06;
+  // Reclined frame.
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = Math.max(2, TILE * 0.045);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(left + box.width * 0.12, box.baseY - TILE * 0.52);
+  ctx.lineTo(left + box.width * 0.44, box.baseY - TILE * 0.16);
+  ctx.lineTo(right - box.width * 0.08, box.baseY - TILE * 0.18);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(left + box.width * 0.18, box.baseY - TILE * 0.04);
+  ctx.lineTo(left + box.width * 0.18, box.baseY - TILE * 0.3);
+  ctx.moveTo(right - box.width * 0.12, box.baseY - TILE * 0.04);
+  ctx.lineTo(right - box.width * 0.12, box.baseY - TILE * 0.3);
+  ctx.stroke();
+  // Striped canvas seat.
+  ctx.beginPath();
+  ctx.moveTo(left + box.width * 0.16, box.baseY - TILE * 0.52);
+  ctx.lineTo(left + box.width * 0.47, box.baseY - TILE * 0.2);
+  ctx.lineTo(right - box.width * 0.12, box.baseY - TILE * 0.22);
+  ctx.lineTo(right - box.width * 0.3, box.baseY - TILE * 0.5);
+  ctx.closePath();
+  ctx.fillStyle = colors.base;
+  ctx.fill();
+  ctx.save();
+  ctx.clip();
+  ctx.strokeStyle = colors.accent;
+  ctx.lineWidth = Math.max(2, TILE * 0.06);
+  for (let offset = -box.height; offset < box.width + box.height; offset += TILE * 0.16) {
+    ctx.beginPath();
+    ctx.moveTo(left + offset, box.baseY - TILE * 0.6);
+    ctx.lineTo(left + offset - TILE * 0.2, box.baseY - TILE * 0.1);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawTowel(ctx, box, colors) {
+  const inset = TILE * 0.08;
+  fillRoundRect(ctx, box.left + inset, box.top + inset, box.width - inset * 2, box.height - inset * 2, 4, colors.base);
+  ctx.save();
+  ctx.globalAlpha = 0.85;
+  for (let index = 0; index < 4; index += 1) {
+    fillRoundRect(
+      ctx,
+      box.left + inset + (index + 0.6) * (box.width - inset * 2) / 5,
+      box.top + inset * 2,
+      Math.max(2, (box.width - inset * 2) * 0.07),
+      box.height - inset * 4,
+      1,
+      colors.accent
+    );
+  }
+  ctx.restore();
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = 1;
+  for (const side of [0.06, 0.94]) {
+    for (let index = 0; index < 6; index += 1) {
+      const x = box.left + box.width * side;
+      const y = box.top + box.height * (0.2 + index * 0.12);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + (side < 0.5 ? -3 : 3), y + 2);
+      ctx.stroke();
+    }
+  }
+}
+
+function drawCooler(ctx, box, colors) {
+  propShadow(ctx, box);
+  const width = box.width * 0.72;
+  const x = (box.left + box.right) / 2 - width / 2;
+  const top = box.baseY - TILE * 0.52;
+  fillRoundRect(ctx, x, top, width, TILE * 0.48, 3, colors.base);
+  fillRoundRect(ctx, x - 2, top - TILE * 0.08, width + 4, TILE * 0.12, 3, colors.accent);
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = Math.max(2, TILE * 0.04);
+  ctx.beginPath();
+  ctx.arc((box.left + box.right) / 2, top - TILE * 0.08, width * 0.24, Math.PI, 0);
+  ctx.stroke();
+  fillRoundRect(ctx, x + width * 0.38, top + TILE * 0.22, width * 0.24, TILE * 0.05, 1, colors.accent);
+  fillRoundRect(ctx, x + width * 0.44, top + TILE * 0.3, width * 0.12, TILE * 0.08, 1, colors.trim);
+}
+
+function drawSandcastle(ctx, box, colors) {
+  propShadow(ctx, box);
+  const baseY = box.baseY - TILE * 0.02;
+  // Mound.
+  ctx.fillStyle = colors.base;
+  ctx.beginPath();
+  ctx.ellipse((box.left + box.right) / 2, baseY, box.width * 0.46, TILE * 0.16, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Two crenellated towers.
+  for (const side of [-1, 1]) {
+    const cx = (box.left + box.right) / 2 + side * TILE * 0.34;
+    const towerW = TILE * 0.34;
+    const towerH = TILE * (side < 0 ? 0.72 : 0.56);
+    fillRoundRect(ctx, cx - towerW / 2, baseY - towerH, towerW, towerH, 2, colors.accent);
+    for (let index = 0; index < 3; index += 1) {
+      fillRoundRect(
+        ctx,
+        cx - towerW / 2 + index * (towerW / 3) + 1,
+        baseY - towerH - TILE * 0.1,
+        towerW / 3 - 2,
+        TILE * 0.12,
+        1,
+        colors.accent
+      );
+    }
+    ctx.fillStyle = colors.trim;
+    ctx.beginPath();
+    ctx.moveTo(cx - TILE * 0.06, baseY);
+    ctx.lineTo(cx - TILE * 0.06, baseY - TILE * 0.2);
+    ctx.quadraticCurveTo(cx, baseY - TILE * 0.3, cx + TILE * 0.06, baseY - TILE * 0.2);
+    ctx.lineTo(cx + TILE * 0.06, baseY);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // Central wall and a little pennant.
+  fillRoundRect(ctx, box.left + box.width * 0.32, baseY - TILE * 0.44, box.width * 0.36, TILE * 0.42, 2, colors.base);
+  fillRoundRect(ctx, box.left + box.width * 0.44, baseY - TILE * 0.58, TILE * 0.035, TILE * 0.2, 1, colors.trim);
+  ctx.fillStyle = colors.trim;
+  ctx.beginPath();
+  ctx.moveTo(box.left + box.width * 0.47, baseY - TILE * 0.58);
+  ctx.lineTo(box.left + box.width * 0.61, baseY - TILE * 0.53);
+  ctx.lineTo(box.left + box.width * 0.47, baseY - TILE * 0.48);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawSurfboard(ctx, box, colors) {
+  propShadow(ctx, box);
+  const cx = (box.left + box.right) / 2;
+  const width = box.width * 0.42;
+  const top = box.top + TILE * 0.12;
+  const bottom = box.baseY - TILE * 0.06;
+  ctx.save();
+  ctx.translate(cx, top);
+  ctx.rotate(-0.08);
+  const height = bottom - top;
+  fillRoundRect(ctx, -width / 2, 0, width, height, width / 2, colors.base);
+  fillRoundRect(ctx, -width * 0.09, TILE * 0.14, width * 0.18, height - TILE * 0.3, 2, colors.accent);
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(0, TILE * 0.1);
+  ctx.lineTo(0, height - TILE * 0.12);
+  ctx.stroke();
+  // Fin.
+  ctx.fillStyle = colors.trim;
+  ctx.beginPath();
+  ctx.moveTo(-2, height - TILE * 0.06);
+  ctx.lineTo(width * 0.34, height + TILE * 0.02);
+  ctx.lineTo(-2, height + TILE * 0.02);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawBuoy(ctx, box, colors) {
+  propShadow(ctx, box);
+  const cx = (box.left + box.right) / 2;
+  const cy = box.baseY - TILE * 0.26;
+  const r = TILE * 0.2;
+  ctx.fillStyle = colors.base;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = colors.accent;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - r * 0.3, r * 0.99, r * 0.3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = Math.max(1.5, TILE * 0.03);
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.56, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx, cy - r - TILE * 0.05, TILE * 0.06, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx, cy + r);
+  ctx.quadraticCurveTo(cx + TILE * 0.14, cy + r + TILE * 0.1, cx + TILE * 0.04, cy + r + TILE * 0.18);
+  ctx.stroke();
+}
+
+function drawShellPile(ctx, box, colors) {
+  const cx = (box.left + box.right) / 2;
+  const baseY = box.baseY - TILE * 0.06;
+  const shells = [
+    { dx: -0.1, dy: 0, rx: 0.13, ry: 0.1, color: colors.base },
+    { dx: 0.1, dy: 0.02, rx: 0.11, ry: 0.08, color: colors.accent },
+    { dx: 0.01, dy: -0.08, rx: 0.1, ry: 0.09, color: colors.base }
+  ];
+  for (const shell of shells) {
+    ctx.fillStyle = shell.color;
+    ctx.beginPath();
+    ctx.ellipse(cx + TILE * shell.dx, baseY - TILE * shell.dy, TILE * shell.rx, TILE * shell.ry, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = colors.trim;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx + TILE * shell.dx, baseY - TILE * shell.dy);
+    ctx.lineTo(cx + TILE * (shell.dx - shell.rx * 0.7), baseY - TILE * (shell.dy + shell.ry * 0.3));
+    ctx.moveTo(cx + TILE * shell.dx, baseY - TILE * shell.dy);
+    ctx.lineTo(cx + TILE * (shell.dx + shell.rx * 0.7), baseY - TILE * (shell.dy + shell.ry * 0.3));
+    ctx.stroke();
+  }
+}
+
+function drawBeachBall(ctx, box, colors) {
+  propShadow(ctx, box);
+  const cx = (box.left + box.right) / 2;
+  const cy = box.baseY - TILE * 0.26;
+  const r = TILE * 0.22;
+  ctx.fillStyle = colors.base;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+  for (const [start, color] of [[-0.4, colors.accent], [1.7, colors.trim], [3.5, colors.accent]]) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, start, start + 0.9);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+  ctx.beginPath();
+  ctx.arc(cx - r * 0.32, cy - r * 0.36, r * 0.18, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawKite(ctx, box, colors) {
+  const cx = (box.left + box.right) / 2;
+  const cy = box.baseY - TILE * 0.62;
+  const half = TILE * 0.24;
+  ctx.fillStyle = colors.base;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - half);
+  ctx.lineTo(cx + half * 0.8, cy);
+  ctx.lineTo(cx, cy + half);
+  ctx.lineTo(cx - half * 0.8, cy);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.strokeStyle = colors.accent;
+  ctx.lineWidth = Math.max(2, TILE * 0.04);
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - half);
+  ctx.lineTo(cx, cy + half);
+  ctx.moveTo(cx - half * 0.8, cy);
+  ctx.lineTo(cx + half * 0.8, cy);
+  ctx.stroke();
+  // Tail with two little bows.
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy + half);
+  ctx.quadraticCurveTo(cx + TILE * 0.16, cy + half + TILE * 0.1, cx + TILE * 0.06, cy + half + TILE * 0.22);
+  ctx.stroke();
+  for (let index = 0; index < 2; index += 1) {
+    ctx.fillStyle = index % 2 === 0 ? colors.accent : colors.base;
+    ctx.beginPath();
+    ctx.ellipse(cx + TILE * (0.1 + index * 0.02), cy + half + TILE * (0.1 + index * 0.08), TILE * 0.05, TILE * 0.025, -0.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawShowerPost(ctx, box, colors) {
+  propShadow(ctx, box);
+  const cx = (box.left + box.right) / 2;
+  const top = box.top + TILE * 0.14;
+  fillRoundRect(ctx, cx - TILE * 0.035, top, TILE * 0.07, box.baseY - top - TILE * 0.04, 2, colors.trim);
+  fillRoundRect(ctx, cx - TILE * 0.03, top - TILE * 0.04, TILE * 0.22, TILE * 0.06, 2, colors.base);
+  ctx.beginPath();
+  ctx.arc(cx + TILE * 0.18, top + TILE * 0.02, TILE * 0.07, 0, Math.PI);
+  ctx.fillStyle = colors.accent;
+  ctx.fill();
+  ctx.fillStyle = colors.base;
+  ctx.beginPath();
+  ctx.arc(cx - TILE * 0.13, top + TILE * 0.16, TILE * 0.06, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = colors.accent;
+  ctx.lineWidth = 1.5;
+  for (const dx of [-0.02, 0.05, 0.12]) {
+    ctx.beginPath();
+    ctx.moveTo(cx + TILE * (0.16 + dx), top + TILE * 0.12);
+    ctx.lineTo(cx + TILE * (0.16 + dx), top + TILE * 0.3);
+    ctx.stroke();
+  }
+  fillRoundRect(ctx, cx - TILE * 0.2, box.baseY - TILE * 0.08, TILE * 0.4, TILE * 0.06, 2, colors.base);
+}
+
+/* ------------------------------------------------------------------------ *
+ * Wave 4 school and library props: the reading room and a little science corner.
+ * ------------------------------------------------------------------------ */
+
+function drawGlobe(ctx, box, colors) {
+  propShadow(ctx, box);
+  const cx = (box.left + box.right) / 2;
+  const cy = box.baseY - TILE * 0.5;
+  const r = TILE * 0.24;
+  fillRoundRect(ctx, cx - TILE * 0.16, box.baseY - TILE * 0.12, TILE * 0.32, TILE * 0.1, 3, colors.trim);
+  fillRoundRect(ctx, cx - TILE * 0.025, cy, TILE * 0.05, TILE * 0.38, 2, colors.base);
+  ctx.fillStyle = colors.accent;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = colors.base;
+  ctx.beginPath();
+  ctx.ellipse(cx - r * 0.32, cy - r * 0.18, r * 0.34, r * 0.5, 0.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx + r * 0.38, cy + r * 0.24, r * 0.26, r * 0.4, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, -0.6, 0.7);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 2.2, 3.6);
+  ctx.stroke();
+}
+
+function drawChalkboard(ctx, box, colors) {
+  propShadow(ctx, box);
+  const top = box.top + TILE * 0.14;
+  const boardH = box.height - TILE * 0.32;
+  fillRoundRect(ctx, box.left + TILE * 0.04, top, box.width - TILE * 0.08, boardH, 3, colors.trim);
+  fillRoundRect(ctx, box.left + TILE * 0.09, top + 4, box.width - TILE * 0.18, boardH - 8, 2, colors.base);
+  ctx.strokeStyle = colors.accent;
+  ctx.lineWidth = Math.max(1.2, TILE * 0.025);
+  ctx.beginPath();
+  ctx.moveTo(box.left + TILE * 0.2, top + boardH * 0.3);
+  ctx.lineTo(box.left + TILE * 0.42, top + boardH * 0.3);
+  ctx.moveTo(box.left + TILE * 0.2, top + boardH * 0.5);
+  ctx.lineTo(box.left + TILE * 0.55, top + boardH * 0.5);
+  ctx.moveTo(box.left + TILE * 0.2, top + boardH * 0.7);
+  ctx.lineTo(box.left + TILE * 0.36, top + boardH * 0.7);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(box.left + box.width * 0.68, top + boardH * 0.5, TILE * 0.1, 0, Math.PI * 2);
+  ctx.stroke();
+  fillRoundRect(ctx, box.left + TILE * 0.12, top + boardH - TILE * 0.05, box.width - TILE * 0.24, TILE * 0.06, 2, colors.trim);
+}
+
+function drawLocker(ctx, box, colors) {
+  propShadow(ctx, box);
+  const top = box.top + TILE * 0.14;
+  const height = box.height - TILE * 0.22;
+  fillRoundRect(ctx, box.left + TILE * 0.04, top, box.width - TILE * 0.08, height, 3, colors.trim);
+  const doorWidth = (box.width - TILE * 0.12) / 2;
+  for (let index = 0; index < 2; index += 1) {
+    const x = box.left + TILE * 0.06 + index * doorWidth;
+    fillRoundRect(ctx, x, top + 3, doorWidth - 3, height - 6, 2, colors.base);
+    for (let vent = 0; vent < 4; vent += 1) {
+      fillRoundRect(ctx, x + 4, top + 8 + vent * TILE * 0.06, doorWidth - 11, TILE * 0.022, 1, colors.trim);
+    }
+    fillRoundRect(ctx, x + doorWidth - 12, top + height * 0.48, TILE * 0.05, TILE * 0.12, 1, colors.accent);
+  }
+  fillRoundRect(ctx, box.left + TILE * 0.06, box.baseY - TILE * 0.1, box.width - TILE * 0.12, TILE * 0.06, 2, colors.trim);
+}
+
+function drawReadingTable(ctx, box, colors) {
+  propShadow(ctx, box);
+  const topY = box.baseY - TILE * 0.46;
+  fillRoundRect(ctx, box.left, topY, box.width, TILE * 0.16, 3, colors.base);
+  for (const x of [box.left + TILE * 0.1, box.right - TILE * 0.18]) {
+    fillRoundRect(ctx, x, topY + TILE * 0.14, TILE * 0.1, TILE * 0.32, 2, colors.trim);
+  }
+  // Open book at the centre.
+  const cx = (box.left + box.right) / 2;
+  ctx.fillStyle = colors.accent;
+  ctx.beginPath();
+  ctx.moveTo(cx, topY - TILE * 0.02);
+  ctx.lineTo(cx - TILE * 0.34, topY - TILE * 0.1);
+  ctx.lineTo(cx - TILE * 0.32, topY + TILE * 0.02);
+  ctx.lineTo(cx, topY + TILE * 0.08);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(cx, topY - TILE * 0.02);
+  ctx.lineTo(cx + TILE * 0.34, topY - TILE * 0.1);
+  ctx.lineTo(cx + TILE * 0.32, topY + TILE * 0.02);
+  ctx.lineTo(cx, topY + TILE * 0.08);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = 1;
+  for (const side of [-1, 1]) {
+    for (let line = 0; line < 3; line += 1) {
+      ctx.beginPath();
+      ctx.moveTo(cx + side * TILE * 0.08, topY - TILE * 0.02 + line * TILE * 0.035);
+      ctx.lineTo(cx + side * TILE * 0.26, topY - TILE * 0.06 + line * TILE * 0.035);
+      ctx.stroke();
+    }
+  }
+  // A small reading lamp at the right end.
+  fillRoundRect(ctx, box.right - TILE * 0.38, topY - TILE * 0.28, TILE * 0.05, TILE * 0.24, 1, colors.trim);
+  ctx.beginPath();
+  ctx.arc(box.right - TILE * 0.36, topY - TILE * 0.3, TILE * 0.11, Math.PI, 0);
+  ctx.fillStyle = colors.accent;
+  ctx.fill();
+}
+
+function drawBeanbag(ctx, box, colors) {
+  propShadow(ctx, box);
+  const cx = (box.left + box.right) / 2;
+  ctx.fillStyle = colors.base;
+  ctx.beginPath();
+  ctx.moveTo(cx - box.width * 0.38, box.baseY - TILE * 0.08);
+  ctx.quadraticCurveTo(cx - box.width * 0.48, box.baseY - TILE * 0.44, cx - box.width * 0.16, box.baseY - TILE * 0.5);
+  ctx.quadraticCurveTo(cx + box.width * 0.16, box.baseY - TILE * 0.58, cx + box.width * 0.38, box.baseY - TILE * 0.3);
+  ctx.quadraticCurveTo(cx + box.width * 0.46, box.baseY - TILE * 0.1, cx + box.width * 0.24, box.baseY - TILE * 0.04);
+  ctx.quadraticCurveTo(cx, box.baseY + TILE * 0.02, cx - box.width * 0.38, box.baseY - TILE * 0.08);
+  ctx.fill();
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx - box.width * 0.22, box.baseY - TILE * 0.1);
+  ctx.quadraticCurveTo(cx, box.baseY - TILE * 0.2, cx + box.width * 0.24, box.baseY - TILE * 0.12);
+  ctx.stroke();
+  ctx.fillStyle = colors.accent;
+  ctx.beginPath();
+  ctx.ellipse(cx + box.width * 0.08, box.baseY - TILE * 0.32, TILE * 0.1, TILE * 0.06, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawEasel(ctx, box, colors) {
+  propShadow(ctx, box);
+  const cx = (box.left + box.right) / 2;
+  const top = box.top + TILE * 0.16;
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = Math.max(2, TILE * 0.045);
+  ctx.lineCap = 'round';
+  for (const offset of [-0.18, 0.16]) {
+    ctx.beginPath();
+    ctx.moveTo(cx + TILE * offset, top + TILE * 0.14);
+    ctx.lineTo(cx + TILE * offset * 1.7, box.baseY - TILE * 0.04);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.moveTo(cx, top + TILE * 0.34);
+  ctx.lineTo(cx, box.baseY - TILE * 0.02);
+  ctx.stroke();
+  fillRoundRect(ctx, cx - TILE * 0.32, top, TILE * 0.64, TILE * 0.46, 2, colors.accent);
+  strokeRoundRect(ctx, cx - TILE * 0.32, top, TILE * 0.64, TILE * 0.46, 2, colors.trim, 1.5);
+  // A tiny painted beach on the canvas.
+  ctx.fillStyle = colors.base;
+  ctx.beginPath();
+  ctx.moveTo(cx - TILE * 0.26, top + TILE * 0.28);
+  ctx.lineTo(cx - TILE * 0.08, top + TILE * 0.12);
+  ctx.lineTo(cx + TILE * 0.12, top + TILE * 0.3);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = colors.trim;
+  ctx.beginPath();
+  ctx.arc(cx + TILE * 0.18, top + TILE * 0.12, TILE * 0.05, 0, Math.PI * 2);
+  ctx.fill();
+  fillRoundRect(ctx, cx - TILE * 0.38, top + TILE * 0.46, TILE * 0.76, TILE * 0.07, 2, colors.base);
+}
+
+function drawScienceBench(ctx, box, colors) {
+  propShadow(ctx, box);
+  const topY = box.baseY - TILE * 0.52;
+  fillRoundRect(ctx, box.left, topY, box.width, TILE * 0.14, 3, colors.base);
+  fillRoundRect(ctx, box.left + TILE * 0.06, topY + TILE * 0.12, TILE * 0.09, TILE * 0.36, 2, colors.trim);
+  fillRoundRect(ctx, box.right - TILE * 0.15, topY + TILE * 0.12, TILE * 0.09, TILE * 0.36, 2, colors.trim);
+  // Three flasks with coloured contents.
+  for (let index = 0; index < 3; index += 1) {
+    const cx = box.left + box.width * (0.22 + index * 0.28);
+    const flaskH = TILE * (index === 1 ? 0.26 : 0.2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+    ctx.beginPath();
+    ctx.moveTo(cx - TILE * 0.05, topY - flaskH);
+    ctx.lineTo(cx + TILE * 0.05, topY - flaskH);
+    ctx.lineTo(cx + TILE * 0.1, topY - TILE * 0.01);
+    ctx.lineTo(cx - TILE * 0.1, topY - TILE * 0.01);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = colors.trim;
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    ctx.fillStyle = index === 1 ? colors.trim : colors.accent;
+    ctx.beginPath();
+    ctx.moveTo(cx - TILE * 0.08, topY - TILE * 0.08);
+    ctx.lineTo(cx + TILE * 0.08, topY - TILE * 0.08);
+    ctx.lineTo(cx + TILE * 0.1, topY - TILE * 0.01);
+    ctx.lineTo(cx - TILE * 0.1, topY - TILE * 0.01);
+    ctx.closePath();
+    ctx.fill();
+    if (index === 1) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      for (const [dx, dy] of [[0, -0.16], [0.04, -0.2], [-0.03, -0.23]]) {
+        ctx.beginPath();
+        ctx.arc(cx + TILE * dx, topY + TILE * dy, TILE * 0.018, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+}
+
+/** Seeded cushion/throw pattern, clipped to the part of the shape it belongs on. */
+function propPatternRect(box, shape) {
+  const inset = TILE * 0.06;
+  switch (shape) {
+    case 'rug':
+      return {
+        x: box.left + inset * 2,
+        y: box.top + inset * 2,
+        w: Math.max(2, box.width - inset * 4),
+        h: Math.max(2, box.height - inset * 4)
+      };
+    case 'bed':
+      return {
+        x: box.left + 3,
+        y: box.top + TILE * 0.78,
+        w: Math.max(2, box.width - 6),
+        h: Math.max(2, box.height - TILE * 0.92)
+      };
+    case 'couch':
+      return {
+        x: box.left + TILE * 0.02,
+        y: box.baseY - TILE * 0.46,
+        w: Math.max(2, box.width - TILE * 0.04),
+        h: TILE * 0.26
+      };
+    case 'armchair':
+      return {
+        x: box.left + TILE * 0.16,
+        y: box.baseY - TILE * 0.38,
+        w: Math.max(2, box.width - TILE * 0.32),
+        h: TILE * 0.2
+      };
+    case 'chair': {
+      const seatWidth = Math.min(box.width * 0.62, TILE * 0.6);
+      return {
+        x: (box.left + box.right) / 2 - seatWidth / 2,
+        y: box.baseY - TILE * 0.42,
+        w: seatWidth,
+        h: TILE * 0.2
+      };
+    }
+    default:
+      return null;
+  }
+}
+
+function drawPropPattern(ctx, box, meta) {
+  const detail = meta?.detail;
+  const rect = propPatternRect(box, meta?.shape);
+  if (!detail?.pattern || detail.pattern === 'plain' || !rect || !detail.patternColor) return;
+  const { x, y, w, h } = rect;
+  if (w < 3 || h < 3) return;
+  ctx.save();
+  roundRectPath(ctx, x, y, w, h, Math.min(4, h / 3));
+  ctx.clip();
+  ctx.globalAlpha = 0.4;
+  ctx.strokeStyle = detail.patternColor;
+  ctx.fillStyle = detail.patternColor;
+  if (detail.pattern === 'stripes') {
+    ctx.lineWidth = Math.max(1.5, TILE * 0.045);
+    for (let offset = -h; offset < w + h; offset += TILE * 0.18) {
+      ctx.beginPath();
+      ctx.moveTo(x + offset, y);
+      ctx.lineTo(x + offset - h, y + h);
+      ctx.stroke();
+    }
+  } else if (detail.pattern === 'checks') {
+    ctx.lineWidth = Math.max(1, TILE * 0.03);
+    const step = Math.max(TILE * 0.2, w / 7);
+    for (let offset = 0; offset <= w; offset += step) {
+      ctx.beginPath();
+      ctx.moveTo(x + offset, y);
+      ctx.lineTo(x + offset, y + h);
+      ctx.stroke();
+    }
+    for (let offset = 0; offset <= h; offset += step) {
+      ctx.beginPath();
+      ctx.moveTo(x, y + offset);
+      ctx.lineTo(x + w, y + offset);
+      ctx.stroke();
+    }
+  } else {
+    const step = Math.max(TILE * 0.2, w / 6);
+    for (let row = 0; row * step < h; row += 1) {
+      for (let col = 0; col * step < w; col += 1) {
+        const dx = (row % 2 === 0 ? 0 : step / 2) + col * step;
+        ctx.beginPath();
+        ctx.arc(x + dx, y + row * step + step / 2, Math.max(1.2, TILE * 0.03), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+  ctx.restore();
+}
+
 function drawGenericProp(ctx, box, colors) {
   propShadow(ctx, box);
   fillRoundRect(ctx, box.left, box.top + TILE * 0.18, box.width, box.height - TILE * 0.24, 5, colors.base);
@@ -1317,8 +2703,58 @@ const LOCATION_PROP_SHAPES = {
   bookshelf: drawPropBookshelf,
   planter: drawPlanter,
   'picnic-blanket': drawPicnicBlanket,
-  rug: drawRug
+  rug: drawRug,
+  'cafe-counter': drawCafeCounter,
+  stool: drawStool,
+  'cafe-table': drawCafeTable,
+  awning: drawAwning,
+  'display-case': drawDisplayCase,
+  oven: drawOven,
+  'flour-sack': drawFlourSack,
+  'exam-bed': drawExamBed,
+  'supply-cabinet': drawSupplyCabinet,
+  'privacy-screen': drawPrivacyScreen,
+  workbench: drawWorkbench,
+  'tool-rack': drawToolRack,
+  wardrobe: drawWardrobe,
+  vanity: drawVanity,
+  fence: drawFence,
+  hedge: drawHedge,
+  bin: drawBin,
+  mailbox: drawMailbox,
+  signpost: drawSignpost,
+  'market-stall': drawMarketStall,
+  'bus-stop': drawBusStop,
+  statue: drawStatue,
+  'flower-bed': drawFlowerBed,
+  'string-lights': drawStringLights,
+  'notice-board': drawNoticeBoard,
+  'bike-rack': drawBikeRack,
+  'deck-chair': drawDeckChair,
+  towel: drawTowel,
+  cooler: drawCooler,
+  sandcastle: drawSandcastle,
+  surfboard: drawSurfboard,
+  buoy: drawBuoy,
+  'shell-pile': drawShellPile,
+  'beach-ball': drawBeachBall,
+  kite: drawKite,
+  'shower-post': drawShowerPost,
+  globe: drawGlobe,
+  chalkboard: drawChalkboard,
+  locker: drawLocker,
+  'reading-table': drawReadingTable,
+  beanbag: drawBeanbag,
+  easel: drawEasel,
+  'science-bench': drawScienceBench
 };
+
+/**
+ * One dispatcher for location records: Home furniture ids resolve to the Home
+ * shapes, and the location catalog overrides the two shared ids (rug,
+ * bookshelf) because its art is the outdoor/interior prop version.
+ */
+const PROP_SHAPE_DRAWERS = { ...HOME_ITEM_SHAPES, ...LOCATION_PROP_SHAPES };
 
 export class WorldRenderer {
   constructor({ canvas, minimap } = {}) {
@@ -2039,9 +3475,10 @@ export class WorldRenderer {
       height: meta.size.h * TILE
     };
     const box = itemPad(bounds);
-    const draw = LOCATION_PROP_SHAPES[meta.shape] || drawGenericProp;
+    const draw = PROP_SHAPE_DRAWERS[meta.shape] || drawGenericProp;
     ctx.save();
     draw(ctx, box, meta.colors, game?.time || 0, meta);
+    drawPropPattern(ctx, box, meta);
     ctx.restore();
   }
 

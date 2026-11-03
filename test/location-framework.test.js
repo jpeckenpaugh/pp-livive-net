@@ -198,7 +198,16 @@ test('the location prop catalog covers the framework set with complete metadata'
   const expected = [
     'fountain', 'bench', 'lamp', 'gate', 'slide', 'swing-frame',
     'amphitheatre-tier', 'building', 'pier', 'palm', 'umbrella',
-    'desk', 'bookshelf', 'planter', 'picnic-blanket', 'rug'
+    'desk', 'bookshelf', 'planter', 'picnic-blanket', 'rug',
+    'cafe-counter', 'stool', 'cafe-table', 'awning',
+    'display-case', 'oven', 'flour-sack',
+    'exam-bed', 'supply-cabinet', 'privacy-screen',
+    'workbench', 'tool-rack', 'wardrobe', 'vanity',
+    'fence', 'hedge', 'bin', 'mailbox', 'signpost', 'market-stall',
+    'bus-stop', 'statue', 'flower-bed', 'string-lights', 'notice-board', 'bike-rack',
+    'deck-chair', 'towel', 'cooler', 'sandcastle', 'surfboard', 'buoy',
+    'shell-pile', 'beach-ball', 'kite', 'shower-post',
+    'globe', 'chalkboard', 'locker', 'reading-table', 'beanbag', 'easel', 'science-bench'
   ];
   for (const id of expected) {
     const prop = locationProp(id);

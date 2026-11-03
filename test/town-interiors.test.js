@@ -65,7 +65,7 @@ test('the nine new interiors are enabled data-driven rooms without menu rows', (
   }
 });
 
-test('each interior has 2–4 props and one resident clear of the spawn and door', () => {
+test('each interior is furnished with a resident clear of the spawn and door', () => {
   const roles = new Set(['barista', 'baker', 'nurse', 'gardener', 'carpenter', 'resident']);
   const residentIds = new Set();
   const residentNames = new Set();
@@ -74,7 +74,7 @@ test('each interior has 2–4 props and one resident clear of the spawn and door
   for (const { id, role } of NEW_INTERIORS) {
     const world = worldFor(id);
     const props = propsForLocation(id);
-    assert.ok(props.length >= 2 && props.length <= 4, `${id} has a small prop set`);
+    assert.ok(props.length >= 8 && props.length <= 14, `${id} has a furnished room`);
     assert.equal(props.length, LOCATIONS[id].props.length, `${id} places every declared prop`);
 
     const blocked = locationBlockedTiles(props);

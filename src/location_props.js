@@ -1,14 +1,16 @@
 /**
- * Pure outdoor prop logic for non-Home locations: type lookup, rotated
- * footprints, blocked tiles, placement validation, and the metadata the
- * renderer needs to draw one record.
+ * Pure prop logic for non-Home locations: one catalog lookup shared with the
+ * Home furniture set, rotated footprints, blocked tiles, seeded detail,
+ * placement validation, and the metadata the renderer needs to draw a record.
  *
  * Props live in `data/location_props.json`; a location opts in with a `props`
- * array in `data/world.json`. Nothing here reads the DOM, so collision and
- * placement can be tested in Node.
+ * array in `data/world.json`. A record may name either a location prop or a
+ * Home item id. Nothing here reads the DOM, so collision and placement can be
+ * tested in Node.
  */
 import propsData from '../data/location_props.json' with { type: 'json' };
-import { WORLD_SIZE } from './world.js';
+import { homeItem } from './home_items.js';
+import { WORLD_SIZE, hashString } from './world.js';
 
 export const LOCATION_PROP_TYPES = propsData.types || {};
 export const LOCATION_PROP_IDS = Object.keys(LOCATION_PROP_TYPES);
@@ -23,12 +25,28 @@ export function propTileKey(tile) {
   return `${tile?.x},${tile?.y}`;
 }
 
+/** Location props win over Home items, so the two shared ids keep outdoor art. */
 export function locationProp(id) {
   return PROP_BY_ID.get(id) || null;
 }
 
+/**
+ * One catalog lookup for both scopes: outdoor/interior props first, then the
+ * Home furniture catalog. Records can therefore say `{ "type": "couch" }` in a
+ * location and inherit the Home item's size, solid flag, palette, and shape.
+ */
+export function propDefinition(id) {
+  return locationProp(id) || homeItem(id) || null;
+}
+
+export function propSource(id) {
+  if (locationProp(id)) return 'location';
+  if (homeItem(id)) return 'home';
+  return null;
+}
+
 export function locationPropLabel(id) {
-  return locationProp(id)?.label || id;
+  return propDefinition(id)?.label || id;
 }
 
 /** Quarter turns only; negative and huge values wrap safely. */
@@ -44,9 +62,47 @@ export function normalizePropVariant(prop, variant) {
   return value >= 0 && value < count ? value : 0;
 }
 
+/** Soft furnishings take a seeded cushion/throw pattern and trim tone. */
+export const SOFT_PROP_SHAPES = ['couch', 'armchair', 'bed', 'rug', 'chair'];
+export const PROP_PATTERNS = ['plain', 'stripes', 'checks', 'dots'];
+export const PROP_SIGN_STYLES = ['plaque', 'board', 'painted'];
+
+const PATTERN_COLORS = ['#f2e2bd', '#e8b06a', '#a8c4a0', '#d98c7a', '#9db6bd'];
+const TRIM_TONES = ['#4a5840', '#6b4a33', '#575f6b', '#7d5a3c', '#3f4b46'];
+
+export function normalizePropSeed(seed) {
+  return typeof seed === 'string' ? seed.trim().slice(0, 48) : '';
+}
+
+/**
+ * Deterministic detail for one placed prop. A declared seed wins; otherwise the
+ * type and tile make a stable fallback, so a reload never reshuffles a cushion.
+ * Soft shapes get a pattern, pattern colour, and trim tone; a labelled prop
+ * gets a sign style.
+ */
+export function propDetail(record) {
+  const prop = propDefinition(record?.type);
+  if (!prop) return null;
+  const x = Math.round(Number(record?.x) || 0);
+  const y = Math.round(Number(record?.y) || 0);
+  const seed = normalizePropSeed(record?.seed) || `${prop.id}:${x},${y}`;
+  const shape = prop.shape || prop.id;
+  const soft = SOFT_PROP_SHAPES.includes(shape);
+  const labelled = typeof record?.label === 'string' && record.label.trim().length > 0;
+  const pick = channel => hashString(`${seed}:${channel}`);
+
+  return {
+    seed,
+    pattern: soft ? PROP_PATTERNS[pick('pattern') % PROP_PATTERNS.length] : null,
+    patternColor: soft ? PATTERN_COLORS[pick('tone') % PATTERN_COLORS.length] : null,
+    trim: soft ? TRIM_TONES[pick('trim') % TRIM_TONES.length] : null,
+    sign: labelled ? PROP_SIGN_STYLES[pick('sign') % PROP_SIGN_STYLES.length] : null
+  };
+}
+
 /** Rotated size; odd quarter turns swap width and height. */
 export function locationPropSize(type, rot = 0) {
-  const prop = locationProp(type);
+  const prop = propDefinition(type);
   if (!prop) return null;
   const width = Math.max(1, Math.round(Number(prop.size?.w) || 1));
   const height = Math.max(1, Math.round(Number(prop.size?.h) || 1));
@@ -57,7 +113,7 @@ export function locationPropSize(type, rot = 0) {
 
 /** Palette for one variant; variant colours override only the keys they set. */
 export function locationPropColors(type, variant = 0) {
-  const prop = locationProp(type);
+  const prop = propDefinition(type);
   if (!prop) return { base: '#8a8a8a', accent: '#b0b0b0', trim: '#5a5a5a' };
   const base = isRecord(prop.colors) ? prop.colors : {};
   const entry = Array.isArray(prop.variants)
@@ -122,7 +178,7 @@ export function propOpenings(record) {
 export function locationBlockedTiles(props = []) {
   const blocked = new Set();
   for (const record of Array.isArray(props) ? props : []) {
-    const prop = locationProp(record?.type);
+    const prop = propDefinition(record?.type);
     if (!prop?.solid) continue;
     const openings = new Set(propOpenings(record).map(opening => `${opening.dx},${opening.dy}`));
     for (const tile of propTiles(record)) {
@@ -149,7 +205,7 @@ export function canPlaceLocationProp({
   walkable = null,
   ignore = null
 } = {}) {
-  const prop = locationProp(type);
+  const prop = propDefinition(type);
   if (!prop) return { ok: false, reason: 'unknown-type', tiles: [] };
   const tiles = propFootprintTiles({ type, x, y, rot });
   if (!tiles.length) return { ok: false, reason: 'outside-world', tiles };
@@ -172,7 +228,7 @@ export function canPlaceLocationProp({
   const occupied = new Set();
   for (const record of Array.isArray(props) ? props : []) {
     if (record === ignore) continue;
-    const other = locationProp(record?.type);
+    const other = propDefinition(record?.type);
     if (!other?.solid) continue;
     for (const tile of propTiles(record)) occupied.add(propTileKey(tile));
   }
@@ -194,7 +250,7 @@ export function normalizeLocationProps(entries) {
   const taken = new Set();
   for (const entry of entries) {
     if (!isRecord(entry)) continue;
-    const prop = locationProp(entry.type);
+    const prop = propDefinition(entry.type);
     if (!prop) continue;
     const x = Math.round(Number(entry.x));
     const y = Math.round(Number(entry.y));
@@ -206,12 +262,16 @@ export function normalizeLocationProps(entries) {
       tile.x < 0 || tile.x >= WORLD_SIZE || tile.y < 0 || tile.y >= WORLD_SIZE
     ))) continue;
     const keys = tiles.map(propTileKey);
-    if (prop.solid && keys.some(key => taken.has(key))) continue;
-    for (const key of keys) taken.add(key);
+    // Ground cover never reserves a tile; only solid footprints block each other.
+    if (prop.solid) {
+      if (keys.some(key => taken.has(key))) continue;
+      for (const key of keys) taken.add(key);
+    }
     const openings = propOpenings({ type: prop.id, x, y, rot, openings: entry.openings });
     const label = typeof entry.label === 'string' && entry.label.trim()
       ? entry.label.trim().slice(0, 24)
       : '';
+    const seed = normalizePropSeed(entry.seed || entry.detailSeed);
     records.push({
       type: prop.id,
       x,
@@ -219,6 +279,7 @@ export function normalizeLocationProps(entries) {
       rot,
       variant: normalizePropVariant(prop, entry.variant),
       ...(label ? { label } : {}),
+      ...(seed ? { seed } : {}),
       ...(openings.length ? { openings } : {})
     });
   }
@@ -227,17 +288,23 @@ export function normalizeLocationProps(entries) {
 
 /** Default renderer metadata: shape key, palette, footprint size, sort row. */
 export function propRenderMeta(record) {
-  const prop = locationProp(record?.type);
+  const prop = propDefinition(record?.type);
   const size = locationPropSize(record?.type, record?.rot);
   if (!prop || !size) return null;
   const x = Math.round(Number(record.x) || 0);
   const y = Math.round(Number(record.y) || 0);
+  const source = propSource(prop.id);
+  const detail = propDetail(record);
+  const colors = locationPropColors(prop.id, record.variant);
   return {
     type: prop.id,
+    source,
     label: typeof record?.label === 'string' && record.label ? record.label : (prop.label || prop.id),
     shape: prop.shape || prop.id,
     solid: prop.solid === true,
-    colors: locationPropColors(prop.id, record.variant),
+    // A seeded trim tone recolours the finish without claiming a new variant.
+    colors: detail?.trim ? { ...colors, trim: detail.trim } : colors,
+    detail,
     size,
     x,
     y,

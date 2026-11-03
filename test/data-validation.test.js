@@ -406,6 +406,7 @@ test('home_items.json defines the furnished room and a testable default layout',
 test('world.json locations resolve ids, doors, spawns, and the Home flag', () => {
   const worldConfig = readJson('world.json');
   const propsConfig = readJson('location_props.json');
+  const homeItemsConfig = readJson('home_items.json');
   assert.equal(worldConfig.version, 1);
   assert.equal(typeof worldConfig.travel.confirm, 'string');
   assert.equal(typeof worldConfig.travel.cancel, 'string');
@@ -446,7 +447,10 @@ test('world.json locations resolve ids, doors, spawns, and the Home flag', () =>
     assert.ok(Number.isInteger(def.spawn?.x) && Number.isInteger(def.spawn?.y), `${id} spawn tile`);
 
     for (const prop of Array.isArray(def.props) ? def.props : []) {
-      assert.ok(propsConfig.types[prop.type], `${id} prop names unknown type ${prop.type}`);
+      assert.ok(
+        propsConfig.types[prop.type] || homeItemsConfig.items[prop.type],
+        `${id} prop names unknown type ${prop.type}`
+      );
       assert.ok(Number.isInteger(prop.x) && Number.isInteger(prop.y), `${id} prop tile`);
       assert.ok(prop.x >= 0 && prop.x < 64 && prop.y >= 0 && prop.y < 64, `${id} prop is in the world`);
     }
