@@ -452,7 +452,10 @@ export class PanelsUI {
     onTravel,
     getFurnish,
     onFurnishSelect,
-    onFurnishStop
+    onFurnishStop,
+    getDecorate,
+    onDecorateToggle,
+    onDecorateReset
   }) {
     this.getGame = getGame;
     this.getFriends = getFriends;
@@ -498,6 +501,9 @@ export class PanelsUI {
     this.getFurnish = getFurnish;
     this.onFurnishSelect = onFurnishSelect;
     this.onFurnishStop = onFurnishStop;
+    this.getDecorate = getDecorate;
+    this.onDecorateToggle = onDecorateToggle;
+    this.onDecorateReset = onDecorateReset;
     this.cardCharacter = null;
     this.lastNpcCharacter = null;
     this.tradeOffer = null;
@@ -912,6 +918,45 @@ export class PanelsUI {
         go();
       });
       list.append(travelRow);
+    }
+
+    // Decorate: only outside Home, where the Furnish row below is the editor.
+    // The row toggles the mode; the reset action restores the whole location.
+    const decorating = this.getDecorate?.() || null;
+    if (decorating) {
+      const header = document.createElement('p');
+      header.className = 'panel-note';
+      header.style.margin = '10px 0 6px';
+      header.textContent = !decorating.active
+        ? 'Decorate · move what is already there'
+        : (decorating.moving
+          ? `Decorating · moving ${decorating.moving}`
+          : (decorating.selected
+            ? `Decorating · ${decorating.selected}`
+            : 'Decorating · pick an object'));
+      list.append(header);
+
+      const hint = document.createElement('p');
+      hint.className = 'panel-note';
+      hint.style.margin = '0 0 6px';
+      hint.textContent = decorating.hint;
+      list.append(hint);
+
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = decorating.active ? 'pill quiet decorate-toggle' : 'pill primary decorate-toggle';
+      toggle.textContent = decorating.active ? 'Stop decorating' : 'Decorate this place';
+      toggle.addEventListener('click', () => this.onDecorateToggle?.());
+      list.append(toggle);
+
+      if (decorating.active) {
+        const reset = document.createElement('button');
+        reset.type = 'button';
+        reset.className = 'pill quiet decorate-reset-place';
+        reset.textContent = 'Reset this place';
+        reset.addEventListener('click', () => this.onDecorateReset?.());
+        list.append(reset);
+      }
     }
 
     // Home furnishing: every placed piece is listed here, so a bed tucked

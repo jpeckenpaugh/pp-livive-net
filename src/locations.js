@@ -19,7 +19,12 @@ import {
   typeAt
 } from './world.js';
 import { FORAGE_MUSHROOM_TYPES } from './forage.js';
-import { normalizeWorldProps, seedWorldScenery } from './world_edit.js';
+import {
+  buildingDoorEntries,
+  linkBuildingDoors,
+  normalizeWorldProps,
+  seedWorldScenery
+} from './world_edit.js';
 
 export const WORLD_CONFIG = worldData;
 export const LOCATIONS = worldData.locations || {};
@@ -258,6 +263,54 @@ export function doorsFor(id, {
   }
 
   return doors;
+}
+
+/**
+ * Runtime triggers derived from building records. Each facade carries its own
+ * `door` offset, so a swapped building's trigger sits on its new inner tile.
+ */
+export function buildingDoorsFor(props = [], { isEnabled = isLocationEnabled } = {}) {
+  const doors = [];
+  for (const entry of buildingDoorEntries(props)) {
+    if (!isEnabled(entry.to)) continue;
+    if (!locationDef(entry.to)) continue;
+    doors.push({
+      x: entry.x,
+      y: entry.y,
+      to: entry.to,
+      kind: 'travel',
+      id: entry.uid ? `building-${entry.uid}` : `building-${entry.x}-${entry.y}`,
+      prompt: entry.prompt || `Go to ${locationLabel(entry.to)}?`,
+      confirm: TRAVEL_CONFIRM,
+      cancel: TRAVEL_CANCEL
+    });
+  }
+  return doors;
+}
+
+/**
+ * The complete door layer for one location. Declarative travel doors that land
+ * inside a building footprint become that building's `door`; the rest stay put
+ * (park gate, beach path, activity entrances). Building triggers are derived
+ * from the prop list, so moving a facade moves its trigger with it.
+ */
+export function linkLocationDoors(id, {
+  terrain,
+  spawn,
+  props = [],
+  isEnabled = isLocationEnabled,
+  isActivity = isActivityEnabled
+} = {}) {
+  const dataDoors = doorsFor(id, { terrain, spawn, isEnabled, isActivity });
+  const travel = dataDoors.filter(door => door.kind !== 'activity');
+  const activity = dataDoors.filter(door => door.kind === 'activity');
+  const linked = linkBuildingDoors(props, travel);
+  const fixedDoors = [...linked.doors, ...activity];
+  return {
+    props: linked.props,
+    fixedDoors,
+    doors: [...fixedDoors, ...buildingDoorsFor(linked.props, { isEnabled })]
+  };
 }
 
 /** Fixed residents declared by a location, in stable data order. */

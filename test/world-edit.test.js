@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   LOCATIONS,
+  buildingDoorsFor,
   createLocationRecord,
+  linkLocationDoors,
   locationLayout,
   propsForLocation,
   sceneryForLocation,
@@ -10,16 +12,26 @@ import {
 } from '../src/locations.js';
 import {
   WORLD_PLACE_REASONS,
+  applyWorldDraft,
+  buildingDoorEntries,
   canPlaceWorldObject,
+  canSwapWorldBuildings,
+  isWorldBuilding,
+  linkBuildingDoors,
   moveWorldObject,
   normalizeWorldProps,
   normalizeWorldScenery,
   reachableWorldTiles,
   resetLocationObjects,
+  resetWorldObject,
   rotateWorldObject,
   seedWorldProps,
   seedWorldScenery,
   styleWorldObject,
+  swapWorldBuildings,
+  worldBlockedTiles,
+  worldObjectAt,
+  worldObjectCardActions,
   worldObjectReasonText
 } from '../src/world_edit.js';
 import { normalizeLocationProps } from '../src/location_props.js';
@@ -115,7 +127,7 @@ test('capture round-trips props and scenery in the compact save shape', () => {
       label: 'Shop',
       openings: [{ dx: 2, dy: 2 }],
       lot: 'A1',
-      door: { to: 'shop', prompt: 'Step in?' }
+      door: { to: 'shop', dx: 2, dy: 2, prompt: 'Step in?' }
     }
   ]);
   const scenery = seedWorldScenery([
@@ -139,7 +151,7 @@ test('capture round-trips props and scenery in the compact save shape', () => {
   assert.deepEqual(captured.props[2].openings, [{ dx: 2, dy: 2 }]);
   assert.equal(captured.props[2].label, 'Shop');
   assert.equal(captured.props[2].lot, 'A1');
-  assert.deepEqual(captured.props[2].door, { to: 'shop', prompt: 'Step in?' });
+  assert.deepEqual(captured.props[2].door, { to: 'shop', dx: 2, dy: 2, prompt: 'Step in?' });
   assert.deepEqual(captured.scenery[0], {
     uid: 'scenery-puffy-tree-8-22',
     type: 'puffy-tree',
@@ -407,4 +419,386 @@ test('saved terrain and other record fields survive capture', () => {
   assert.deepEqual(decodeTerrain(captured.terrain), terrain);
   assert.ok(isWalkable(typeAt(decodeTerrain(captured.terrain), 12, 30)));
   assert.equal(captured.layout, locationLayout('park'));
+});
+
+test('the Decorate hit test prefers a solid prop, then scenery', () => {
+  const props = seedWorldProps([
+    { type: 'rug', x: 5, y: 5 },
+    { type: 'bench', x: 5, y: 5 },
+    { type: 'lamp', x: 9, y: 9 }
+  ]);
+  const scenery = seedWorldScenery([
+    { type: 'puffy-tree', x: 5, y: 5 },
+    { type: 'flower-red', x: 9, y: 9 }
+  ]);
+
+  const rugOrBench = worldObjectAt(props, scenery, 5, 5);
+  assert.equal(rugOrBench.kind, 'prop');
+  assert.equal(rugOrBench.record.type, 'bench', 'the solid wins over ground cover and scenery');
+
+  const lampOrFlower = worldObjectAt(props, scenery, 9, 9);
+  assert.equal(lampOrFlower.record.type, 'lamp', 'a prop wins over scenery');
+
+  const facade = normalizeWorldProps([{ type: 'building', x: 20, y: 20 }]);
+  assert.equal(worldObjectAt(facade, [], 20, 20).record.type, 'building');
+  assert.equal(worldObjectAt([], [], 20, 20), null);
+  assert.equal(worldObjectAt([], [], -1, 0), null);
+});
+
+test('Decorate card actions omit rotate for scenery and offer only swap for buildings', () => {
+  const bench = seedWorldProps([{ type: 'bench', x: 3, y: 3 }])[0];
+  const tree = seedWorldScenery([{ type: 'puffy-tree', x: 3, y: 3 }])[0];
+  const building = normalizeWorldProps([{ type: 'building', x: 3, y: 3 }])[0];
+
+  assert.deepEqual(worldObjectCardActions('prop', bench), ['move', 'style', 'rotate', 'reset', 'close']);
+  assert.deepEqual(worldObjectCardActions('scenery', tree), ['move', 'style', 'reset', 'close']);
+  assert.deepEqual(worldObjectCardActions('prop', building), ['swap', 'close']);
+  assert.deepEqual(worldObjectCardActions('scenery', null), ['close']);
+});
+
+test('a draft applies its tile, turn, variant, and scale without changing the uid', () => {
+  const props = seedWorldProps([{ type: 'bench', x: 3, y: 3 }]);
+  const uid = props[0].uid;
+  const moved = applyWorldDraft(props, { uid, x: 8, y: 9, rot: 1, variant: 1, seed: '  oak-2 ' });
+  assert.deepEqual(moved[0], {
+    uid,
+    type: 'bench',
+    x: 8,
+    y: 9,
+    rot: 1,
+    variant: 1,
+    seed: 'oak-2'
+  });
+  assert.equal(applyWorldDraft(props, { uid: 'missing', x: 1, y: 1 }), props);
+
+  const scenery = seedWorldScenery([{ type: 'puffy-tree', x: 2, y: 2, scale: 1 }]);
+  const scaled = applyWorldDraft(scenery, { uid: scenery[0].uid, x: 4, y: 5, scale: 9 });
+  assert.equal(scaled[0].x, 4);
+  assert.equal(scaled[0].y, 5);
+  assert.equal(scaled[0].scale, 1.6, 'scale is clamped to the catalogue range');
+  assert.equal(scaled[0].uid, scenery[0].uid);
+});
+
+test('per-object reset restores the seeded record and leaves others alone', () => {
+  const defaults = seedWorldProps([
+    { type: 'bench', x: 3, y: 3 },
+    { type: 'lamp', x: 8, y: 8 }
+  ]);
+  const moved = applyWorldDraft(defaults, {
+    uid: defaults[0].uid,
+    x: 20,
+    y: 20,
+    rot: 3,
+    variant: 1
+  });
+  const reset = resetWorldObject(moved, defaults[0].uid, defaults);
+  assert.deepEqual(reset[0], defaults[0]);
+  assert.equal(reset[1].x, 8, 'the untouched object keeps its tile');
+  assert.equal(resetWorldObject(moved, 'missing', defaults), moved);
+  assert.equal(resetWorldObject(moved, defaults[0].uid, []), moved);
+});
+
+test('moving a solid recomputes blocked tiles and round-trips through the save', () => {
+  const props = seedWorldProps([
+    { type: 'bench', x: 12, y: 30 },
+    { type: 'lamp', x: 20, y: 20 }
+  ]);
+  const before = worldBlockedTiles(props);
+  assert.ok(before.has('12,30'));
+  assert.ok(before.has('13,30'), 'the bench is two tiles wide');
+
+  const moved = applyWorldDraft(props, { uid: 'prop-bench-12-30', x: 40, y: 41 });
+  const after = worldBlockedTiles(moved);
+  assert.equal(after.has('12,30'), false);
+  assert.ok(after.has('40,41'));
+  assert.ok(after.has('41,41'));
+
+  const captured = captureLocationRecord({
+    ...simpleRecord(),
+    props: moved,
+    scenery: seedWorldScenery([{ type: 'puffy-tree', x: 8, y: 22 }])
+  });
+  assert.deepEqual(captured.props, moved);
+  assert.equal(captured.props[0].uid, 'prop-bench-12-30', 'the moved bench keeps its seeded uid');
+  assert.equal(captured.props[0].x, 40);
+  assert.deepEqual(activeLocation({
+    currentLocation: 'park',
+    locations: { park: captured }
+  }).props, moved);
+});
+
+/* ------------------------------------------------------------------------ *
+ * Phase 3: doors travel with buildings, and facades swap whole lots.
+ * ------------------------------------------------------------------------ */
+
+function townSetup() {
+  const world = worldFor('town', LOCATIONS.town.seed);
+  const props = propsForLocation('town');
+  const layer = linkLocationDoors('town', {
+    terrain: world.grid,
+    spawn: LOCATIONS.town.spawn,
+    props
+  });
+  return { terrain: world.grid, scenery: world.scenery, ...layer };
+}
+
+test('town travel doors attach to their building and keep their tile and prompt', () => {
+  const { terrain, props, doors, fixedDoors } = townSetup();
+  const buildings = props.filter(isWorldBuilding);
+  assert.equal(buildings.length, 12);
+  for (const building of buildings) {
+    assert.ok(building.door, `${building.label} owns a door`);
+    assert.equal(building.door.dx, 2);
+    assert.equal(building.door.dy, 2);
+  }
+
+  const shop = props.find(record => record.label === 'Shop');
+  assert.deepEqual(shop.door, {
+    to: 'shop',
+    dx: 2,
+    dy: 2,
+    prompt: 'Step into the shop?'
+  });
+
+  // Every original trigger still exists at the same tile, now derived from its
+  // building record.
+  for (const door of doors) {
+    assert.ok(isWalkable(typeAt(terrain, door.x, door.y)), `${door.to} is on walkable ground`);
+  }
+  assert.deepEqual(
+    doors.find(door => door.to === 'shop'),
+    { x: 8, y: 17, to: 'shop', kind: 'travel', id: 'building-prop-building-6-15', prompt: 'Step into the shop?', confirm: 'Travel', cancel: 'Cancel' }
+  );
+
+  // Only the park gate and the beach path are still data-driven.
+  assert.deepEqual(
+    fixedDoors.map(door => `${door.to}@${door.x},${door.y}`),
+    ['park@2,31', 'beach@62,31']
+  );
+  assert.ok(buildingDoorEntries(props).every(entry => entry.to !== 'park'));
+});
+
+test('a saved building keeps its own door instead of re-linking a stale one', () => {
+  const { props } = townSetup();
+  const shop = props.find(record => record.label === 'Shop');
+  const home = props.find(record => record.label === 'Home');
+  const saved = props.map(record => {
+    if (record.uid === shop.uid) {
+      return { ...record, x: home.x, y: home.y, door: { to: 'shop', dx: 3, dy: 1, prompt: 'Step inside?' } };
+    }
+    if (record.uid === home.uid) return { ...record, x: shop.x, y: shop.y };
+    return record;
+  });
+  // The declarative doors now fall inside the swapped facades and are stale.
+  const travel = [
+    { to: 'shop', x: 8, y: 17, prompt: 'Step into the shop?' },
+    { to: 'home', x: 23, y: 17, prompt: 'Go home?' }
+  ];
+  const linked = linkBuildingDoors(saved, travel);
+  const nextShop = linked.props.find(record => record.uid === shop.uid);
+  assert.deepEqual(nextShop.door, { to: 'shop', dx: 3, dy: 1, prompt: 'Step inside?' });
+  assert.equal(linked.doors.length, 0, 'a declarative door on a linked facade is stale');
+});
+
+test('swapping two buildings trades tiles while each keeps its own door', () => {
+  const { terrain, props, fixedDoors, scenery } = townSetup();
+  const shopUid = props.find(record => record.label === 'Shop').uid;
+  const homeUid = props.find(record => record.label === 'Home').uid;
+  const shop = props.find(record => record.uid === shopUid);
+  const home = props.find(record => record.uid === homeUid);
+
+  const placement = canSwapWorldBuildings({
+    props,
+    aUid: shopUid,
+    bUid: homeUid,
+    terrain,
+    spawn: LOCATIONS.town.spawn,
+    doors: fixedDoors,
+    scenery,
+    characters: []
+  });
+  assert.deepEqual(placement, { ok: true, reason: null, tiles: [] });
+
+  const swapped = swapWorldBuildings(props, shopUid, homeUid);
+  const nextShop = swapped.find(record => record.uid === shopUid);
+  const nextHome = swapped.find(record => record.uid === homeUid);
+  assert.equal(nextShop.x, home.x);
+  assert.equal(nextShop.y, home.y);
+  assert.equal(nextHome.x, shop.x);
+  assert.equal(nextHome.y, shop.y);
+  assert.equal(nextShop.label, 'Shop');
+  assert.equal(nextShop.variant, shop.variant);
+  assert.deepEqual(nextShop.openings, shop.openings);
+  assert.deepEqual(nextShop.door, shop.door);
+
+  const newDoors = buildingDoorsFor(swapped);
+  assert.deepEqual(
+    newDoors.find(door => door.to === 'shop'),
+    { x: 23, y: 17, to: 'shop', kind: 'travel', id: `building-${shopUid}`, prompt: 'Step into the shop?', confirm: 'Travel', cancel: 'Cancel' }
+  );
+  assert.deepEqual(
+    newDoors.find(door => door.to === 'home'),
+    { x: 8, y: 17, to: 'home', kind: 'travel', id: `building-${homeUid}`, prompt: 'Go home?', confirm: 'Travel', cancel: 'Cancel' }
+  );
+
+  // The doorway column is an opening, so the new trigger tile stays walkable.
+  const blocked = worldBlockedTiles(swapped);
+  assert.equal(blocked.has('23,17'), false);
+  assert.equal(blocked.has('8,17'), false);
+  assert.ok(blocked.has('21,15'), 'the facade around the door still blocks');
+});
+
+test('after a swap the fixed doors stay put and the saved town keeps the new lots', () => {
+  const { terrain, props, fixedDoors, scenery } = townSetup();
+  const shopUid = props.find(record => record.label === 'Shop').uid;
+  const homeUid = props.find(record => record.label === 'Home').uid;
+  const swapped = swapWorldBuildings(props, shopUid, homeUid);
+
+  const captured = captureLocationRecord({
+    seed: LOCATIONS.town.seed,
+    layout: 'town-grid',
+    terrain,
+    player: { x: 31, y: 35, direction: 0 },
+    npcs: [],
+    forage: null,
+    props: swapped,
+    scenery
+  });
+  assert.deepEqual(captured.props, swapped);
+
+  const reloaded = propsForLocation('town', captured);
+  assert.equal(reloaded.find(record => record.uid === shopUid).x, 21);
+  assert.deepEqual(reloaded.find(record => record.uid === shopUid).door.to, 'shop');
+
+  const layer = linkLocationDoors('town', {
+    terrain,
+    spawn: LOCATIONS.town.spawn,
+    props: reloaded
+  });
+  assert.deepEqual(
+    layer.fixedDoors.map(door => `${door.to}@${door.x},${door.y}`),
+    ['park@2,31', 'beach@62,31'],
+    'the park gate and beach path are untouched'
+  );
+  assert.deepEqual(
+    layer.doors.find(door => door.to === 'shop'),
+    { x: 23, y: 17, to: 'shop', kind: 'travel', id: `building-${shopUid}`, prompt: 'Step into the shop?', confirm: 'Travel', cancel: 'Cancel' }
+  );
+  assert.deepEqual(
+    layer.doors.find(door => door.to === 'home'),
+    { x: 8, y: 17, to: 'home', kind: 'travel', id: `building-${homeUid}`, prompt: 'Go home?', confirm: 'Travel', cancel: 'Cancel' }
+  );
+  assert.deepEqual(
+    layer.doors.filter(door => door.to === 'park' || door.to === 'beach').map(door => [door.x, door.y]),
+    [[2, 31], [62, 31]]
+  );
+});
+
+test('reset restores default building tiles and their original door tiles', () => {
+  const { terrain, props } = townSetup();
+  const shopUid = props.find(record => record.label === 'Shop').uid;
+  const homeUid = props.find(record => record.label === 'Home').uid;
+  const swapped = swapWorldBuildings(props, shopUid, homeUid);
+
+  const reset = resetLocationObjects({ props: swapped, scenery: [] }, {
+    props,
+    scenery: []
+  });
+  const shop = reset.props.find(record => record.uid === shopUid);
+  assert.equal(shop.x, 6);
+  assert.equal(shop.y, 15);
+
+  const layer = linkLocationDoors('town', {
+    terrain,
+    spawn: LOCATIONS.town.spawn,
+    props: reset.props
+  });
+  assert.deepEqual(
+    layer.doors.find(door => door.to === 'shop'),
+    { x: 8, y: 17, to: 'shop', kind: 'travel', id: `building-${shopUid}`, prompt: 'Step into the shop?', confirm: 'Travel', cancel: 'Cancel' }
+  );
+});
+
+test('a swap is refused for bounds, solids, scenery, people, spawn, and doors', () => {
+  const terrain = grassTerrain();
+  const spawn = { x: 2, y: 2 };
+  const props = seedWorldProps([
+    { uid: 'bld-a', type: 'building', x: 10, y: 10, openings: [{ dx: 2, dy: 2 }], label: 'A' },
+    { uid: 'bld-b', type: 'building', x: 30, y: 10, openings: [{ dx: 2, dy: 2 }], label: 'B' }
+  ]);
+  // seedWorldProps derives uids from type + tile; use the real ones.
+  const [a, b] = props;
+  const base = {
+    props,
+    aUid: a.uid,
+    bUid: b.uid,
+    terrain,
+    spawn: { x: 5, y: 30 },
+    doors: [{ x: 5, y: 40, to: 'park' }],
+    scenery: [],
+    characters: []
+  };
+
+  assert.equal(canSwapWorldBuildings(base).ok, true);
+
+  const withSolid = [...props, { uid: 'lamp-1', type: 'lamp', x: b.x + 1, y: b.y + 1 }];
+  assert.equal(canSwapWorldBuildings({ ...base, props: withSolid }).reason, 'overlap');
+
+  assert.equal(canSwapWorldBuildings({
+    ...base,
+    scenery: [{ type: 'puffy-tree', x: b.x + 1, y: b.y + 1 }]
+  }).reason, 'overlap');
+
+  assert.equal(canSwapWorldBuildings({
+    ...base,
+    characters: [{ x: b.x + 1, y: b.y + 1 }]
+  }).reason, 'character');
+
+  assert.equal(canSwapWorldBuildings({ ...base, spawn: { x: b.x + 1, y: b.y + 1 } }).reason, 'spawn');
+
+  assert.equal(canSwapWorldBuildings({
+    ...base,
+    doors: [{ x: b.x + 1, y: b.y + 1, to: 'park' }]
+  }).reason, 'door');
+
+  // One facade out of bounds after the swap.
+  assert.equal(canSwapWorldBuildings({
+    ...base,
+    props: [{ ...a, x: 60 }, b]
+  }).reason, 'outside-world');
+
+  assert.equal(canSwapWorldBuildings({ ...base, bUid: a.uid }).reason, 'unknown');
+  assert.equal(canSwapWorldBuildings({ ...base, bUid: 'missing' }).reason, 'unknown');
+});
+
+test('a swap that walls off a door is refused as no-path', () => {
+  const terrain = grassTerrain();
+  // A vertical corridor between water walls; the only route south is through
+  // the 6 x 4 band where building A stands.
+  for (let y = 0; y < 64; y += 1) {
+    terrain[y][9] = 'water';
+    terrain[y][16] = 'water';
+  }
+  const openOpenings = [];
+  for (let dy = 0; dy < 4; dy += 1) {
+    for (let dx = 0; dx < 6; dx += 1) openOpenings.push({ dx, dy });
+  }
+  const a = { uid: 'bld-open', type: 'building', x: 10, y: 10, rot: 0, variant: 0, openings: openOpenings };
+  const b = { uid: 'bld-solid', type: 'building', x: 30, y: 10, rot: 0, variant: 0 };
+  const base = {
+    props: [a, b],
+    aUid: a.uid,
+    bUid: b.uid,
+    terrain,
+    spawn: { x: 12, y: 2 },
+    doors: [{ x: 12, y: 60, to: 'park' }],
+    scenery: [],
+    characters: []
+  };
+
+  assert.ok(
+    reachableWorldTiles(terrain, base.spawn, worldBlockedTiles([a, b])).has('12,60'),
+    'the open facade lets the corridor through before the swap'
+  );
+  assert.equal(canSwapWorldBuildings(base).reason, 'no-path');
 });

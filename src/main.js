@@ -21,11 +21,12 @@ import {
   allowsForage,
   allowsShells,
   arrivalTile,
+  buildingDoorsFor,
   createHomeLocation,
   createLocationRecord,
-  doorsFor,
   isLocationEnabled,
   layoutMatches,
+  linkLocationDoors,
   locationDef,
   locationLabel,
   locationLayout,
@@ -83,7 +84,22 @@ import {
   toggleHomeItem,
   upgradeHomeItem
 } from './home_items.js';
-import { locationBlockedTiles } from './location_props.js';
+import { locationBlockedTiles, locationPropSize, propDefinition } from './location_props.js';
+import {
+  applyWorldDraft,
+  canPlaceWorldObject,
+  canSwapWorldBuildings,
+  isWorldBuilding,
+  resetLocationObjects,
+  resetWorldObject,
+  seedWorldProps,
+  seedWorldScenery,
+  swapWorldBuildings,
+  worldObjectAt,
+  worldObjectCardActions,
+  worldObjectReasonText,
+  worldObjectTiles
+} from './world_edit.js';
 import { castVoice } from './voice/casting.js';
 import { VoiceEngine } from './voice/engine.js';
 import { DialogueManager } from './dialogue.js';
@@ -200,6 +216,13 @@ let activityRecords = {};
 let homeItemCard = null;
 /** Home Furnish mode: the selected record and its uncommitted draft placement. */
 let furnish = null;
+/**
+ * Decorate mode for every non-Home location. Null when off; otherwise the
+ * selected card, an optional swap pick, and (while moving) the draft.
+ */
+let decorate = null;
+/** Doors that do not belong to a building, kept for swap validation. */
+let fixedDoors = [];
 /** Park Passport progress: completed goal ids mapped to a timestamp. */
 let goalProgress = normalizeGoalProgress(null);
 
@@ -1238,6 +1261,7 @@ function openWizard({ fresh = false } = {}) {
   panels?.closeAllPanels();
   entered = false;
   game.setInteractive(false);
+  stopDecorate({ silent: true });
   game.setPreview(draft.world.grid, draft.worldSeed, draft.world.spawn);
   panels?.updateFriendsUI();
   wizard.setDraft(draft);
@@ -1775,7 +1799,7 @@ function ensureGame() {
       onDoor: openTravelPrompt,
       isMenuOpen: () => Boolean(panels?.isMenuOpen?.()),
       onHomeItem: handleHomeItemClick,
-      onCanvasPointer: handleHomeCanvasPointer
+      onCanvasPointer: handleCanvasPointer
     });
 
     bubbles = new SpeechBubbles({ getActor: resolveCharacter });
@@ -1809,6 +1833,7 @@ function ensureGame() {
     game.onFrame = () => {
       if (dialogue?.isOpen()) dialogue.updatePosition();
       if (homeItemCard) positionHomeItemCard();
+      if (decorate?.card) positionDecorateCard();
 
       const now = performance.now();
       const dtMs = lastFrameAt ? Math.max(0, Math.min(now - lastFrameAt, 80)) : 0;
@@ -2124,6 +2149,7 @@ function applyState(state) {
   // A new world never inherits an item card or an uncommitted furnishing draft.
   closeHomeItemCard();
   endFurnish();
+  stopDecorate({ silent: true });
   closeShopPanel({ silent: true });
 
   const requested = typeof state.currentLocation === 'string' ? state.currentLocation : DEFAULT_LOCATION;
@@ -2173,6 +2199,17 @@ function applyState(state) {
     rawPlayer.x = spot.x;
     rawPlayer.y = spot.y;
   }
+
+  // Travel doors inside a building footprint become that building's trigger, so
+  // they move with a swap. Everything else (park gate, beach path, activity
+  // entrances) stays declarative and fixed.
+  const doorLayer = linkLocationDoors(locationId, {
+    terrain,
+    spawn: rawPlayer,
+    props: locationProps
+  });
+  const linkedProps = doorLayer.props;
+  fixedDoors = doorLayer.fixedDoors;
 
   // Home furniture resolves once per arrival: saved items win, a legacy
   // `decor` record converts on its first load, otherwise the default room is
@@ -2390,7 +2427,7 @@ function applyState(state) {
     homeBuddies,
     homeRoomTiles: roomTiles,
     homeRugTiles,
-    locationProps,
+    locationProps: linkedProps,
     theme,
     wander: state.wander !== false
   });
@@ -2410,8 +2447,9 @@ function applyState(state) {
   }
   game.homeOverflow = homeSelection.overflow;
   game.homeStorage = homeStorage;
-  // Doors are per location, so they are set after setWorld resets them.
-  game.doors = doorsFor(locationId, { terrain, spawn: rawPlayer });
+  // Doors are per location, so they are set after setWorld resets them. Building
+  // triggers were derived above from the linked prop list.
+  game.doors = doorLayer.doors;
 
   const knownFriendIds = knownNpcIds(state, npcs);
   locationStates = isObjectMap(state.locations)
@@ -2424,7 +2462,7 @@ function applyState(state) {
           player: rawPlayer,
           npcs,
           forage: game.forage,
-          props: locationProps,
+          props: linkedProps,
           scenery
         })
       };
@@ -2438,7 +2476,7 @@ function applyState(state) {
       player: rawPlayer,
       npcs: [],
       forage: locationState.forage,
-      props: locationProps,
+      props: linkedProps,
       scenery
     }, locationStates.town || null);
   }
@@ -2672,6 +2710,7 @@ function travelTo(targetId) {
   panels?.closeAllPanels();
   closeShopPanel({ silent: true });
   cancelFurnish({ silent: true });
+  stopDecorate({ silent: true });
   closeHomeItemCard();
   wakeHomePose({ silent: true });
 
@@ -3055,6 +3094,786 @@ function placeFurnish() {
   return true;
 }
 
+// --- Decorate mode --------------------------------------------------------
+
+/** Scenery style cycles through these scales; all sit inside the catalogue range. */
+const DECORATE_SCALE_STEPS = [0.6, 0.75, 0.9, 1.05, 1.2, 1.4, 1.6];
+
+/** Small glyphs so the card reads at a glance without new assets. */
+const DECORATE_ICONS = {
+  bench: '🪑',
+  fountain: '⛲',
+  lamp: '💡',
+  planter: '🪴',
+  building: '🏠',
+  gate: '🚪',
+  pier: '🪵',
+  'market-stall': '🧺',
+  'picnic-blanket': '🧺',
+  'flower-bed': '🌷',
+  'playground-slide': '🛝',
+  'playground-swing': '🛝',
+  'playground-climb': '🧗',
+  'beach-umbrella': '⛱️',
+  'beach-chair': '🏖️',
+  bookshelf: '📚',
+  counter: '🧾',
+  table: '🪵',
+  couch: '🛋️',
+  armchair: '🛋️',
+  bed: '🛏️',
+  rug: '🟩'
+};
+
+function worldObjectUid(record) {
+  return record?.uid || record?.id || '';
+}
+
+function activeDecorateProps() {
+  return Array.isArray(game?.locationProps) ? game.locationProps : [];
+}
+
+function activeDecorateScenery() {
+  return Array.isArray(game?.scenery) ? game.scenery : [];
+}
+
+function decorateList(kind) {
+  return kind === 'scenery' ? activeDecorateScenery() : activeDecorateProps();
+}
+
+function decorateLabel(record) {
+  if (typeof record?.label === 'string' && record.label.trim()) return record.label.trim();
+  const prop = propDefinition(record?.type);
+  if (prop?.label) return prop.label;
+  const words = String(record?.type || 'object').replace(/-/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+function decorateIcon(record, kind) {
+  const type = String(record?.type || '');
+  if (kind === 'scenery') {
+    if (type.includes('tree')) return '🌳';
+    if (type.includes('bush')) return '🌿';
+    if (type.includes('flower')) return '🌸';
+    if (type.includes('rock')) return '🪨';
+    if (type.includes('mushroom')) return '🍄';
+    if (type.includes('grass')) return '🌱';
+    return '🌿';
+  }
+  return DECORATE_ICONS[type] || '📦';
+}
+
+/** The object the open card points at, or null after a reset removed it. */
+function decorateRecord() {
+  if (!decorate?.card || !game) return null;
+  return decorateList(decorate.card.kind)
+    .find(record => worldObjectUid(record) === decorate.card.uid) || null;
+}
+
+/** Backpack section: hidden at Home, where Furnish is the editor. */
+function decorateState() {
+  if (currentLocationId === 'home' || !game?.player) return null;
+  const record = decorateRecord();
+  return {
+    active: Boolean(decorate),
+    selected: record ? decorateLabel(record) : '',
+    moving: decorate?.draft ? decorateLabel(decorate.draft.record) : '',
+    hint: decorate
+      ? (decorate.swap
+        ? 'tap another building to swap places · Esc cancels'
+        : decorate.draft
+          ? 'arrows move · R rotates · C restyles · Enter places · Esc cancels'
+          : 'tap a prop, tree, or building to edit it · Esc leaves')
+      : 'move and restyle props and scenery, and swap buildings between lots.'
+  };
+}
+
+/** Objects and characters share tiles; every placement refuses an occupied one. */
+function decorateCharacters() {
+  const out = [];
+  const list = [
+    game?.player,
+    ...(game?.npcs || []),
+    ...(game?.companions || []),
+    ...(game?.homeBuddies || [])
+  ];
+  for (const character of list) {
+    if (!character) continue;
+    const x = Math.round(Number(character.x));
+    const y = Math.round(Number(character.y));
+    if (Number.isFinite(x) && Number.isFinite(y)) out.push({ x, y });
+    // A walker mid-step already reserves its destination; do not drop a prop
+    // under a neighbour who is about to arrive.
+    if (character.moving) {
+      const toX = Math.round(Number(character.toX));
+      const toY = Math.round(Number(character.toY));
+      if (Number.isFinite(toX) && Number.isFinite(toY)) out.push({ x: toX, y: toY });
+    }
+  }
+  return out;
+}
+
+/** The data-derived default lists for this location, used by both resets. */
+function locationObjectDefaults() {
+  const props = propsForLocation(currentLocationId);
+  // Default buildings need their doors again, so the reset puts triggers back
+  // on the original inner tiles rather than leaving them wherever a swap put them.
+  const linked = linkLocationDoors(currentLocationId, {
+    terrain: game?.terrain,
+    spawn: locationDef(currentLocationId)?.spawn,
+    props
+  });
+  const blocked = locationBlockedTiles(linked.props);
+  const generated = worldFor(currentLocationId, game?.worldSeed).scenery || [];
+  const scenery = generated.filter(item => !blocked.has(`${item.x},${item.y}`));
+  return {
+    props: seedWorldProps(linked.props),
+    scenery: seedWorldScenery(scenery)
+  };
+}
+
+function validateDecoratePlacement(kind, record, patch = {}) {
+  if (!game?.terrain) return { ok: false, reason: 'unknown', tiles: [] };
+  return canPlaceWorldObject({
+    kind,
+    props: activeDecorateProps(),
+    type: record?.type,
+    x: patch.x ?? record?.x,
+    y: patch.y ?? record?.y,
+    rot: patch.rot ?? record?.rot,
+    variant: patch.variant ?? record?.variant,
+    seed: patch.seed ?? record?.seed,
+    uid: record?.uid || null,
+    openings: record?.openings,
+    terrain: game.terrain,
+    doors: game.doors,
+    spawn: locationDef(currentLocationId)?.spawn,
+    characters: decorateCharacters(),
+    requirePath: true
+  });
+}
+
+function syncWorldDraft() {
+  if (!game) return;
+  game.worldDraft = decorate?.draft ? { ...decorate.draft } : null;
+}
+
+function validateDecorateDraft() {
+  const draft = decorate?.draft;
+  if (!draft) return null;
+  const placement = validateDecoratePlacement(draft.kind, draft.record, draft);
+  draft.reason = placement.ok ? null : placement.reason;
+  syncWorldDraft();
+  refreshDecorateHud();
+  return placement;
+}
+
+/** Small banner: moving title, the refusal reason, and the two commit buttons. */
+function refreshDecorateHud() {
+  const hud = $('decorate-hud');
+  if (!hud) return;
+  hud.hidden = !decorate;
+  if (!decorate) return;
+  const draft = decorate.draft;
+  const title = $('decorate-hud-title');
+  if (title) {
+    title.textContent = decorate.swap
+      ? 'swapping buildings'
+      : draft
+        ? `moving ${decorateLabel(draft.record).toLowerCase()}`
+        : 'decorate mode';
+  }
+  const note = $('decorate-note');
+  if (note) {
+    if (decorate.swap) {
+      note.textContent = 'tap another building to swap places · Esc cancels';
+    } else if (draft) {
+      note.textContent = draft.reason
+        ? `cannot place: ${worldObjectReasonText(draft.reason)}`
+        : `${decorateStyleNote(draft)} · x${draft.x} y${draft.y} · tap a spot to move it`;
+    } else {
+      note.textContent = 'tap a prop, tree, or building to edit it.';
+    }
+  }
+  const place = $('decorate-place');
+  if (place) {
+    place.disabled = !draft || Boolean(draft.reason);
+    place.hidden = Boolean(decorate.swap);
+  }
+  const cancel = $('decorate-cancel');
+  if (cancel) cancel.textContent = (draft || decorate.swap) ? 'Cancel (Esc)' : 'Done (Esc)';
+  const card = $('decorate-card');
+  if (card) card.hidden = !decorate.card || Boolean(draft);
+}
+
+function decorateStyleNote(record) {
+  if (decorate?.draft?.kind === 'scenery') {
+    return `scale ${Number(record.scale || 1).toFixed(2)}`;
+  }
+  const prop = propDefinition(record.type);
+  const variant = prop?.variants?.[record.variant || 0];
+  return variant?.name || variant?.label || 'plain';
+}
+
+/** Fill the card from the live record. Buildings offer Swap + Close. */
+function syncDecorateCard() {
+  const record = decorateRecord();
+  if (!record || !decorate?.card) return false;
+  const kind = decorate.card.kind;
+  const actions = worldObjectCardActions(kind, record);
+
+  const icon = $('decorate-icon');
+  if (icon) icon.textContent = decorateIcon(record, kind);
+  const name = $('decorate-name');
+  if (name) name.textContent = decorateLabel(record);
+  const badge = $('decorate-kind');
+  if (badge) {
+    badge.textContent = isWorldBuilding(record)
+      ? 'building'
+      : (kind === 'scenery' ? 'scenery' : 'prop');
+    badge.hidden = false;
+  }
+  const note = $('decorate-card-note');
+  if (note) {
+    const detail = kind === 'scenery'
+      ? `scale ${Number(record.scale || 1).toFixed(2)}`
+      : decorateStyleNote(record);
+    note.textContent = `${detail} · x${Math.round(record.x)} y${Math.round(record.y)}`;
+    note.hidden = false;
+  }
+
+  // The primary button is Move for a prop/scenery and Swap for a building.
+  const primary = $('decorate-move');
+  if (primary) {
+    primary.hidden = !actions.some(action => action === 'move' || action === 'swap');
+    primary.textContent = actions.includes('swap') ? 'Swap' : 'Move';
+  }
+  for (const [id, action] of [
+    ['decorate-style', 'style'],
+    ['decorate-rotate', 'rotate'],
+    ['decorate-reset', 'reset']
+  ]) {
+    const button = $(id);
+    if (button) button.hidden = !actions.includes(action);
+  }
+  return true;
+}
+
+/** Anchor the card over the object footprint, clamped away from HUD and touch pad. */
+function positionCardNear(card, { x, y, w, h, bottom = 12 }) {
+  if (!card || card.hidden || !game?.camera) return;
+  const left = x * TILE - game.camera.x;
+  const top = y * TILE - game.camera.y;
+  const width = w * TILE;
+  const height = h * TILE;
+  const viewWidth = window.innerWidth;
+  const viewHeight = window.innerHeight;
+  const cardWidth = card.offsetWidth || 216;
+  const cardHeight = card.offsetHeight || 150;
+  const margin = 8;
+  const lotTop = 64;
+  const coarse = window.matchMedia?.('(pointer: coarse)').matches || viewWidth <= 768;
+  const bottomInset = coarse ? Math.max(196, bottom) : bottom;
+  let cardTop = top - cardHeight - 10;
+  if (cardTop < lotTop) cardTop = top + height + 10;
+  const cardLeft = Math.max(
+    margin,
+    Math.min(left + width / 2 - cardWidth / 2, viewWidth - cardWidth - margin)
+  );
+  cardTop = Math.max(lotTop, Math.min(cardTop, viewHeight - cardHeight - bottomInset));
+  card.style.left = `${Math.round(cardLeft)}px`;
+  card.style.top = `${Math.round(cardTop)}px`;
+}
+
+function positionDecorateCard() {
+  const card = $('decorate-card');
+  const record = decorateRecord();
+  if (!card || !record || !decorate?.card) return;
+  const tiles = worldObjectTiles(record, decorate.card.kind);
+  if (!tiles.length) return;
+  const xs = tiles.map(tile => tile.x);
+  const ys = tiles.map(tile => tile.y);
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+  positionCardNear(card, {
+    x: minX,
+    y: minY,
+    w: Math.max(...xs) - minX + 1,
+    h: Math.max(...ys) - minY + 1,
+    bottom: 96
+  });
+}
+
+function openDecorateCard(kind, uid) {
+  if (!decorate || !game) return false;
+  const record = decorateList(kind).find(item => worldObjectUid(item) === uid);
+  if (!record) return false;
+  decorate.card = { kind, uid };
+  decorate.swap = null;
+  if (game) game.worldSelected = { kind, uid };
+  syncDecorateCard();
+  refreshDecorateHud();
+  positionDecorateCard();
+  return true;
+}
+
+function closeDecorateCard() {
+  if (!decorate?.card) return false;
+  decorate.card = null;
+  decorate.swap = null;
+  if (game && !decorate.draft) game.worldSelected = null;
+  const card = $('decorate-card');
+  if (card) card.hidden = true;
+  refreshDecorateHud();
+  return true;
+}
+
+function clearDecoratePaths() {
+  if (!game) return;
+  if (game.player) game.player.path = [];
+  for (const character of [
+    ...(game.npcs || []),
+    ...(game.companions || []),
+    ...(game.homeBuddies || [])
+  ]) {
+    if (character) character.path = [];
+  }
+  game.destination = null;
+  game.heldKeys = [];
+}
+
+/** Commit a prop or scenery list and rebuild everything derived from it. */
+function applyDecorateObjects(kind, next) {
+  if (!game) return;
+  if (kind === 'scenery') {
+    game.scenery = (Array.isArray(next) ? next : []).map(item => ({
+      ...item,
+      id: item.uid || item.id
+    }));
+  } else {
+    game.locationProps = Array.isArray(next) ? next : [];
+    game.locationBlockedTiles = locationBlockedTiles(game.locationProps);
+  }
+  clearDecoratePaths();
+}
+
+/**
+ * Recompute the live door layer after a building moves. Fixed doors stay put;
+ * each building's trigger follows its `door` offset.
+ */
+function rebuildLocationDoors() {
+  if (!game) return;
+  game.doors = [...fixedDoors, ...buildingDoorsFor(activeDecorateProps())];
+}
+
+function startDecorate() {
+  if (currentLocationId === 'home' || !game?.player) return false;
+  closeHomeItemCard();
+  cancelFurnish({ silent: true });
+  panels?.closeAllPanels();
+  decorate = { card: null, draft: null, swap: null };
+  game.worldDraft = null;
+  game.worldSelected = null;
+  clearDecoratePaths();
+  refreshDecorateHud();
+  panels?.renderInventory?.();
+  showToast('Decorate mode. Tap a prop, tree, or building to edit it.');
+  return true;
+}
+
+function stopDecorate({ silent = false } = {}) {
+  if (!decorate) return false;
+  cancelDecorateDraft({ silent: true });
+  decorate = null;
+  if (game) {
+    game.worldDraft = null;
+    game.worldSelected = null;
+  }
+  const card = $('decorate-card');
+  if (card) card.hidden = true;
+  refreshDecorateHud();
+  panels?.renderInventory?.();
+  if (!silent) showToast('Done decorating.');
+  return true;
+}
+
+function toggleDecorate() {
+  return decorate ? stopDecorate() : startDecorate();
+}
+
+function startDecorateMove() {
+  const record = decorateRecord();
+  if (!record || !decorate?.card) return false;
+  const kind = decorate.card.kind;
+  if (kind === 'prop' && isWorldBuilding(record)) return startBuildingSwap();
+  decorate.draft = {
+    kind,
+    uid: worldObjectUid(record),
+    record,
+    x: Math.round(Number(record.x)),
+    y: Math.round(Number(record.y)),
+    rot: Number(record.rot) || 0,
+    variant: Number(record.variant) || 0,
+    scale: Number(record.scale) || 1,
+    reason: null
+  };
+  game.worldSelected = { kind, uid: decorate.draft.uid };
+  clearDecoratePaths();
+  validateDecorateDraft();
+  panels?.renderInventory?.();
+  showToast(`Moving the ${decorateLabel(record).toLowerCase()}. Arrows move, Enter places.`);
+  return true;
+}
+
+/** Put a building into "pick another" mode; the next building tap swaps. */
+function startBuildingSwap() {
+  const record = decorateRecord();
+  if (!record || decorate?.card?.kind !== 'prop' || !isWorldBuilding(record)) return false;
+  const buildings = activeDecorateProps().filter(isWorldBuilding);
+  if (buildings.length < 2) {
+    showToast('There is no other building to swap with.');
+    return false;
+  }
+  decorate.swap = { uid: worldObjectUid(record) };
+  game.worldSelected = { kind: 'prop', uid: decorate.swap.uid };
+  syncDecorateCard();
+  refreshDecorateHud();
+  showToast(`Swapping the ${decorateLabel(record).toLowerCase()} — tap another building.`);
+  return true;
+}
+
+function cancelBuildingSwap({ silent = false } = {}) {
+  if (!decorate?.swap) return false;
+  const record = decorateRecord();
+  decorate.swap = null;
+  game.worldSelected = record ? { kind: 'prop', uid: worldObjectUid(record) } : null;
+  refreshDecorateHud();
+  if (!silent) showToast('Kept every building where it was.');
+  return true;
+}
+
+/**
+ * Swap two building lots. The pair is validated as a unit — including the path
+ * from the spawn to every door — before either record changes.
+ */
+function swapDecorateBuildings(aUid, bUid) {
+  if (!decorate || !game) return false;
+  if (!aUid || !bUid || aUid === bUid) {
+    showToast('Pick a different building to swap with.');
+    return false;
+  }
+  const props = activeDecorateProps();
+  const first = props.find(record => worldObjectUid(record) === aUid);
+  const second = props.find(record => worldObjectUid(record) === bUid);
+  if (!first || !second) {
+    cancelBuildingSwap({ silent: true });
+    closeDecorateCard();
+    return false;
+  }
+  const placement = canSwapWorldBuildings({
+    props,
+    aUid,
+    bUid,
+    terrain: game.terrain,
+    spawn: locationDef(currentLocationId)?.spawn,
+    doors: fixedDoors,
+    scenery: activeDecorateScenery(),
+    characters: decorateCharacters(),
+    requirePath: true
+  });
+  if (!placement.ok) {
+    showToast(`Cannot swap those: ${worldObjectReasonText(placement.reason)}`);
+    return false;
+  }
+
+  applyDecorateObjects('prop', swapWorldBuildings(props, aUid, bUid));
+  rebuildLocationDoors();
+  saveNow();
+  decorate.swap = null;
+  closeDecorateCard();
+  sounds.play('place');
+  panels?.renderInventory?.();
+  showToast(`Swapped the ${decorateLabel(first).toLowerCase()} and the ${decorateLabel(second).toLowerCase()}.`);
+  return true;
+}
+
+function cancelDecorateDraft({ silent = false } = {}) {
+  if (!decorate?.draft) return false;
+  const label = decorateLabel(decorate.draft.record);
+  decorate.draft = null;
+  syncWorldDraft();
+  refreshDecorateHud();
+  panels?.renderInventory?.();
+  if (!silent) showToast(`Left the ${label.toLowerCase()} where it was.`);
+  return true;
+}
+
+function moveDecorateBy(dx, dy) {
+  const draft = decorate?.draft;
+  if (!draft) return false;
+  draft.x += dx;
+  draft.y += dy;
+  validateDecorateDraft();
+  return true;
+}
+
+/** A tap drops the footprint's centre under the tapped tile. */
+function moveDecorateTo(tileX, tileY) {
+  const draft = decorate?.draft;
+  if (!draft) return false;
+  let w = 1;
+  let h = 1;
+  if (draft.kind !== 'scenery') {
+    const size = locationPropSize(draft.record.type, draft.rot);
+    if (!size) return false;
+    w = size.w;
+    h = size.h;
+  }
+  draft.x = Math.round(tileX) - Math.floor((w - 1) / 2);
+  draft.y = Math.round(tileY) - Math.floor((h - 1) / 2);
+  validateDecorateDraft();
+  return true;
+}
+
+function rotateDecorateRecord() {
+  const draft = decorate?.draft;
+  if (draft) {
+    if (draft.kind === 'scenery') {
+      showToast('scenery does not rotate. Try Style to resize it.');
+      return false;
+    }
+    draft.rot = (draft.rot + 1) % 4;
+    validateDecorateDraft();
+    return true;
+  }
+
+  const record = decorateRecord();
+  if (!record || !decorate?.card) return false;
+  if (decorate.card.kind === 'scenery') {
+    showToast('scenery does not rotate. Try Style to resize it.');
+    return false;
+  }
+  const rot = ((Number(record.rot) || 0) + 1) % 4;
+  const placement = validateDecoratePlacement('prop', record, { rot });
+  if (!placement.ok) {
+    showToast(`Cannot rotate there: ${worldObjectReasonText(placement.reason)}`);
+    return false;
+  }
+  applyDecorateObjects('prop', applyWorldDraft(activeDecorateProps(), {
+    uid: worldObjectUid(record),
+    x: record.x,
+    y: record.y,
+    rot
+  }));
+  saveNow();
+  syncDecorateCard();
+  positionDecorateCard();
+  sounds.play('ui-click');
+  showToast(`Turned the ${decorateLabel(record).toLowerCase()}.`);
+  return true;
+}
+
+/** Next style for one object: a prop variant, or the next scenery scale. */
+function nextDecorateStyle(kind, record) {
+  if (kind === 'scenery') {
+    const current = Number(record?.scale) || 1;
+    let nearest = 0;
+    for (let i = 1; i < DECORATE_SCALE_STEPS.length; i += 1) {
+      if (Math.abs(DECORATE_SCALE_STEPS[i] - current)
+        < Math.abs(DECORATE_SCALE_STEPS[nearest] - current)) nearest = i;
+    }
+    return { scale: DECORATE_SCALE_STEPS[(nearest + 1) % DECORATE_SCALE_STEPS.length] };
+  }
+  const prop = propDefinition(record?.type);
+  const count = Array.isArray(prop?.variants) ? prop.variants.length : 0;
+  if (!count) return null;
+  return { variant: ((Number(record?.variant) || 0) + 1) % count };
+}
+
+function cycleDecorateStyle() {
+  const draft = decorate?.draft;
+  if (draft) {
+    const patch = nextDecorateStyle(draft.kind, draft);
+    if (!patch) {
+      showToast('this one has no other style.');
+      return false;
+    }
+    Object.assign(draft, patch);
+    validateDecorateDraft();
+    return true;
+  }
+
+  const record = decorateRecord();
+  if (!record || !decorate?.card) return false;
+  const kind = decorate.card.kind;
+  const patch = nextDecorateStyle(kind, record);
+  if (!patch) {
+    showToast('this one has no other style.');
+    return false;
+  }
+  applyDecorateObjects(kind, applyWorldDraft(decorateList(kind), {
+    uid: worldObjectUid(record),
+    x: record.x,
+    y: record.y,
+    ...patch
+  }));
+  saveNow();
+  syncDecorateCard();
+  positionDecorateCard();
+  sounds.play('ui-click');
+  showToast(`Restyled the ${decorateLabel(record).toLowerCase()}.`);
+  return true;
+}
+
+function placeDecorateDraft() {
+  const draft = decorate?.draft;
+  if (!draft) return false;
+  const placement = validateDecorateDraft();
+  if (!placement?.ok) {
+    showToast(`Cannot place there: ${worldObjectReasonText(draft.reason)}`);
+    return false;
+  }
+  applyDecorateObjects(draft.kind, applyWorldDraft(decorateList(draft.kind), draft));
+  const label = decorateLabel(draft.record);
+  decorate.draft = null;
+  syncWorldDraft();
+  saveNow();
+  sounds.play('place');
+  syncDecorateCard();
+  refreshDecorateHud();
+  panels?.renderInventory?.();
+  showToast(`Placed the ${label.toLowerCase()}.`);
+  return true;
+}
+
+/** Restore one object to the tile it was seeded on. */
+function resetDecorateRecord() {
+  const record = decorateRecord();
+  if (!record || !decorate?.card) return false;
+  if (decorate.draft) cancelDecorateDraft({ silent: true });
+  const kind = decorate.card.kind;
+  const defaults = locationObjectDefaults();
+  const seeded = kind === 'scenery' ? defaults.scenery : defaults.props;
+  const next = resetWorldObject(decorateList(kind), worldObjectUid(record), seeded);
+  if (next === decorateList(kind)) {
+    showToast('this one has no seeded spot to return to.');
+    return false;
+  }
+  applyDecorateObjects(kind, next);
+  if (isWorldBuilding(record)) rebuildLocationDoors();
+  saveNow();
+  syncDecorateCard();
+  positionDecorateCard();
+  sounds.play('place');
+  showToast(`Put the ${decorateLabel(record).toLowerCase()} back.`);
+  return true;
+}
+
+/** Put every prop and tree in the location back where the seed had it. */
+function resetDecoratePlace() {
+  if (!decorate) return false;
+  if (!window.confirm('Put every prop, tree, and building back where it started?')) return false;
+  cancelDecorateDraft({ silent: true });
+  closeDecorateCard();
+  const defaults = locationObjectDefaults();
+  const reset = resetLocationObjects({
+    props: activeDecorateProps(),
+    scenery: activeDecorateScenery()
+  }, defaults);
+  applyDecorateObjects('prop', reset.props);
+  applyDecorateObjects('scenery', reset.scenery);
+  rebuildLocationDoors();
+  saveNow();
+  refreshDecorateHud();
+  panels?.renderInventory?.();
+  sounds.play('place');
+  showToast('This place is back to its first layout.');
+  return true;
+}
+
+/** Click routing while Decorate is on: click an object, swap, or drop the draft. */
+function handleDecorateCanvasPointer(event, point) {
+  if (!decorate || !game) return false;
+  if (event?.target && event.target !== game.canvas) return false;
+  if (decorate.swap) {
+    const hit = worldObjectAt(activeDecorateProps(), activeDecorateScenery(), point.tileX, point.tileY);
+    if (hit?.kind === 'prop' && isWorldBuilding(hit.record)) {
+      swapDecorateBuildings(decorate.swap.uid, worldObjectUid(hit.record));
+    } else if (!hit) {
+      cancelBuildingSwap();
+      closeDecorateCard();
+    } else {
+      showToast('Pick another building to swap with.');
+    }
+    return true;
+  }
+  if (decorate.draft) {
+    moveDecorateTo(point.tileX, point.tileY);
+    return true;
+  }
+  const hit = worldObjectAt(activeDecorateProps(), activeDecorateScenery(), point.tileX, point.tileY);
+  if (!hit) {
+    closeDecorateCard();
+    return true;
+  }
+  openDecorateCard(hit.kind, worldObjectUid(hit.record));
+  return true;
+}
+
+/**
+ * Decorate owns the keyboard while it is on, including the movement keys: the
+ * player must not walk, bump a neighbour, or step into a door while editing.
+ * Capture phase beats Game's window listener.
+ */
+function handleDecorateKey(event) {
+  if (!decorate) return false;
+  if (panels?.isMenuOpen?.()) return false;
+  if (dialogue?.isOpen?.()) return false;
+  if (event.target instanceof HTMLElement
+    && event.target.closest('input, textarea, select, [contenteditable="true"]')) return false;
+  if (event.target instanceof HTMLElement
+    && event.target.closest('button')
+    && (event.key === 'Enter' || event.key === ' ')) return false;
+
+  const key = event.key;
+  const lower = key.toLowerCase();
+  const draft = decorate.draft;
+  let handled = true;
+
+  if (draft) {
+    if (key === 'Escape') cancelDecorateDraft();
+    else if (key === 'Enter' || key === ' ') placeDecorateDraft();
+    else if (lower === 'r') rotateDecorateRecord();
+    else if (lower === 'c') cycleDecorateStyle();
+    else if (key === 'ArrowUp' || lower === 'w') moveDecorateBy(0, -1);
+    else if (key === 'ArrowDown' || lower === 's') moveDecorateBy(0, 1);
+    else if (key === 'ArrowLeft' || lower === 'a') moveDecorateBy(-1, 0);
+    else if (key === 'ArrowRight' || lower === 'd') moveDecorateBy(1, 0);
+    else handled = false;
+  } else if (key === 'Escape') {
+    if (decorate.swap) {
+      cancelBuildingSwap();
+      closeDecorateCard();
+    } else if (!closeDecorateCard()) {
+      stopDecorate();
+    }
+  } else if (
+    key === 'ArrowUp' || key === 'ArrowDown' || key === 'ArrowLeft' || key === 'ArrowRight'
+    || lower === 'w' || lower === 'a' || lower === 's' || lower === 'd'
+    || key === 'Enter' || key === ' ' || lower === 'r' || lower === 'c'
+  ) {
+    // Swallow movement and action keys while browsing; no draft yet.
+    handled = true;
+  } else {
+    handled = false;
+  }
+
+  if (!handled) return false;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  return true;
+}
+
 // --- Home item card -------------------------------------------------------
 
 function homeItemCardRecord() {
@@ -3080,27 +3899,12 @@ function positionHomeItemCard() {
   if (card.hidden) return;
   const size = homeItemSize(record.itemId, record.rot);
   if (!size) return;
-  const left = record.x * TILE - game.camera.x;
-  const top = record.y * TILE - game.camera.y;
-  const width = size.w * TILE;
-  const height = size.h * TILE;
-  const viewWidth = window.innerWidth;
-  const viewHeight = window.innerHeight;
-  const cardWidth = card.offsetWidth || 208;
-  const cardHeight = card.offsetHeight || 120;
-  const margin = 8;
-  const lotTop = 64;
-  const coarse = window.matchMedia?.('(pointer: coarse)').matches || viewWidth <= 768;
-  const bottomInset = coarse ? 196 : 12;
-  let cardTop = top - cardHeight - 10;
-  if (cardTop < lotTop) cardTop = top + height + 10;
-  const cardLeft = Math.max(
-    margin,
-    Math.min(left + width / 2 - cardWidth / 2, viewWidth - cardWidth - margin)
-  );
-  cardTop = Math.max(lotTop, Math.min(cardTop, viewHeight - cardHeight - bottomInset));
-  card.style.left = `${Math.round(cardLeft)}px`;
-  card.style.top = `${Math.round(cardTop)}px`;
+  positionCardNear(card, {
+    x: record.x,
+    y: record.y,
+    w: size.w,
+    h: size.h
+  });
 }
 
 function openHomeItemCard(record) {
@@ -3586,6 +4390,15 @@ function handleHomeItemClick(record) {
 }
 
 /**
+ * Furnish and Decorate own canvas clicks while they are on. Returning true
+ * stops Game's normal walk, select, home-item, and doorway handling.
+ */
+function handleCanvasPointer(event, point) {
+  if (decorate) return handleDecorateCanvasPointer(event, point);
+  return handleHomeCanvasPointer(event, point);
+}
+
+/**
  * Furnish owns canvas clicks while it is on: pick another piece, or drop the
  * draft under the tapped tile. Returning true stops Game's normal walk/select.
  */
@@ -3929,6 +4742,31 @@ function bindEvents() {
   $('furnish-place')?.addEventListener('click', placeFurnish);
   $('furnish-cancel')?.addEventListener('click', () => cancelFurnish());
 
+  // Decorate card and banner. Move starts a draft; the other verbs apply in
+  // place and save immediately, so a tap is a complete edit.
+  $('decorate-move')?.addEventListener('click', startDecorateMove);
+  $('decorate-style')?.addEventListener('click', cycleDecorateStyle);
+  $('decorate-rotate')?.addEventListener('click', rotateDecorateRecord);
+  $('decorate-reset')?.addEventListener('click', resetDecorateRecord);
+  $('decorate-close')?.addEventListener('click', () => closeDecorateCard());
+  $('decorate-place')?.addEventListener('click', placeDecorateDraft);
+  $('decorate-cancel')?.addEventListener('click', () => {
+    if (decorate?.draft) cancelDecorateDraft();
+    else if (decorate?.swap) {
+      cancelBuildingSwap();
+      closeDecorateCard();
+    } else stopDecorate();
+  });
+  $('decorate-reset-place')?.addEventListener('click', resetDecoratePlace);
+
+  document.addEventListener('pointerdown', event => {
+    if (!decorate?.card || decorate.draft) return;
+    const card = $('decorate-card');
+    if (!card || card.hidden || card.contains(event.target)) return;
+    if (game?.canvas?.contains(event.target)) return;
+    closeDecorateCard();
+  });
+
   // Furnish owns the keyboard while it is on. Capture phase beats the canvas
   // movement handler and the app's other global shortcuts.
   window.addEventListener('keydown', event => {
@@ -3953,6 +4791,10 @@ function bindEvents() {
     if (!handled) return;
     event.preventDefault();
     event.stopImmediatePropagation();
+  }, true);
+
+  window.addEventListener('keydown', event => {
+    handleDecorateKey(event);
   }, true);
 
   window.addEventListener('keydown', event => {
@@ -4190,6 +5032,15 @@ function boot() {
     getFurnish: homeFurnishState,
     onFurnishSelect: uid => startFurnish(uid),
     onFurnishStop: () => cancelFurnish(),
+    getDecorate: decorateState,
+    onDecorateToggle: () => {
+      panels?.closeMenu();
+      return toggleDecorate();
+    },
+    onDecorateReset: () => {
+      panels?.closeMenu();
+      return resetDecoratePlace();
+    },
     onSelect: character => panels?.showCard(character),
     onAddNeighbour: addNeighbour,
     onNewPark: () => {

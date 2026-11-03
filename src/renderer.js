@@ -2860,8 +2860,15 @@ export class WorldRenderer {
     // Floor coverings (rugs, blankets, towels, flower beds) paint below doors
     // and every object/actor, so nothing is sorted on top of them.
     for (const record of game.locationProps || []) {
+      if (game.worldDraft?.kind === 'prop' && record.uid === game.worldDraft.uid) continue;
       if (propRenderMeta(record)?.ground) this.drawLocationProp(record, game);
     }
+    // A rug or blanket being moved paints in the ground pass, like its source.
+    if (game.worldDraft?.kind === 'prop'
+      && propRenderMeta(game.worldDraft.record)?.ground) {
+      this.drawWorldDraft(ctx, game.worldDraft, game);
+    }
+    if (game.worldSelected && !game.worldDraft) this.drawWorldSelection(ctx, game);
 
     // Travel doors sit above the ground and below every actor, so a character
     // standing in the doorway is drawn in front of it. Doors cut into a solid
@@ -2909,6 +2916,10 @@ export class WorldRenderer {
     }
 
     if (game.homeDraft) this.drawHomeDraft(ctx, game.homeDraft);
+    if (game.worldDraft
+      && !(game.worldDraft.kind === 'prop' && propRenderMeta(game.worldDraft.record)?.ground)) {
+      this.drawWorldDraft(ctx, game.worldDraft, game);
+    }
 
     // Render characters and scenery sorted by Y depth
     const renderables = [];
@@ -2973,6 +2984,7 @@ export class WorldRenderer {
     // Location props (fountains, benches, facades) sort with actors on their
     // footprint's bottom row, so a character in front draws over them.
     for (const record of game.locationProps || []) {
+      if (game.worldDraft?.kind === 'prop' && record.uid === game.worldDraft.uid) continue;
       const meta = propRenderMeta(record);
       if (!meta || meta.ground) continue;
       renderables.push({
@@ -3020,6 +3032,9 @@ export class WorldRenderer {
       for (const item of game.scenery) {
         // Harvested mushrooms are off the ground until their respawn clock runs out.
         if (isMushroomScenery(item) && isMushroomHidden(game.forage, item.id, epochNow)) continue;
+        // The object being moved is hidden while its translucent draft is shown.
+        if (game.worldDraft?.kind === 'scenery'
+          && (item.uid || item.id) === game.worldDraft.uid) continue;
         // Target opacity: 0 if on or adjacent to active board, 1 if clear
         const isHidden = hiddenZones.some(
           zone => item.x >= zone.minX && item.x <= zone.maxX && item.y >= zone.minY && item.y <= zone.maxY
@@ -3441,6 +3456,95 @@ export class WorldRenderer {
     ctx.lineWidth = 2;
     ctx.setLineDash([6, 4]);
     ctx.strokeRect(x + 1.5, y + 1.5, width - 3, height - 3);
+    ctx.restore();
+  }
+
+  /** Footprint bounds for one world object, in tiles. */
+  worldObjectBounds(draft) {
+    const tiles = draft.kind === 'scenery'
+      ? [{ x: draft.x, y: draft.y }]
+      : propTiles({ ...draft.record, x: draft.x, y: draft.y, rot: draft.rot });
+    if (!tiles.length) return null;
+    const xs = tiles.map(tile => tile.x);
+    const ys = tiles.map(tile => tile.y);
+    const minX = Math.min(...xs);
+    const minY = Math.min(...ys);
+    return {
+      x: minX,
+      y: minY,
+      w: Math.max(...xs) - minX + 1,
+      h: Math.max(...ys) - minY + 1
+    };
+  }
+
+  /** Translucent prop/tree at the draft tile plus a red or green footprint. */
+  drawWorldDraft(ctx, draft, game = null) {
+    const bounds = this.worldObjectBounds(draft);
+    if (!bounds) return;
+    const valid = draft.reason == null;
+
+    if (draft.kind === 'scenery') {
+      this.drawSceneryItem(ctx, {
+        ...draft.record,
+        x: draft.x,
+        y: draft.y,
+        scale: draft.scale ?? draft.record?.scale
+      }, 0.72);
+    } else {
+      ctx.save();
+      ctx.globalAlpha = 0.72;
+      this.drawLocationProp({
+        ...draft.record,
+        x: draft.x,
+        y: draft.y,
+        rot: draft.rot,
+        variant: draft.variant,
+        seed: draft.seed
+      }, game);
+      ctx.restore();
+    }
+
+    const x = bounds.x * TILE;
+    const y = bounds.y * TILE;
+    const width = bounds.w * TILE;
+    const height = bounds.h * TILE;
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+    ctx.fillStyle = valid ? '#b6e37c' : '#e07a6b';
+    ctx.fillRect(x + 2, y + 2, width - 4, height - 4);
+    ctx.globalAlpha = 0.9;
+    ctx.strokeStyle = valid ? '#d8f7a8' : '#ff9d8a';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(x + 1.5, y + 1.5, width - 3, height - 3);
+    ctx.restore();
+  }
+
+  /** Quiet dashed outline on the object an open Decorate card points at. */
+  drawWorldSelection(ctx, game) {
+    const selection = game.worldSelected;
+    if (!selection?.uid) return;
+    const list = selection.kind === 'scenery' ? game.scenery : game.locationProps;
+    const record = (list || []).find(item => (item.uid || item.id) === selection.uid);
+    if (!record) return;
+    const bounds = this.worldObjectBounds({
+      kind: selection.kind,
+      record,
+      x: record.x,
+      y: record.y,
+      rot: record.rot
+    });
+    if (!bounds) return;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(229, 244, 165, 0.8)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    ctx.strokeRect(
+      bounds.x * TILE + 2,
+      bounds.y * TILE + 2,
+      bounds.w * TILE - 4,
+      bounds.h * TILE - 4
+    );
     ctx.restore();
   }
 

@@ -69,6 +69,26 @@
       </div>
     </aside>
 
+    <aside id="decorate-card" class="home-item-card decorate-card" hidden role="dialog" aria-labelledby="decorate-name">
+      <div class="home-item-head">
+        <span id="decorate-icon" class="home-item-icon" aria-hidden="true">🪑</span>
+        <strong id="decorate-name">bench</strong>
+        <span id="decorate-kind" class="home-item-tier" hidden>prop</span>
+      </div>
+      <p id="decorate-card-note" class="home-item-status" hidden></p>
+      <div class="home-item-actions">
+        <button id="decorate-move" class="pill primary" type="button">Move</button>
+        <button id="decorate-style" class="pill" type="button">Style</button>
+      </div>
+      <div class="home-item-actions">
+        <button id="decorate-rotate" class="pill" type="button">Rotate</button>
+        <button id="decorate-reset" class="pill quiet" type="button">Reset</button>
+      </div>
+      <div class="home-item-actions secondary">
+        <button id="decorate-close" class="pill quiet" type="button">Close</button>
+      </div>
+    </aside>
+
     <aside id="shop-panel" class="shop-panel" hidden role="dialog" aria-labelledby="shop-title">
       <div class="shop-head">
         <strong id="shop-title">Corner shop</strong>
@@ -88,6 +108,16 @@
         <button id="furnish-variant" class="pill" type="button">Recolour (C)</button>
         <button id="furnish-place" class="pill primary" type="button">Place (Enter)</button>
         <button id="furnish-cancel" class="pill quiet" type="button">Cancel (Esc)</button>
+      </div>
+    </div>
+
+    <div id="decorate-hud" class="furnish-hud decorate-hud" hidden role="group" aria-label="Decorate mode">
+      <strong id="decorate-hud-title">decorate mode</strong>
+      <span id="decorate-note"></span>
+      <div class="furnish-actions">
+        <button id="decorate-place" class="pill primary" type="button">Place (Enter)</button>
+        <button id="decorate-cancel" class="pill quiet" type="button">Done (Esc)</button>
+        <button id="decorate-reset-place" class="pill quiet" type="button">Reset place</button>
       </div>
     </div>
 

@@ -446,8 +446,10 @@ body.activity-open .minimap-wrap,
 body.activity-open #npc-card,
 body.activity-open #home-note,
 body.activity-open #home-item-card,
+body.activity-open #decorate-card,
 body.activity-open #shop-panel,
-body.activity-open #furnish-hud {
+body.activity-open #furnish-hud,
+body.activity-open #decorate-hud {
   display: none !important;
 }
 
@@ -707,6 +709,28 @@ body.activity-open #furnish-hud {
   color: var(--muted);
   font-size: 10.5px;
   line-height: 1.4;
+}
+
+#decorate-note {
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.4;
+  min-height: 1.4em;
+}
+
+.decorate-card {
+  width: 216px;
+}
+
+.decorate-toggle,
+.decorate-reset-place {
+  min-height: 32px;
+  margin: 0 0 6px;
+  font-size: 10.5px;
+}
+
+.decorate-reset-place {
+  margin-left: 6px;
 }
 
 .furnish-actions {

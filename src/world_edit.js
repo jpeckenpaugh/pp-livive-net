@@ -12,6 +12,7 @@
 import sceneryData from '../data/nature_scenery.json' with { type: 'json' };
 import {
   locationBlockedTiles,
+  locationPropSize,
   normalizePropRotation,
   normalizePropSeed,
   normalizePropVariant,
@@ -87,6 +88,24 @@ export function normalizeSceneryScale(scale) {
 }
 
 /**
+ * A building-owned travel trigger in its compact save shape. Offsets are
+ * relative to the building origin, so the door travels with a swapped facade.
+ * A door without a destination or an in-footprint offset is not a door.
+ */
+function normalizeBuildingDoor(entry, prop, x, y, rot) {
+  if (!isRecord(entry)) return null;
+  const to = typeof entry.to === 'string' ? entry.to.trim().slice(0, 48) : '';
+  if (!to) return null;
+  const dx = finiteTile(entry.dx);
+  const dy = finiteTile(entry.dy);
+  if (dx === null || dy === null) return null;
+  const size = locationPropSize(prop?.id, rot);
+  if (!size || dx < 0 || dx >= size.w || dy < 0 || dy >= size.h) return null;
+  const prompt = typeof entry.prompt === 'string' ? entry.prompt.trim().slice(0, 120) : '';
+  return { to, dx, dy, ...(prompt ? { prompt } : {}) };
+}
+
+/**
  * Normalise a prop list, whether it came from `data/world.json`, a save, or a
  * live game. Known catalogue rows only, in bounds, quarter turns, unique uids,
  * and no two solid footprints on the same tile. Ground cover never reserves a
@@ -125,7 +144,7 @@ export function normalizeWorldProps(entries) {
       : '';
     const seed = normalizePropSeed(entry.seed || entry.detailSeed);
     const lot = typeof entry.lot === 'string' && entry.lot ? entry.lot.slice(0, 16) : '';
-    const door = isRecord(entry.door) ? { ...entry.door } : null;
+    const door = normalizeBuildingDoor(entry.door, prop, x, y, rot);
 
     records.push({
       uid: resolveUid(entry, 'prop', prop.id, x, y, usedUids),
@@ -213,6 +232,247 @@ function solidTiles(record) {
 /** Blocked tiles for a whole prop list, with building openings respected. */
 export function worldBlockedTiles(props = []) {
   return locationBlockedTiles(props);
+}
+
+/** Buildings swap whole lots; their doors travel with them. */
+export function isWorldBuilding(record) {
+  return record?.type === 'building';
+}
+
+/**
+ * Attach each declarative travel door whose tile sits inside a building
+ * footprint to that building as `door: { to, dx, dy, prompt }`. The door tile
+ * becomes relative to the building origin, so the trigger follows a swap.
+ *
+ * A building that already carries a saved door keeps it verbatim; this is how a
+ * swapped town survives a reload. Returns the normalised prop list plus every
+ * door no building claimed (park gate, beach path, activity entrances).
+ */
+export function linkBuildingDoors(props, doors = []) {
+  const list = Array.isArray(props) ? props : [];
+  const next = list.map(record => ({ ...record }));
+  const hosts = new Map();
+  for (let index = 0; index < list.length; index += 1) {
+    const record = list[index];
+    if (!isWorldBuilding(record)) continue;
+    for (const tile of worldObjectTiles(record, 'prop')) {
+      hosts.set(propTileKey(tile), index);
+    }
+  }
+
+  const leftovers = [];
+  for (const door of Array.isArray(doors) ? doors : []) {
+    if (!isRecord(door) || door.kind === 'activity') {
+      leftovers.push(door);
+      continue;
+    }
+    const x = finiteTile(door.x);
+    const y = finiteTile(door.y);
+    const index = x === null || y === null ? undefined : hosts.get(`${x},${y}`);
+    if (index === undefined) {
+      leftovers.push(door);
+      continue;
+    }
+    const target = next[index];
+    // An already-linked building owns its trigger. A second declarative door on
+    // its footprint is stale data, not a reason to move the door again.
+    if (isRecord(target.door)) continue;
+    const meta = normalizeBuildingDoor({
+      to: door.to,
+      dx: x - Math.round(Number(target.x)),
+      dy: y - Math.round(Number(target.y)),
+      prompt: door.prompt
+    }, propDefinition(target.type), target.x, target.y, target.rot);
+    if (meta) target.door = meta;
+  }
+
+  return { props: next, doors: leftovers };
+}
+
+/**
+ * Runtime-ready building triggers in prop list order. Geometry only; the caller
+ * adds copy, confirm/cancel labels, and the enabled check.
+ */
+export function buildingDoorEntries(props = []) {
+  const entries = [];
+  for (const record of Array.isArray(props) ? props : []) {
+    if (!isWorldBuilding(record) || !isRecord(record.door)) continue;
+    const x = finiteTile(record.x);
+    const y = finiteTile(record.y);
+    if (x === null || y === null) continue;
+    const dx = finiteTile(record.door.dx);
+    const dy = finiteTile(record.door.dy);
+    if (dx === null || dy === null || typeof record.door.to !== 'string' || !record.door.to) continue;
+    entries.push({
+      uid: record.uid || '',
+      to: record.door.to,
+      dx,
+      dy,
+      x: x + dx,
+      y: y + dy,
+      prompt: typeof record.door.prompt === 'string' ? record.door.prompt : ''
+    });
+  }
+  return entries;
+}
+
+/** Swap two buildings' tiles; each keeps its own label, door, and openings. */
+export function swapWorldBuildings(props, aUid, bUid) {
+  const list = Array.isArray(props) ? props : [];
+  if (!aUid || !bUid || aUid === bUid) return list;
+  const a = list.find(record => record?.uid === aUid && isWorldBuilding(record));
+  const b = list.find(record => record?.uid === bUid && isWorldBuilding(record));
+  if (!a || !b) return list;
+  const ax = finiteTile(a.x);
+  const ay = finiteTile(a.y);
+  const bx = finiteTile(b.x);
+  const by = finiteTile(b.y);
+  if (ax === null || ay === null || bx === null || by === null) return list;
+  return list.map(record => {
+    if (record === a) return { ...record, x: bx, y: by };
+    if (record === b) return { ...record, x: ax, y: ay };
+    return record;
+  });
+}
+
+/**
+ * Validate a two-building lot swap. Both facades must stay in bounds, keep
+ * their doorway clear of solids, scenery, characters, the spawn, and every
+ * door (including the other buildings' triggers), and leave the spawn
+ * connected to every trigger.
+ */
+export function canSwapWorldBuildings({
+  props = [],
+  aUid = null,
+  bUid = null,
+  terrain = null,
+  spawn = null,
+  doors = [],
+  scenery = [],
+  characters = [],
+  requirePath = true
+} = {}) {
+  const list = Array.isArray(props) ? props : [];
+  const a = list.find(record => record?.uid === aUid && isWorldBuilding(record));
+  const b = list.find(record => record?.uid === bUid && isWorldBuilding(record));
+  if (!a || !b || aUid === bUid) return { ok: false, reason: 'unknown', tiles: [] };
+
+  const next = swapWorldBuildings(list, aUid, bUid);
+  const movedUids = new Set([aUid, bUid]);
+  const moved = next.filter(record => movedUids.has(record?.uid));
+  const others = next.filter(record => !movedUids.has(record?.uid));
+  if (moved.length !== 2) return { ok: false, reason: 'unknown', tiles: [] };
+
+  const blockedByBuilding = moved.map(record => new Set(solidTiles(record).map(propTileKey)));
+  const movedBlocked = new Set(blockedByBuilding.flatMap(set => [...set]));
+
+  for (const record of moved) {
+    const tiles = worldObjectTiles(record, 'prop');
+    if (!tiles.length || tiles.some(tile => (
+      tile.x < 0 || tile.x >= WORLD_SIZE || tile.y < 0 || tile.y >= WORLD_SIZE
+    ))) {
+      return { ok: false, reason: 'outside-world', tiles };
+    }
+  }
+
+  // The two facades may not interlock, and neither may land on a solid prop.
+  const taken = worldBlockedTiles(others);
+  if (blockedByBuilding[0] && [...blockedByBuilding[0]].some(key => blockedByBuilding[1].has(key))) {
+    return { ok: false, reason: 'overlap', tiles: [] };
+  }
+  if ([...movedBlocked].some(key => taken.has(key))) {
+    return { ok: false, reason: 'overlap', tiles: [] };
+  }
+
+  // A tree or flower inside a facade would draw through it. Scenery never
+  // blocks a step, but a building is not allowed to swallow it.
+  const sceneryKeys = new Set(
+    (Array.isArray(scenery) ? scenery : [])
+      .map(item => `${finiteTile(item?.x)},${finiteTile(item?.y)}`)
+  );
+  if ([...movedBlocked].some(key => sceneryKeys.has(key))) {
+    return { ok: false, reason: 'overlap', tiles: [] };
+  }
+
+  const spawnTile = isRecord(spawn)
+    ? { x: finiteTile(spawn.x), y: finiteTile(spawn.y) }
+    : null;
+  if (spawnTile && spawnTile.x !== null && spawnTile.y !== null
+    && movedBlocked.has(propTileKey(spawnTile))) {
+    return { ok: false, reason: 'spawn', tiles: [] };
+  }
+
+  const characterKeys = new Set(tileKeyList(characters).map(propTileKey));
+  if ([...movedBlocked].some(key => characterKeys.has(key))) {
+    return { ok: false, reason: 'character', tiles: [] };
+  }
+
+  // Every trigger that stays put, plus every building trigger at its new tile.
+  const fixedDoors = tileKeyList(doors);
+  const buildingDoors = buildingDoorEntries(next);
+  const doorTiles = [
+    ...fixedDoors,
+    ...buildingDoors.map(door => ({ x: door.x, y: door.y }))
+  ];
+  const doorKeys = new Set(doorTiles.map(propTileKey));
+  if ([...movedBlocked].some(key => doorKeys.has(key))) {
+    return { ok: false, reason: 'door', tiles: [] };
+  }
+
+  if (requirePath && terrain && spawnTile && spawnTile.x !== null && spawnTile.y !== null) {
+    const blocked = new Set(taken);
+    for (const key of movedBlocked) blocked.add(key);
+    const reachable = reachableWorldTiles(terrain, spawnTile, blocked);
+    if (doorTiles.some(tile => !reachable.has(propTileKey(tile)))) {
+      return { ok: false, reason: 'no-path', tiles: [] };
+    }
+  }
+
+  return { ok: true, reason: null, tiles: [] };
+}
+
+/**
+ * Topmost editable object at one tile. A solid prop wins over ground cover,
+ * and any prop wins over scenery (scenery draws beneath props). Returns
+ * `{ kind, record }` or null. Used by the Decorate hit test.
+ */
+export function worldObjectAt(props, scenery, x, y) {
+  const tileX = finiteTile(x);
+  const tileY = finiteTile(y);
+  if (tileX === null || tileY === null) return null;
+
+  const hits = (Array.isArray(props) ? props : []).filter(record => (
+    worldObjectTiles(record, 'prop').some(tile => tile.x === tileX && tile.y === tileY)
+  ));
+  if (hits.length) {
+    const solid = record => {
+      const prop = propDefinition(record?.type);
+      return prop?.solid === true && prop.ground !== true;
+    };
+    const ordered = [...hits].sort((a, b) => (
+      (solid(b) ? 1 : 0) - (solid(a) ? 1 : 0)
+      || (Number(b?.y) || 0) - (Number(a?.y) || 0)
+    ));
+    return { kind: 'prop', record: ordered[0] };
+  }
+
+  const sceneryRecord = (Array.isArray(scenery) ? scenery : []).find(record => (
+    finiteTile(record?.x) === tileX && finiteTile(record?.y) === tileY
+  ));
+  return sceneryRecord ? { kind: 'scenery', record: sceneryRecord } : null;
+}
+
+/**
+ * The actions a Decorate card offers for one object. Scenery has no rotation;
+ * a building offers only a lot swap and Close.
+ */
+export function worldObjectCardActions(kind, record) {
+  if (!record) return ['close'];
+  if (kind === 'prop' && isWorldBuilding(record)) return ['swap', 'close'];
+  const actions = ['move', 'style'];
+  if (kind === 'prop') actions.push('rotate');
+  actions.push('reset', 'close');
+  return actions;
 }
 
 /**
@@ -459,6 +719,56 @@ export function styleWorldObject(objects, uid, patch = {}) {
     return updated;
   });
   return found ? next : list;
+}
+
+/**
+ * Commit one Decorate draft onto its list. The uid never changes, so a moved
+ * object stays the same object to the save and to `resetWorldObject`.
+ */
+export function applyWorldDraft(objects, draft = {}) {
+  const list = Array.isArray(objects) ? objects : [];
+  const uid = typeof draft?.uid === 'string' ? draft.uid : '';
+  if (!uid) return list;
+  const x = finiteTile(draft.x);
+  const y = finiteTile(draft.y);
+  let found = false;
+  const next = list.map(record => {
+    if (record?.uid !== uid) return record;
+    found = true;
+    const updated = { ...record };
+    if (x !== null && y !== null) {
+      updated.x = x;
+      updated.y = y;
+    }
+    if (draft.rot !== undefined) updated.rot = normalizePropRotation(draft.rot);
+    const sceneryOnly = SCENERY_TYPE_SET.has(record.type) && !propDefinition(record.type);
+    if (sceneryOnly) {
+      if (draft.scale !== undefined) updated.scale = normalizeSceneryScale(draft.scale);
+      return updated;
+    }
+    const prop = propDefinition(record.type);
+    if (draft.variant !== undefined) updated.variant = normalizePropVariant(prop, draft.variant);
+    if (draft.seed !== undefined) {
+      const seed = normalizePropSeed(draft.seed);
+      if (seed) updated.seed = seed;
+      else delete updated.seed;
+    }
+    return updated;
+  });
+  return found ? next : list;
+}
+
+/**
+ * Put one object back at its seeded position/style. The matching record comes
+ * from the same data-derived defaults list; an object with no seed is untouched.
+ */
+export function resetWorldObject(objects, uid, defaults = []) {
+  const list = Array.isArray(objects) ? objects : [];
+  if (!uid) return list;
+  const source = (Array.isArray(defaults) ? defaults : [])
+    .find(record => record?.uid === uid);
+  if (!source) return list;
+  return list.map(record => (record?.uid === uid ? { ...source } : record));
 }
 
 /**
