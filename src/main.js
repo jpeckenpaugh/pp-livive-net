@@ -223,7 +223,7 @@ let furnish = null;
  * the live draft, and an optional scoot confirmation. There is no mode flag;
  * the card, the draft, and the confirmation are the only surfaces.
  */
-const decorate = { card: null, draft: null, pending: null };
+const decorate = { card: null, draft: null, pending: null, drag: null };
 /** Doors that do not belong to a building, kept for building path checks. */
 let fixedDoors = [];
 /** Park Passport progress: completed goal ids mapped to a timestamp. */
@@ -3308,9 +3308,15 @@ function validateDecorateDraft() {
 
 /** Small banner: only a live draft, or its scoot confirmation, shows it. */
 function refreshDecorateHud() {
+  const draft = decorate.draft;
+  // The object card is independent of the draft HUD: show it whenever an object
+  // is selected and no draft has taken over. This must happen before the HUD's
+  // early return, or a selected object only ever gets its outline.
+  const card = $('decorate-card');
+  if (card) card.hidden = !decorate.card || Boolean(draft);
+
   const hud = $('decorate-hud');
   if (!hud) return;
-  const draft = decorate.draft;
   hud.hidden = !draft || Boolean(decorate.pending);
   if (hud.hidden) return;
   const title = $('decorate-hud-title');
@@ -3329,8 +3335,6 @@ function refreshDecorateHud() {
   if (place) place.disabled = !draft || Boolean(draft.reason);
   const cancel = $('decorate-cancel');
   if (cancel) cancel.textContent = 'Cancel (Esc)';
-  const card = $('decorate-card');
-  if (card) card.hidden = !decorate.card || Boolean(draft);
 }
 
 function decorateStyleNote(record) {
@@ -3448,6 +3452,7 @@ function openDecorateCard(kind, uid) {
 function closeDecorateCard() {
   if (!decorate.card) return false;
   decorate.card = null;
+  decorate.drag = null;
   if (game && !decorate.draft) game.worldSelected = null;
   const card = $('decorate-card');
   if (card) card.hidden = true;
@@ -3504,6 +3509,7 @@ function closeWorldEditor() {
   decorate.card = null;
   decorate.draft = null;
   decorate.pending = null;
+  decorate.drag = null;
   hideBuildingConfirmation();
   if (game) {
     game.worldDraft = null;
@@ -3549,6 +3555,7 @@ function cancelDecorateDraft({ silent = false } = {}) {
   const label = decorateLabel(decorate.draft.record);
   decorate.draft = null;
   decorate.pending = null;
+  decorate.drag = null;
   hideBuildingConfirmation();
   syncWorldDraft();
   refreshDecorateHud();
@@ -3771,6 +3778,7 @@ function placeDecorateDraft() {
   applyDecorateObjects(draft.kind, applyWorldDraft(decorateList(draft.kind), draft));
   const label = decorateLabel(draft.record);
   decorate.draft = null;
+  decorate.drag = null;
   syncWorldDraft();
   saveNow();
   sounds.play('place');
@@ -3856,7 +3864,17 @@ function handleDecorateCanvasPointer(event, point) {
     return false;
   }
   if (intent === 'open-object') {
-    openDecorateCard(hit.kind, worldObjectUid(hit.record));
+    const uid = worldObjectUid(hit.record);
+    openDecorateCard(hit.kind, uid);
+    // Remember the press so a drag can move the object directly; a tap without
+    // movement leaves the card open.
+    decorate.drag = {
+      kind: hit.kind,
+      uid,
+      startSx: point.sx,
+      startSy: point.sy,
+      moved: false
+    };
     return true;
   }
   if (intent === 'close-card') {
@@ -3864,6 +3882,31 @@ function handleDecorateCanvasPointer(event, point) {
     return false;
   }
   return false;
+}
+
+/** Press-drag on a world object: move it under the pointer and place on release. */
+function handleWorldDragMove(event) {
+  const drag = decorate.drag;
+  if (!drag || !game) return;
+  const point = game.pointerWorld(event);
+  if (!drag.moved) {
+    if (Math.hypot(point.sx - drag.startSx, point.sy - drag.startSy) < 6) return;
+    drag.moved = true;
+    if (!decorate.draft) startDecorateMove();
+  }
+  if (!decorate.draft) return;
+  moveDecorateTo(point.tileX, point.tileY);
+  event.preventDefault?.();
+}
+
+function handleWorldDragEnd() {
+  const drag = decorate.drag;
+  if (!drag) return;
+  decorate.drag = null;
+  if (!drag.moved || !decorate.draft) return;
+  // Leave an invalid draft on screen with its reason so the player can retry;
+  // a valid drop commits immediately.
+  if (!decorate.draft.reason) placeDecorateDraft();
 }
 
 /**
@@ -4796,6 +4839,9 @@ function bindEvents() {
     if (decorate.draft) cancelDecorateDraft();
     else closeDecorateCard();
   });
+  $('world')?.addEventListener('pointermove', handleWorldDragMove);
+  window.addEventListener('pointerup', handleWorldDragEnd);
+  window.addEventListener('pointercancel', handleWorldDragEnd);
   $('decorate-confirm-place')?.addEventListener('click', confirmBuildingMove);
   $('decorate-confirm-cancel')?.addEventListener('click', cancelBuildingMoveConfirmation);
   $('decorate-reset-place')?.addEventListener('click', resetDecoratePlace);
