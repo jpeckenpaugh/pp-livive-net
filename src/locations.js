@@ -19,7 +19,7 @@ import {
   typeAt
 } from './world.js';
 import { FORAGE_MUSHROOM_TYPES } from './forage.js';
-import { normalizeLocationProps } from './location_props.js';
+import { normalizeWorldProps, seedWorldScenery } from './world_edit.js';
 
 export const WORLD_CONFIG = worldData;
 export const LOCATIONS = worldData.locations || {};
@@ -291,10 +291,26 @@ export function residentsFor(id) {
   return residents;
 }
 
-/** Normalised prop records declared by a location. Legacy records get none. */
+/**
+ * The prop list for a location. A saved list is authoritative — even when it is
+ * empty — so a moved or removed object survives a reload. A record without one
+ * (and every legacy record, which has no `props` key) seeds from `data`.
+ */
 export function propsForLocation(id, record = null) {
   if (!layoutMatches(id, record)) return [];
-  return normalizeLocationProps(locationDef(id)?.props);
+  if (Array.isArray(record?.props)) return normalizeWorldProps(record.props);
+  return normalizeWorldProps(locationDef(id)?.props);
+}
+
+/**
+ * The scenery list for a location. Saved scenery wins; otherwise the generated
+ * nature scatter seeds it once. Legacy records keep the generated list so an
+ * old save looks exactly as it did before scenery was persisted.
+ */
+export function sceneryForLocation(id, record = null, generated = []) {
+  if (!layoutMatches(id, record)) return seedWorldScenery(generated);
+  if (Array.isArray(record?.scenery)) return seedWorldScenery(record.scenery);
+  return seedWorldScenery(generated);
 }
 
 /** Optional per-location tile colour overrides. Legacy records keep defaults. */

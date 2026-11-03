@@ -2,6 +2,7 @@ import { decodeTerrain, encodeTerrain } from './world.js';
 import { normalizeInventory, createItemInstance } from './inventory.js';
 import { normalizeForage } from './forage.js';
 import { normalizeGoalProgress } from './goals.js';
+import { normalizeWorldProps, normalizeWorldScenery } from './world_edit.js';
 import { voiceForRecord } from './voice/casting.js';
 
 export const STORAGE_KEY = 'playpark.save.v1';
@@ -83,6 +84,9 @@ export function activeLocation(state) {
         // Home-only add-ons. Conditional keys keep older fixtures byte-identical.
         ...(Array.isArray(record.items) ? { items: record.items } : {}),
         ...(Array.isArray(record.storage) ? { storage: record.storage } : {}),
+        // Per-location object layer. Absent lists seed from data on arrival.
+        ...(Array.isArray(record.props) ? { props: record.props } : {}),
+        ...(Array.isArray(record.scenery) ? { scenery: record.scenery } : {}),
         ...(typeof record.layout === 'string' && record.layout ? { layout: record.layout } : {})
       };
     }
@@ -369,7 +373,9 @@ export function captureLocationRecord({
   forage = null,
   decor = null,
   items = null,
-  storage = null
+  storage = null,
+  props = null,
+  scenery = null
 } = {}, previous = null) {
   const base = isObject(previous) ? previous : {};
   const encodedTerrain = Array.isArray(terrain) ? encodeTerrain(terrain) : terrain;
@@ -402,6 +408,14 @@ export function captureLocationRecord({
     : (Array.isArray(base.storage)
       ? base.storage.filter(isObject).map(entry => ({ ...entry }))
       : null);
+  // The per-location object layer. A live list (even empty) wins; a record that
+  // predates the layer keeps its absence so it still seeds from data on arrival.
+  const nextProps = Array.isArray(props)
+    ? normalizeWorldProps(props)
+    : (Array.isArray(base.props) ? normalizeWorldProps(base.props) : null);
+  const nextScenery = Array.isArray(scenery)
+    ? normalizeWorldScenery(scenery)
+    : (Array.isArray(base.scenery) ? normalizeWorldScenery(base.scenery) : null);
 
   return {
     ...base,
@@ -413,7 +427,9 @@ export function captureLocationRecord({
     forage: normalizeForage(forage ?? base.forage),
     ...(nextDecor ? { decor: nextDecor } : {}),
     ...(nextItems ? { items: nextItems } : {}),
-    ...(nextStorage ? { storage: nextStorage } : {})
+    ...(nextStorage ? { storage: nextStorage } : {}),
+    ...(nextProps ? { props: nextProps } : {}),
+    ...(nextScenery ? { scenery: nextScenery } : {})
   };
 }
 
@@ -544,7 +560,10 @@ function migrateV4(state) {
       npcs: Array.isArray(park.npcs)
         ? park.npcs.filter(isObject).map(migrateNpcRecord)
         : [],
-      forage: normalizeForage(park.forage)
+      forage: normalizeForage(park.forage),
+      // Additive object layer. Legacy records keep no lists and seed on arrival.
+      ...(Array.isArray(park.props) ? { props: park.props } : {}),
+      ...(Array.isArray(park.scenery) ? { scenery: park.scenery } : {})
     }
   };
   if (sharedPlayer) next.player = sharedPlayer;

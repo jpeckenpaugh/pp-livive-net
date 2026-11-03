@@ -32,6 +32,7 @@ import {
   locationTheme,
   propsForLocation,
   residentsFor,
+  sceneryForLocation,
   travelTargets,
   worldFor
 } from './locations.js';
@@ -2144,8 +2145,12 @@ function applyState(state) {
   const locationProps = propsForLocation(locationId, layoutRecord);
   const locationBlocked = locationBlockedTiles(locationProps);
   // Scenery belongs to generated ground: never leave a tree inside a building.
-  const scenery = (worldData.scenery || [])
+  // The filtered scatter is only the first-load seed; saved scenery wins after.
+  const generatedScenery = (worldData.scenery || [])
     .filter(item => !locationBlocked.has(`${item.x},${item.y}`));
+  const locationScenery = sceneryForLocation(locationId, layoutRecord, generatedScenery);
+  // The renderer and forage lookup key scenery by `id`; the save stores `uid`.
+  const scenery = locationScenery.map(item => ({ ...item, id: item.uid }));
   const locationSpawn = locationDef(locationId)?.spawn || worldData.spawn || { x: 32, y: 32 };
   const arrival = townRegenerated
     ? { x: worldData.spawn.x, y: worldData.spawn.y, direction: 0 }
@@ -2418,7 +2423,9 @@ function applyState(state) {
           terrain,
           player: rawPlayer,
           npcs,
-          forage: game.forage
+          forage: game.forage,
+          props: locationProps,
+          scenery
         })
       };
   // Seal the one-time Town rebuild into the record so the next arrival finds a
@@ -2430,7 +2437,9 @@ function applyState(state) {
       terrain,
       player: rawPlayer,
       npcs: [],
-      forage: locationState.forage
+      forage: locationState.forage,
+      props: locationProps,
+      scenery
     }, locationStates.town || null);
   }
   currentLocationId = locationId;
@@ -2550,6 +2559,8 @@ function captureLocation() {
     // Location residents are instantiated from data on every arrival.
     npcs: (game.npcs || []).filter(npc => !npc.resident),
     forage: game.forage,
+    props: game.locationProps,
+    scenery: game.scenery,
     items: currentLocationId === 'home' ? game.homeItems : null,
     storage: currentLocationId === 'home' ? activeHomeStorage() : null
   }, locationStates[currentLocationId] || null);
