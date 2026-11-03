@@ -10,6 +10,13 @@ import { validateMeta, INPUT_MODES, RENDER_LAYERS } from '../src/minigames/contr
 import { REJECT_REASONS } from '../src/minigames/strip.js';
 import { EFFECT_MOTIONS, EFFECT_SLOTS } from '../src/effects.js';
 import { TRADE_REJECT_REASONS, TRADE_TEMPLATES, validateOffer } from '../src/trade.js';
+import {
+  BACKDROPS,
+  PLATFORM_MATERIALS,
+  PROP_TYPES,
+  SUBSURFACE_TYPES,
+  SURFACE_TYPES
+} from '../src/activities/platformer.js';
 
 function readJson(name) {
   return JSON.parse(readFileSync(new URL(`../data/${name}`, import.meta.url), 'utf8'));
@@ -93,6 +100,7 @@ test('every full-view activity resolves its definition and every entrance names 
     assert.equal(definition.id, meta.activityId);
     assert.equal(definition.title, meta.title);
     assert.equal(typeof definition.enabled, 'boolean');
+    assert.equal(typeof definition.badge, 'string', `${meta.id} needs a board badge`);
     assert.ok(Number.isFinite(definition.par) && definition.par > 0, `${meta.id} needs a par time`);
 
     const derived = (definition.course.finishX - definition.course.startX) / definition.physics.ghostSpeed;
@@ -111,6 +119,29 @@ test('every full-view activity resolves its definition and every entrance names 
       );
       assert.ok(Number.isInteger(door.x) && Number.isInteger(door.y), `${locationId} entrance needs a tile`);
       assert.equal(typeof door.prompt, 'string');
+    }
+  }
+});
+
+test('every course theme uses the side-view terrain vocabulary', () => {
+  const courses = activities.activities || {};
+  assert.ok(Object.keys(courses).length >= 3, 'the board offers all three courses');
+
+  for (const [id, definition] of Object.entries(courses)) {
+    const theme = definition.theme;
+    assert.ok(SURFACE_TYPES.includes(theme.surface), `${id} surface ${theme.surface}`);
+    assert.ok(SUBSURFACE_TYPES.includes(theme.subsurface), `${id} subsurface ${theme.subsurface}`);
+    assert.ok(PLATFORM_MATERIALS.includes(theme.platformMaterial), `${id} platform ${theme.platformMaterial}`);
+    assert.ok(BACKDROPS.includes(theme.backdrop), `${id} backdrop ${theme.backdrop}`);
+    assert.ok(Array.isArray(theme.props) && theme.props.length > 0, `${id} needs set dressing`);
+
+    for (const prop of theme.props) {
+      assert.ok(PROP_TYPES.includes(prop.type), `${id} prop type ${prop.type}`);
+      assert.ok(Number.isFinite(prop.x) && prop.x >= 0 && prop.x <= definition.course.width, `${id} prop x`);
+      assert.ok(Number.isFinite(prop.y), `${id} prop y`);
+    }
+    if (theme.water !== undefined) {
+      assert.equal(typeof theme.water, 'string', `${id} water must be a colour`);
     }
   }
 });

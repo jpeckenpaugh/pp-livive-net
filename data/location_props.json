@@ -522,6 +522,18 @@
       ],
       "use": { "verb": "Read", "kind": "read", "line": "a poster advertises the summer picnic." }
     },
+    "course-kiosk": {
+      "id": "course-kiosk",
+      "label": "Course kiosk",
+      "size": { "w": 2, "h": 2 },
+      "solid": false,
+      "shape": "course-kiosk",
+      "colors": { "base": "#7a5533", "accent": "#efe3bd", "trim": "#3f2d1c" },
+      "variants": [
+        { "name": "natural", "colors": { "base": "#7a5533", "accent": "#efe3bd" } },
+        { "name": "painted green", "colors": { "base": "#5f7357", "accent": "#eef0c9", "trim": "#3d4b37" } }
+      ]
+    },
     "bike-rack": {
       "id": "bike-rack",
       "label": "Bike rack",

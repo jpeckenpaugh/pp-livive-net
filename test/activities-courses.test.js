@@ -2,7 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ACTIVITIES,
+  BACKDROPS,
   CourseActivity,
+  PLATFORM_MATERIALS,
+  PROP_TYPES,
+  SUBSURFACE_TYPES,
+  SURFACE_TYPES,
+  activityChoiceLabel,
   activityList,
   bestMsFor,
   buildCourse,
@@ -21,6 +27,13 @@ import { migrateSave, normalizeActivities, serializeSave } from '../src/storage.
 import miniGamesData from '../data/minigames.json' with { type: 'json' };
 
 const COURSE_IDS = ['jungle-gym', 'rooftops', 'shoreline'];
+
+/** The props that give each course its look: park, city roof, beach. */
+const SIGNATURE_PROPS = {
+  'jungle-gym': ['tree', 'bush', 'bench', 'lamp', 'flag'],
+  rooftops: ['tank', 'vent', 'sign', 'lamp'],
+  shoreline: ['palm', 'umbrella', 'towel', 'shell', 'hut']
+};
 
 function grassTerrain() {
   return Array.from({ length: 64 }, () => Array.from({ length: 64 }, () => 'grass'));
@@ -44,6 +57,50 @@ function runCourse(definition, maxSeconds = 120) {
     elapsed += dt;
   }
   return run;
+}
+
+/** Canvas stub that records what the terrain renderer paints. */
+function recordingContext() {
+  const calls = { fills: [], gradients: [], paths: 0, strokes: 0, texts: [] };
+  return {
+    calls,
+    fillStyle: '#000000',
+    strokeStyle: '#000000',
+    lineWidth: 1,
+    lineCap: 'butt',
+    globalAlpha: 1,
+    font: '',
+    textAlign: 'left',
+    textBaseline: 'alphabetic',
+    save() {},
+    restore() {},
+    setTransform() {},
+    translate() {},
+    scale() {},
+    rotate() {},
+    beginPath() { calls.paths += 1; },
+    closePath() {},
+    moveTo() {},
+    lineTo() {},
+    quadraticCurveTo() {},
+    bezierCurveTo() {},
+    arc() {},
+    ellipse() {},
+    rect() {},
+    roundRect() {},
+    clip() {},
+    setLineDash() {},
+    fill() { calls.fills.push(this.fillStyle); },
+    stroke() { calls.strokes += 1; },
+    fillRect() { calls.fills.push(this.fillStyle); },
+    strokeRect() {},
+    fillText(text) { calls.texts.push(String(text)); },
+    createLinearGradient() {
+      const stops = [];
+      calls.gradients.push(stops);
+      return { addColorStop(offset, colour) { stops.push(colour); } };
+    }
+  };
 }
 
 function baseGame() {
@@ -73,6 +130,11 @@ test('all three courses are enabled, themed, and structurally valid', () => {
 
   const skies = new Set();
   const grounds = new Set();
+  const badges = new Map([
+    ['jungle-gym', '🌿'],
+    ['rooftops', '🏙️'],
+    ['shoreline', '🏖️']
+  ]);
   for (const id of COURSE_IDS) {
     const definition = ACTIVITIES[id];
     const report = validateActivityDefinition(definition);
@@ -80,6 +142,10 @@ test('all three courses are enabled, themed, and structurally valid', () => {
     assert.equal(definition.id, id);
     assert.equal(definition.enabled, true);
     assert.equal(definition.title.length > 0, true);
+
+    // One glanceable badge per course, used by the course board row.
+    assert.equal(definition.badge, badges.get(id), `${id} badge`);
+    assert.ok(activityChoiceLabel(definition, 28420).startsWith(`${definition.badge} `), `${id} board badge`);
 
     // Par is the ghost's pace; the declared number must match this course.
     const derived = parTimeFor(buildCourse(definition), definition.physics);
@@ -107,6 +173,168 @@ test('every course is finishable under par by a clean lip-jump run', () => {
     assert.ok(run.finishTime > 5, `${id} finished suspiciously fast`);
     assert.ok(run.finishTime < definition.par, `${id} finished at ${run.finishTime}, par ${definition.par}`);
     assert.ok(run.jumps > 0, `${id} should need at least one jump`);
+  }
+});
+
+test('every course declares a complete side-view terrain theme', () => {
+  const surfaces = new Set();
+  const backdrops = new Set();
+  const materials = new Set();
+
+  for (const id of COURSE_IDS) {
+    const definition = ACTIVITIES[id];
+    const theme = definition.theme;
+
+    assert.ok(SURFACE_TYPES.includes(theme.surface), `${id} surface ${theme.surface}`);
+    assert.ok(SUBSURFACE_TYPES.includes(theme.subsurface), `${id} subsurface ${theme.subsurface}`);
+    assert.ok(PLATFORM_MATERIALS.includes(theme.platformMaterial), `${id} platform ${theme.platformMaterial}`);
+    assert.ok(BACKDROPS.includes(theme.backdrop), `${id} backdrop ${theme.backdrop}`);
+    surfaces.add(theme.surface);
+    backdrops.add(theme.backdrop);
+    materials.add(theme.platformMaterial);
+
+    // Only the shore course floods its pits.
+    if (id === 'shoreline') assert.equal(typeof theme.water, 'string', 'shoreline needs water');
+    else assert.equal(theme.water, undefined, `${id} should stay dry`);
+
+    // Set dressing stands on the authored ground line, never over a pit.
+    assert.ok(Array.isArray(theme.props) && theme.props.length >= 6, `${id} needs props`);
+    const propTypes = new Set(theme.props.map(prop => prop.type));
+    for (const type of SIGNATURE_PROPS[id]) {
+      assert.ok(propTypes.has(type), `${id} needs a ${type} for its look`);
+    }
+    for (const [index, prop] of theme.props.entries()) {
+      assert.ok(PROP_TYPES.includes(prop.type), `${id} props[${index}] type ${prop.type}`);
+      assert.ok(Number.isFinite(prop.x) && prop.x >= 0 && prop.x <= definition.course.width, `${id} props[${index}] x`);
+      assert.ok(Number.isFinite(prop.y), `${id} props[${index}] y`);
+      assert.ok(prop.scale === undefined || prop.scale > 0, `${id} props[${index}] scale`);
+      const standing = definition.course.ground.some(segment => prop.x >= segment.x && prop.x <= segment.x + segment.w);
+      assert.ok(standing, `${id} prop at ${prop.x} floats over a gap`);
+    }
+  }
+
+  assert.equal(backdrops.size, 3, 'each course needs its own backdrop');
+  assert.equal(surfaces.size, 3, 'each course needs its own surface');
+  assert.equal(materials.size, 3, 'each course needs its own platform material');
+});
+
+test('every prop stands on the ground line or on a real platform deck', () => {
+  for (const id of COURSE_IDS) {
+    const { course, theme } = ACTIVITIES[id];
+    for (const prop of theme.props) {
+      const onGround = prop.y === course.groundY;
+      const deck = course.platforms.find(platform => (
+        Math.abs(platform.y - prop.y) < 0.001
+        && prop.x >= platform.x - 24
+        && prop.x <= platform.x + platform.w + 24
+      ));
+      assert.ok(onGround || deck, `${id} ${prop.type}@${prop.x} floats at y ${prop.y}`);
+    }
+  }
+});
+
+test('badges stay short, friendly, and optional', () => {
+  const base = ACTIVITIES['jungle-gym'];
+  const missing = { ...base };
+  delete missing.badge;
+  assert.equal(validateActivityDefinition(missing).ok, true, 'a badge is optional');
+
+  for (const badge of ['', '   ', 7, 'not-an-emoji maybe too long']) {
+    const report = validateActivityDefinition({ ...base, badge });
+    assert.equal(report.ok, false, `badge ${JSON.stringify(badge)} should fail`);
+    assert.ok(report.errors.some(error => error.includes('badge')), 'error names the badge');
+  }
+});
+
+test('theme vocabulary rejects unknown materials and keeps the new keys optional', () => {
+  const base = ACTIVITIES['jungle-gym'];
+  const bad = {
+    ...base,
+    theme: {
+      ...base.theme,
+      surface: 'lava',
+      subsurface: 'slime',
+      platformMaterial: 'glass',
+      backdrop: 'moon',
+      water: 12,
+      props: [
+        { type: 'dragon', x: 100, y: 440 },
+        { type: 'tree', x: -5, y: 440 },
+        { type: 'tree', x: 999999, y: 440 },
+        { type: 'tree', x: 200, y: 440, scale: 0 }
+      ]
+    }
+  };
+  const report = validateActivityDefinition(bad);
+  assert.equal(report.ok, false);
+  for (const needle of [
+    'theme.surface', 'theme.subsurface', 'theme.platformMaterial', 'theme.backdrop',
+    'theme.water', 'type must be one of', 'x must be a non-negative', 'inside the course', 'scale'
+  ]) {
+    assert.ok(report.errors.some(error => error.includes(needle)), `expected an error mentioning ${needle}`);
+  }
+
+  // A theme written before the terrain pass still validates.
+  const legacy = { ...base, theme: { ...base.theme } };
+  delete legacy.theme.surface;
+  delete legacy.theme.subsurface;
+  delete legacy.theme.platformMaterial;
+  delete legacy.theme.backdrop;
+  delete legacy.theme.props;
+  const legacyReport = validateActivityDefinition(legacy);
+  assert.equal(legacyReport.ok, true, legacyReport.errors.join('; '));
+});
+
+test('course geometry is independent of the visual theme', () => {
+  for (const id of COURSE_IDS) {
+    const definition = ACTIVITIES[id];
+    const plain = buildCourse({ ...definition, theme: {} });
+    const painted = buildCourse(definition);
+    assert.deepEqual(plain.solids, painted.solids);
+    assert.deepEqual(plain.oneWays, painted.oneWays);
+
+    // The colliders are the authored ground and platforms, one for one.
+    const raw = definition.course;
+    assert.deepEqual(
+      painted.solids.map(({ x, y, w, h }) => ({ x, y, w, h })),
+      raw.ground.map(segment => ({ x: segment.x, y: raw.groundY, w: segment.w, h: raw.groundDepth }))
+    );
+    assert.deepEqual(
+      painted.oneWays.map(({ x, y, w, h }) => ({ x, y, w, h })),
+      raw.platforms.map(platform => ({ x: platform.x, y: platform.y, w: platform.w, h: platform.h || 16 }))
+    );
+  }
+});
+
+test('the terrain renderer paints all three courses at desktop and narrow widths', () => {
+  for (const id of COURSE_IDS) {
+    const definition = ACTIVITIES[id];
+    const activity = createActivity({ meta: { id, activityId: id, title: definition.title } });
+    activity.open({ seats: [{ character: { id: 'player', recipe: { seed: 'p', look: {} } } }] });
+    const before = JSON.stringify(activity.course);
+
+    for (const size of [
+      { width: 1024, height: 768, dpr: 2 },
+      { width: 360, height: 640, dpr: 1 }
+    ]) {
+      const ctx = recordingContext();
+      assert.equal(activity.renderView(ctx, size), true, `${id} did not render at ${size.width}px`);
+      assert.ok(activity.viewWidth > 0, `${id} should report a view width`);
+      assert.ok(ctx.calls.fills.length > 40, `${id} should paint a full frame`);
+      assert.ok(ctx.calls.paths > 10, `${id} should paint shaped terrain, props, and gates`);
+      assert.equal(ctx.calls.texts.length, 0, 'the course paints no text into the scene');
+    }
+
+    assert.equal(JSON.stringify(activity.course), before, `${id} render must not move collision`);
+
+    if (id === 'shoreline') {
+      const ctx = recordingContext();
+      activity.renderView(ctx, { width: 1024, height: 768, dpr: 1 });
+      assert.ok(
+        ctx.calls.gradients.some(stops => stops.includes(definition.theme.water)),
+        'shoreline fills the pits with water'
+      );
+    }
   }
 });
 

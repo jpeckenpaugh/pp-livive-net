@@ -20,11 +20,27 @@ import {
 } from './home_items.js';
 import { propRenderMeta, propTiles } from './location_props.js';
 import sceneryAssets from '../data/nature_scenery.json' with { type: 'json' };
+import activitiesData from '../data/activities.json' with { type: 'json' };
 
 export const TILE = 48;
 export const CHARACTER_HEIGHT = TILE * 1.72;
 export const COMPANION_HEIGHT = TILE * 1.05;
 export const PET_HEIGHT = COMPANION_HEIGHT * 2; // Twice the companion size to match 256x256 rendering area
+
+/** Course colours and pars come from the same data the course board reads. */
+const COURSES = Object.values(activitiesData.activities || {}).filter(def => def?.enabled !== false);
+const FALLBACK_COURSE_COLORS = ['#7ecb7a', '#e8c063', '#5fc7c0'];
+const COURSE_PENNANT_COLORS = [0, 1, 2].map(index => (
+  COURSES[index]?.theme?.finish || FALLBACK_COURSE_COLORS[index]
+));
+const COURSE_SIGN_ROWS = [0, 1, 2].map(index => {
+  const definition = COURSES[index];
+  return {
+    label: String(definition?.title || '').split(/\s+/)[0] || ['Jungle', 'Roofs', 'Shore'][index],
+    par: Number(definition?.par) || 0,
+    color: COURSE_PENNANT_COLORS[index]
+  };
+});
 
 const DEG_TO_RAD = Math.PI / 180;
 const RAD_TO_DEG = 180 / Math.PI;
@@ -2007,6 +2023,82 @@ function drawStringLights(ctx, box, colors) {
   }
 }
 
+/**
+ * A small painted kiosk beside the playground: posts, a shingle roof, and a
+ * board that lists the three courses with their pars. Decorative only, so the
+ * footprint stays walkable.
+ */
+function drawCourseKiosk(ctx, box, colors, time = 0) {
+  propShadow(ctx, box);
+  const width = box.width;
+  const top = box.top + TILE * 0.06;
+  const baseY = box.baseY;
+  const postW = Math.max(3, width * 0.07);
+  for (const x of [box.left + width * 0.12, box.right - width * 0.12 - postW]) {
+    fillRoundRect(ctx, x, top + TILE * 0.28, postW, baseY - top - TILE * 0.3, 2, colors.trim);
+    fillRoundRect(ctx, x + postW * 0.28, top + TILE * 0.3, postW * 0.26, baseY - top - TILE * 0.36, 1, colors.base);
+  }
+
+  // Shingle roof, wider than the board so it reads from a distance.
+  const roofY = top + TILE * 0.12;
+  ctx.fillStyle = colors.base;
+  ctx.beginPath();
+  ctx.moveTo(box.left - 3, roofY + TILE * 0.13);
+  ctx.lineTo(box.left + width * 0.16, roofY);
+  ctx.lineTo(box.right - width * 0.16, roofY);
+  ctx.lineTo(box.right + 3, roofY + TILE * 0.13);
+  ctx.closePath();
+  ctx.fill();
+  fillRoundRect(ctx, box.left - 3, roofY + TILE * 0.13, width + 6, TILE * 0.05, 1, colors.trim);
+
+  // A little pennant on the ridge, swaying on the same slow clock as the gate.
+  const sway = Math.sin((time || 0) * 1.4) * TILE * 0.05;
+  const flagX = (box.left + box.right) / 2;
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(flagX, roofY);
+  ctx.lineTo(flagX, roofY - TILE * 0.2);
+  ctx.stroke();
+  ctx.fillStyle = COURSE_PENNANT_COLORS[0];
+  ctx.beginPath();
+  ctx.moveTo(flagX, roofY - TILE * 0.2);
+  ctx.lineTo(flagX + TILE * 0.18 + sway, roofY - TILE * 0.14);
+  ctx.lineTo(flagX, roofY - TILE * 0.08);
+  ctx.closePath();
+  ctx.fill();
+
+  // Board and painted frame.
+  const boardX = box.left + width * 0.12;
+  const boardW = width * 0.76;
+  const boardY = top + TILE * 0.38;
+  const boardH = Math.max(TILE * 0.9, baseY - boardY - TILE * 0.14);
+  fillRoundRect(ctx, boardX - 2, boardY - 2, boardW + 4, boardH + 4, 3, colors.trim);
+  fillRoundRect(ctx, boardX, boardY, boardW, boardH, 2, colors.accent);
+  fillRoundRect(ctx, boardX, boardY, boardW, TILE * 0.19, 2, '#2c4a34');
+
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#f2f7d6';
+  ctx.font = `700 ${Math.max(5, Math.round(TILE * 0.1))}px system-ui, -apple-system, sans-serif`;
+  ctx.fillText('COURSES', boardX + boardW / 2, boardY + TILE * 0.095);
+
+  const rowTop = boardY + TILE * 0.26;
+  const rowH = Math.min(TILE * 0.22, (boardH - TILE * 0.28) / 3);
+  ctx.font = `600 ${Math.max(4, Math.round(TILE * 0.085))}px system-ui, -apple-system, sans-serif`;
+  for (const [index, course] of COURSE_SIGN_ROWS.entries()) {
+    const y = rowTop + index * rowH;
+    ctx.fillStyle = course.color;
+    ctx.fillRect(boardX + 2, y + rowH * 0.18, rowH * 0.5, rowH * 0.5);
+    ctx.fillStyle = '#2a3a2c';
+    ctx.textAlign = 'left';
+    const parLabel = course.par > 0 ? `${Math.round(course.par)}s` : '';
+    ctx.fillText(`${course.label} ${parLabel}`.trim(), boardX + rowH * 0.95, y + rowH * 0.46);
+  }
+  ctx.restore();
+}
+
 function drawNoticeBoard(ctx, box, colors) {
   propShadow(ctx, box);
   const top = box.top + TILE * 0.1;
@@ -2729,6 +2821,7 @@ const LOCATION_PROP_SHAPES = {
   'flower-bed': drawFlowerBed,
   'string-lights': drawStringLights,
   'notice-board': drawNoticeBoard,
+  'course-kiosk': drawCourseKiosk,
   'bike-rack': drawBikeRack,
   'deck-chair': drawDeckChair,
   towel: drawTowel,
@@ -2755,6 +2848,28 @@ const LOCATION_PROP_SHAPES = {
  * bookshelf) because its art is the outdoor/interior prop version.
  */
 const PROP_SHAPE_DRAWERS = { ...HOME_ITEM_SHAPES, ...LOCATION_PROP_SHAPES };
+
+/**
+ * Geometry for the playground gateway. Exported so tests can pin the arch to
+ * the activity door tile and keep both posts outside the trigger tile.
+ */
+export function activityGatewayLayout(door) {
+  const cx = (Number(door?.x ?? 0) + 0.5) * TILE;
+  const baseY = (Number(door?.y ?? 0) + 0.9) * TILE;
+  const width = TILE * 4.4;
+  const height = TILE * 3;
+  const postWidth = TILE * 0.18;
+  return {
+    cx,
+    baseY,
+    width,
+    height,
+    postWidth,
+    left: cx - width / 2,
+    right: cx + width / 2,
+    top: baseY - height
+  };
+}
 
 export class WorldRenderer {
   constructor({ canvas, minimap } = {}) {
@@ -3218,47 +3333,102 @@ export class WorldRenderer {
   }
 
   /**
-   * A course entrance reads as a climbing frame, not a front door: two posts,
-   * three rungs, and the same welcome ring as a travel door.
+   * A course entrance is a painted playground gateway: two timber posts, a
+   * crossbeam, a COURSES banner, and three pennants in course colours. Only the
+   * door tile itself is special; the arch is drawn around it so a character can
+   * still walk under and the trigger stays exactly where the door data says.
    */
   drawActivityDoorMarker(ctx, door, time = 0) {
-    const cx = (door.x + 0.5) * TILE;
-    const baseY = (door.y + 0.9) * TILE;
-    const frameW = TILE * 0.56;
-    const frameH = TILE * 0.86;
-    const left = cx - frameW / 2;
-    const top = baseY - frameH;
-    const pulse = 0.5 + Math.sin((time || 0) * 2.2 + door.x * 0.6) * 0.5;
+    const layout = activityGatewayLayout(door);
+    const { cx, baseY, left, right, top, width, postWidth } = layout;
+    const clock = time || 0;
+    const pulse = 0.5 + Math.sin(clock * 1.4) * 0.5;
+    const wood = '#6f4b2c';
+    const woodLight = '#966a3f';
+    const woodDark = '#3f2d1c';
 
+    // A soft pool of light marks the threshold without painting over the tile.
     ctx.save();
-    ctx.globalAlpha = 0.18 + pulse * 0.14;
+    ctx.globalAlpha = 0.12 + pulse * 0.1;
     ctx.fillStyle = '#b6e37c';
     ctx.beginPath();
-    ctx.ellipse(cx, baseY, TILE * 0.44, TILE * 0.18, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, baseY, width * 0.44, TILE * 0.2, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
     ctx.save();
-    ctx.strokeStyle = '#6f9f5b';
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(left, baseY);
-    ctx.lineTo(left, top);
-    ctx.moveTo(left + frameW, baseY);
-    ctx.lineTo(left + frameW, top);
-    for (let i = 0; i < 3; i++) {
-      const y = top + (frameH * (i + 1)) / 4;
-      ctx.moveTo(left, y);
-      ctx.lineTo(left + frameW, y);
+    const postTop = top + TILE * 0.18;
+    for (const x of [left, right - postWidth]) {
+      // Ground shadow and a sturdy foot.
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = '#0b140d';
+      ctx.beginPath();
+      ctx.ellipse(x + postWidth / 2, baseY, postWidth * 1.1, TILE * 0.11, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+
+      fillRoundRect(ctx, x - 1.5, baseY - TILE * 0.11, postWidth + 3, TILE * 0.11, 2, woodDark);
+      fillRoundRect(ctx, x, postTop, postWidth, baseY - postTop, 3, wood);
+      fillRoundRect(ctx, x + postWidth * 0.2, postTop + 2, postWidth * 0.28, baseY - postTop - 8, 1.5, woodLight);
+      fillRoundRect(ctx, x - 2, postTop - 2, postWidth + 4, TILE * 0.1, 2, woodDark);
+      fillRoundRect(ctx, x - 2, postTop - 2, postWidth + 4, TILE * 0.03, 1, woodLight);
     }
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(229, 244, 165, 0.55)';
-    ctx.lineWidth = 1;
+
+    // Crossbeam with a lit top edge.
+    fillRoundRect(ctx, left - 5, top + TILE * 0.04, width + 10, TILE * 0.17, 3, wood);
+    fillRoundRect(ctx, left - 5, top + TILE * 0.04, width + 10, TILE * 0.04, 2, woodLight);
+    fillRoundRect(ctx, left - 6, top + TILE * 0.17, width + 12, TILE * 0.03, 1.5, woodDark);
+
+    // Banner: a shallow fabric sag on the slow clock.
+    const bannerLeft = left + postWidth * 0.7;
+    const bannerRight = right - postWidth * 0.7;
+    const bannerTop = top + TILE * 0.25;
+    const bannerH = TILE * 0.5;
+    const sag = Math.sin(clock * 0.9) * TILE * 0.014;
     ctx.beginPath();
-    ctx.moveTo(left, top);
-    ctx.lineTo(left + frameW, top);
+    ctx.moveTo(bannerLeft, bannerTop);
+    ctx.lineTo(bannerRight, bannerTop);
+    ctx.lineTo(bannerRight, bannerTop + bannerH);
+    ctx.quadraticCurveTo(cx, bannerTop + bannerH + TILE * 0.08 + sag, bannerLeft, bannerTop + bannerH);
+    ctx.closePath();
+    ctx.fillStyle = '#1f3b28';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(229, 244, 165, 0.55)';
+    ctx.lineWidth = 1.5;
     ctx.stroke();
+
+    ctx.fillStyle = '#f2f7d6';
+    ctx.font = `800 ${Math.max(9, Math.round(TILE * 0.24))}px system-ui, -apple-system, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('COURSES', cx, bannerTop + bannerH * 0.46);
+
+    // Three pennants, one per course colour, swaying under the banner.
+    const pennantY = bannerTop + bannerH - 1 + sag;
+    for (const [index, color] of COURSE_PENNANT_COLORS.entries()) {
+      const x = cx + (index - 1) * TILE * 0.78;
+      const halfW = TILE * 0.12;
+      const length = TILE * 0.32;
+      const sway = Math.sin(clock * 1.8 + index * 0.9) * TILE * 0.05;
+      ctx.strokeStyle = 'rgba(229, 244, 165, 0.45)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, pennantY - 2);
+      ctx.lineTo(x, pennantY);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(x - halfW, pennantY);
+      ctx.lineTo(x + halfW, pennantY);
+      ctx.lineTo(x + sway, pennantY + length);
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 0.92;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = 'rgba(20, 36, 24, 0.35)';
+      ctx.stroke();
+    }
     ctx.restore();
   }
 

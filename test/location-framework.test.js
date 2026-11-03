@@ -205,6 +205,7 @@ test('the location prop catalog covers the framework set with complete metadata'
     'workbench', 'tool-rack', 'wardrobe', 'vanity',
     'fence', 'hedge', 'bin', 'mailbox', 'signpost', 'market-stall',
     'bus-stop', 'statue', 'flower-bed', 'string-lights', 'notice-board', 'bike-rack',
+    'course-kiosk',
     'deck-chair', 'towel', 'cooler', 'sandcastle', 'surfboard', 'buoy',
     'shell-pile', 'beach-ball', 'kite', 'shower-post',
     'globe', 'chalkboard', 'locker', 'reading-table', 'beanbag', 'easel', 'science-bench'

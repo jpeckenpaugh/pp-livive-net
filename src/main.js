@@ -115,6 +115,7 @@ import { MiniGameHost } from './minigames/host.js';
 import { formatGameStrip, turnNameFor } from './minigames/strip.js';
 import { registerContractGames } from './games/contract-adapters.js';
 import {
+  activityChoiceLabel,
   activityDefinition,
   activityList,
   bestMsFor,
@@ -931,9 +932,8 @@ function openActivityChooser(opponent = null) {
 
   const choices = courses.map(definition => {
     const best = bestMsFor(activityRecords, definition.id);
-    const bestLabel = best ? `best ${formatActivityTime(best)}s` : 'no time yet';
     return {
-      label: `${definition.title} · par ${Number(definition.par).toFixed(2)}s · ${bestLabel}`,
+      label: activityChoiceLabel(definition, best),
       className: definition.id === 'jungle-gym' ? 'primary' : 'pill',
       onClick: () => {
         dialogue.close();

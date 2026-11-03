@@ -66,6 +66,7 @@
 
         { "type": "slide", "x": 10, "y": 12 },
         { "type": "swing-frame", "x": 14, "y": 12, "variant": 1 },
+        { "type": "course-kiosk", "x": 21, "y": 17 },
         { "type": "bench", "x": 9, "y": 20 },
         { "type": "planter", "x": 9, "y": 10 },
         { "type": "planter", "x": 19, "y": 10, "variant": 1 },
