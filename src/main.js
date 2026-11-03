@@ -87,14 +87,16 @@ import {
 import { locationBlockedTiles, locationPropSize, propDefinition } from './location_props.js';
 import {
   applyWorldDraft,
+  buildingMoveConfirmation,
   canPlaceWorldObject,
-  canSwapWorldBuildings,
   isWorldBuilding,
+  planBuildingMove,
   resetLocationObjects,
   resetWorldObject,
+  resolveWorldClick,
   seedWorldProps,
   seedWorldScenery,
-  swapWorldBuildings,
+  worldEditorKeyAction,
   worldObjectAt,
   worldObjectCardActions,
   worldObjectReasonText,
@@ -217,11 +219,12 @@ let homeItemCard = null;
 /** Home Furnish mode: the selected record and its uncommitted draft placement. */
 let furnish = null;
 /**
- * Decorate mode for every non-Home location. Null when off; otherwise the
- * selected card, an optional swap pick, and (while moving) the draft.
+ * Always-on world editing for every non-Home location: the open object card,
+ * the live draft, and an optional scoot confirmation. There is no mode flag;
+ * the card, the draft, and the confirmation are the only surfaces.
  */
-let decorate = null;
-/** Doors that do not belong to a building, kept for swap validation. */
+const decorate = { card: null, draft: null, pending: null };
+/** Doors that do not belong to a building, kept for building path checks. */
 let fixedDoors = [];
 /** Park Passport progress: completed goal ids mapped to a timestamp. */
 let goalProgress = normalizeGoalProgress(null);
@@ -1261,7 +1264,7 @@ function openWizard({ fresh = false } = {}) {
   panels?.closeAllPanels();
   entered = false;
   game.setInteractive(false);
-  stopDecorate({ silent: true });
+  closeWorldEditor();
   game.setPreview(draft.world.grid, draft.worldSeed, draft.world.spawn);
   panels?.updateFriendsUI();
   wizard.setDraft(draft);
@@ -2149,7 +2152,7 @@ function applyState(state) {
   // A new world never inherits an item card or an uncommitted furnishing draft.
   closeHomeItemCard();
   endFurnish();
-  stopDecorate({ silent: true });
+  closeWorldEditor();
   closeShopPanel({ silent: true });
 
   const requested = typeof state.currentLocation === 'string' ? state.currentLocation : DEFAULT_LOCATION;
@@ -2201,7 +2204,7 @@ function applyState(state) {
   }
 
   // Travel doors inside a building footprint become that building's trigger, so
-  // they move with a swap. Everything else (park gate, beach path, activity
+  // they move with the facade. Everything else (park gate, beach path, activity
   // entrances) stays declarative and fixed.
   const doorLayer = linkLocationDoors(locationId, {
     terrain,
@@ -2710,7 +2713,7 @@ function travelTo(targetId) {
   panels?.closeAllPanels();
   closeShopPanel({ silent: true });
   cancelFurnish({ silent: true });
-  stopDecorate({ silent: true });
+  closeWorldEditor();
   closeHomeItemCard();
   wakeHomePose({ silent: true });
 
@@ -3094,7 +3097,7 @@ function placeFurnish() {
   return true;
 }
 
-// --- Decorate mode --------------------------------------------------------
+// --- World objects -------------------------------------------------------
 
 /** Scenery style cycles through these scales; all sit inside the catalogue range. */
 const DECORATE_SCALE_STEPS = [0.6, 0.75, 0.9, 1.05, 1.2, 1.4, 1.6];
@@ -3173,18 +3176,14 @@ function decorateRecord() {
 /** Backpack section: hidden at Home, where Furnish is the editor. */
 function decorateState() {
   if (currentLocationId === 'home' || !game?.player) return null;
-  const record = decorateRecord();
+  const building = isWorldBuilding(decorate.draft?.record);
   return {
-    active: Boolean(decorate),
-    selected: record ? decorateLabel(record) : '',
-    moving: decorate?.draft ? decorateLabel(decorate.draft.record) : '',
-    hint: decorate
-      ? (decorate.swap
-        ? 'tap another building to swap places · Esc cancels'
-        : decorate.draft
-          ? 'arrows move · R rotates · C restyles · Enter places · Esc cancels'
-          : 'tap a prop, tree, or building to edit it · Esc leaves')
-      : 'move and restyle props and scenery, and swap buildings between lots.'
+    moving: decorate.draft ? decorateLabel(decorate.draft.record) : '',
+    hint: decorate.draft
+      ? (building
+        ? 'arrows move · Enter places · Esc cancels'
+        : 'arrows move · R rotates · C restyles · Enter places · Esc cancels')
+      : 'tap a prop, tree, or building to edit it.'
   };
 }
 
@@ -3217,7 +3216,7 @@ function decorateCharacters() {
 function locationObjectDefaults() {
   const props = propsForLocation(currentLocationId);
   // Default buildings need their doors again, so the reset puts triggers back
-  // on the original inner tiles rather than leaving them wherever a swap put them.
+  // on the original inner tiles rather than leaving them wherever a move put them.
   const linked = linkLocationDoors(currentLocationId, {
     terrain: game?.terrain,
     spawn: locationDef(currentLocationId)?.spawn,
@@ -3230,6 +3229,13 @@ function locationObjectDefaults() {
     props: seedWorldProps(linked.props),
     scenery: seedWorldScenery(scenery)
   };
+}
+
+/** Interior rooms constrain a building; outdoor locations have no room. */
+function activeRoomTiles() {
+  const house = locationDef(currentLocationId)?.house;
+  if (!house || !game?.terrain) return null;
+  return homeRoomTiles(game.terrain, house);
 }
 
 function validateDecoratePlacement(kind, record, patch = {}) {
@@ -3249,6 +3255,25 @@ function validateDecoratePlacement(kind, record, patch = {}) {
     doors: game.doors,
     spawn: locationDef(currentLocationId)?.spawn,
     characters: decorateCharacters(),
+    roomTiles: activeRoomTiles(),
+    requirePath: true
+  });
+}
+
+/** Re-plan a building at one target; the whole layout is checked first. */
+function planActiveBuildingMove(target) {
+  const draft = decorate?.draft;
+  if (!game?.terrain || !draft || !isWorldBuilding(draft.record)) return null;
+  return planBuildingMove({
+    props: activeDecorateProps(),
+    scenery: activeDecorateScenery(),
+    record: draft.record,
+    target,
+    terrain: game.terrain,
+    doors: fixedDoors,
+    spawn: locationDef(currentLocationId)?.spawn,
+    characters: decorateCharacters(),
+    room: activeRoomTiles(),
     requirePath: true
   });
 }
@@ -3261,47 +3286,49 @@ function syncWorldDraft() {
 function validateDecorateDraft() {
   const draft = decorate?.draft;
   if (!draft) return null;
-  const placement = validateDecoratePlacement(draft.kind, draft.record, draft);
-  draft.reason = placement.ok ? null : placement.reason;
+  let placement;
+  if (isWorldBuilding(draft.record)) {
+    const plan = planActiveBuildingMove({ x: draft.x, y: draft.y });
+    placement = plan
+      ? { ok: plan.ok, reason: plan.ok ? null : plan.reason, tiles: plan.tiles || [] }
+      : { ok: false, reason: 'unknown', tiles: [] };
+    draft.reason = placement.reason;
+    draft.blocker = plan?.ok ? null : (plan?.blocker || null);
+    draft.scootCount = plan?.ok ? plan.scoots.length : 0;
+  } else {
+    placement = validateDecoratePlacement(draft.kind, draft.record, draft);
+    draft.reason = placement.ok ? null : placement.reason;
+    draft.blocker = null;
+    draft.scootCount = 0;
+  }
   syncWorldDraft();
   refreshDecorateHud();
   return placement;
 }
 
-/** Small banner: moving title, the refusal reason, and the two commit buttons. */
+/** Small banner: only a live draft, or its scoot confirmation, shows it. */
 function refreshDecorateHud() {
   const hud = $('decorate-hud');
   if (!hud) return;
-  hud.hidden = !decorate;
-  if (!decorate) return;
   const draft = decorate.draft;
+  hud.hidden = !draft || Boolean(decorate.pending);
+  if (hud.hidden) return;
   const title = $('decorate-hud-title');
-  if (title) {
-    title.textContent = decorate.swap
-      ? 'swapping buildings'
-      : draft
-        ? `moving ${decorateLabel(draft.record).toLowerCase()}`
-        : 'decorate mode';
-  }
+  if (title) title.textContent = `moving ${decorateLabel(draft.record).toLowerCase()}`;
   const note = $('decorate-note');
   if (note) {
-    if (decorate.swap) {
-      note.textContent = 'tap another building to swap places · Esc cancels';
-    } else if (draft) {
-      note.textContent = draft.reason
-        ? `cannot place: ${worldObjectReasonText(draft.reason)}`
-        : `${decorateStyleNote(draft)} · x${draft.x} y${draft.y} · tap a spot to move it`;
+    if (draft.reason) {
+      note.textContent = `cannot place: ${worldObjectReasonText(draft.reason, draft.blocker)}`;
+    } else if (draft.scootCount) {
+      note.textContent = `${draft.scootCount} nearby ${draft.scootCount === 1 ? 'object' : 'objects'} will move · x${draft.x} y${draft.y} · tap a spot`;
     } else {
-      note.textContent = 'tap a prop, tree, or building to edit it.';
+      note.textContent = `${decorateStyleNote(draft)} · x${draft.x} y${draft.y} · tap a spot to move it`;
     }
   }
   const place = $('decorate-place');
-  if (place) {
-    place.disabled = !draft || Boolean(draft.reason);
-    place.hidden = Boolean(decorate.swap);
-  }
+  if (place) place.disabled = !draft || Boolean(draft.reason);
   const cancel = $('decorate-cancel');
-  if (cancel) cancel.textContent = (draft || decorate.swap) ? 'Cancel (Esc)' : 'Done (Esc)';
+  if (cancel) cancel.textContent = 'Cancel (Esc)';
   const card = $('decorate-card');
   if (card) card.hidden = !decorate.card || Boolean(draft);
 }
@@ -3315,7 +3342,7 @@ function decorateStyleNote(record) {
   return variant?.name || variant?.label || 'plain';
 }
 
-/** Fill the card from the live record. Buildings offer Swap + Close. */
+/** Fill the card from the live record. Buildings offer Move, Reset, Close. */
 function syncDecorateCard() {
   const record = decorateRecord();
   if (!record || !decorate?.card) return false;
@@ -3342,11 +3369,10 @@ function syncDecorateCard() {
     note.hidden = false;
   }
 
-  // The primary button is Move for a prop/scenery and Swap for a building.
   const primary = $('decorate-move');
   if (primary) {
-    primary.hidden = !actions.some(action => action === 'move' || action === 'swap');
-    primary.textContent = actions.includes('swap') ? 'Swap' : 'Move';
+    primary.hidden = !actions.includes('move');
+    primary.textContent = 'Move';
   }
   for (const [id, action] of [
     ['decorate-style', 'style'],
@@ -3405,12 +3431,14 @@ function positionDecorateCard() {
 }
 
 function openDecorateCard(kind, uid) {
-  if (!decorate || !game) return false;
+  if (!game) return false;
   const record = decorateList(kind).find(item => worldObjectUid(item) === uid);
   if (!record) return false;
+  panels?.closeCard?.();
   decorate.card = { kind, uid };
-  decorate.swap = null;
-  if (game) game.worldSelected = { kind, uid };
+  decorate.pending = null;
+  hideBuildingConfirmation();
+  game.worldSelected = { kind, uid };
   syncDecorateCard();
   refreshDecorateHud();
   positionDecorateCard();
@@ -3418,9 +3446,8 @@ function openDecorateCard(kind, uid) {
 }
 
 function closeDecorateCard() {
-  if (!decorate?.card) return false;
+  if (!decorate.card) return false;
   decorate.card = null;
-  decorate.swap = null;
   if (game && !decorate.draft) game.worldSelected = null;
   const card = $('decorate-card');
   if (card) card.hidden = true;
@@ -3466,25 +3493,18 @@ function rebuildLocationDoors() {
   game.doors = [...fixedDoors, ...buildingDoorsFor(activeDecorateProps())];
 }
 
-function startDecorate() {
-  if (currentLocationId === 'home' || !game?.player) return false;
-  closeHomeItemCard();
-  cancelFurnish({ silent: true });
-  panels?.closeAllPanels();
-  decorate = { card: null, draft: null, swap: null };
-  game.worldDraft = null;
-  game.worldSelected = null;
-  clearDecoratePaths();
-  refreshDecorateHud();
-  panels?.renderInventory?.();
-  showToast('Decorate mode. Tap a prop, tree, or building to edit it.');
-  return true;
+/** Hide the small "objects will move" beat, leaving the draft alone. */
+function hideBuildingConfirmation() {
+  const box = $('decorate-confirm');
+  if (box) box.hidden = true;
 }
 
-function stopDecorate({ silent = false } = {}) {
-  if (!decorate) return false;
-  cancelDecorateDraft({ silent: true });
-  decorate = null;
+/** Clear every editor surface, e.g. before a new world or a travel. */
+function closeWorldEditor() {
+  decorate.card = null;
+  decorate.draft = null;
+  decorate.pending = null;
+  hideBuildingConfirmation();
   if (game) {
     game.worldDraft = null;
     game.worldSelected = null;
@@ -3493,19 +3513,13 @@ function stopDecorate({ silent = false } = {}) {
   if (card) card.hidden = true;
   refreshDecorateHud();
   panels?.renderInventory?.();
-  if (!silent) showToast('Done decorating.');
   return true;
-}
-
-function toggleDecorate() {
-  return decorate ? stopDecorate() : startDecorate();
 }
 
 function startDecorateMove() {
   const record = decorateRecord();
   if (!record || !decorate?.card) return false;
   const kind = decorate.card.kind;
-  if (kind === 'prop' && isWorldBuilding(record)) return startBuildingSwap();
   decorate.draft = {
     kind,
     uid: worldObjectUid(record),
@@ -3515,85 +3529,18 @@ function startDecorateMove() {
     rot: Number(record.rot) || 0,
     variant: Number(record.variant) || 0,
     scale: Number(record.scale) || 1,
-    reason: null
+    reason: null,
+    blocker: null,
+    scootCount: 0
   };
   game.worldSelected = { kind, uid: decorate.draft.uid };
   clearDecoratePaths();
   validateDecorateDraft();
   panels?.renderInventory?.();
-  showToast(`Moving the ${decorateLabel(record).toLowerCase()}. Arrows move, Enter places.`);
-  return true;
-}
-
-/** Put a building into "pick another" mode; the next building tap swaps. */
-function startBuildingSwap() {
-  const record = decorateRecord();
-  if (!record || decorate?.card?.kind !== 'prop' || !isWorldBuilding(record)) return false;
-  const buildings = activeDecorateProps().filter(isWorldBuilding);
-  if (buildings.length < 2) {
-    showToast('There is no other building to swap with.');
-    return false;
-  }
-  decorate.swap = { uid: worldObjectUid(record) };
-  game.worldSelected = { kind: 'prop', uid: decorate.swap.uid };
-  syncDecorateCard();
-  refreshDecorateHud();
-  showToast(`Swapping the ${decorateLabel(record).toLowerCase()} — tap another building.`);
-  return true;
-}
-
-function cancelBuildingSwap({ silent = false } = {}) {
-  if (!decorate?.swap) return false;
-  const record = decorateRecord();
-  decorate.swap = null;
-  game.worldSelected = record ? { kind: 'prop', uid: worldObjectUid(record) } : null;
-  refreshDecorateHud();
-  if (!silent) showToast('Kept every building where it was.');
-  return true;
-}
-
-/**
- * Swap two building lots. The pair is validated as a unit — including the path
- * from the spawn to every door — before either record changes.
- */
-function swapDecorateBuildings(aUid, bUid) {
-  if (!decorate || !game) return false;
-  if (!aUid || !bUid || aUid === bUid) {
-    showToast('Pick a different building to swap with.');
-    return false;
-  }
-  const props = activeDecorateProps();
-  const first = props.find(record => worldObjectUid(record) === aUid);
-  const second = props.find(record => worldObjectUid(record) === bUid);
-  if (!first || !second) {
-    cancelBuildingSwap({ silent: true });
-    closeDecorateCard();
-    return false;
-  }
-  const placement = canSwapWorldBuildings({
-    props,
-    aUid,
-    bUid,
-    terrain: game.terrain,
-    spawn: locationDef(currentLocationId)?.spawn,
-    doors: fixedDoors,
-    scenery: activeDecorateScenery(),
-    characters: decorateCharacters(),
-    requirePath: true
-  });
-  if (!placement.ok) {
-    showToast(`Cannot swap those: ${worldObjectReasonText(placement.reason)}`);
-    return false;
-  }
-
-  applyDecorateObjects('prop', swapWorldBuildings(props, aUid, bUid));
-  rebuildLocationDoors();
-  saveNow();
-  decorate.swap = null;
-  closeDecorateCard();
-  sounds.play('place');
-  panels?.renderInventory?.();
-  showToast(`Swapped the ${decorateLabel(first).toLowerCase()} and the ${decorateLabel(second).toLowerCase()}.`);
+  const label = decorateLabel(record).toLowerCase();
+  showToast(isWorldBuilding(record)
+    ? `Moving the ${label}. Arrows move it, Enter places.`
+    : `Moving the ${label}. Arrows move, Enter places.`);
   return true;
 }
 
@@ -3601,6 +3548,8 @@ function cancelDecorateDraft({ silent = false } = {}) {
   if (!decorate?.draft) return false;
   const label = decorateLabel(decorate.draft.record);
   decorate.draft = null;
+  decorate.pending = null;
+  hideBuildingConfirmation();
   syncWorldDraft();
   refreshDecorateHud();
   panels?.renderInventory?.();
@@ -3725,9 +3674,95 @@ function cycleDecorateStyle() {
   return true;
 }
 
-function placeDecorateDraft() {
+/** Show the small "objects will move" beat before a scoot plan applies. */
+function showBuildingConfirmation(plan) {
+  const box = $('decorate-confirm');
+  if (!box || !plan?.ok) return false;
+  const copy = buildingMoveConfirmation(plan);
+  const title = $('decorate-confirm-title');
+  const note = $('decorate-confirm-note');
+  const confirm = $('decorate-confirm-place');
+  const cancel = $('decorate-confirm-cancel');
+  if (title) title.textContent = copy.title;
+  if (note) {
+    note.textContent = copy.note;
+    note.hidden = !copy.note;
+  }
+  if (confirm) confirm.textContent = copy.confirm;
+  if (cancel) cancel.textContent = copy.cancel;
+  decorate.pending = plan;
+  box.hidden = false;
+  refreshDecorateHud();
+  panels?.renderInventory?.();
+  return true;
+}
+
+/**
+ * Apply a validated building plan as one transaction: props, scenery, doors,
+ * then a single save. The plan already passed the spawn/door path check, so a
+ * rejected plan never reaches this function.
+ */
+function commitBuildingMove(plan) {
+  if (!game || !plan?.ok) return false;
+  const label = decorateLabel(plan.building);
+  const count = plan.scoots.length;
+  applyDecorateObjects('prop', plan.props);
+  applyDecorateObjects('scenery', plan.scenery);
+  rebuildLocationDoors();
+  decorate.draft = null;
+  decorate.pending = null;
+  hideBuildingConfirmation();
+  syncWorldDraft();
+  saveNow();
+  closeDecorateCard();
+  sounds.play('place');
+  refreshDecorateHud();
+  panels?.renderInventory?.();
+  showToast(count
+    ? `Placed the ${label.toLowerCase()} and moved ${count} nearby ${count === 1 ? 'object' : 'objects'}.`
+    : `Placed the ${label.toLowerCase()}.`);
+  return true;
+}
+
+function confirmBuildingMove() {
+  const plan = decorate.pending;
+  if (!plan?.ok) return false;
+  decorate.pending = null;
+  hideBuildingConfirmation();
+  return commitBuildingMove(plan);
+}
+
+function cancelBuildingMoveConfirmation() {
+  if (!decorate.pending) return false;
+  decorate.pending = null;
+  hideBuildingConfirmation();
+  cancelDecorateDraft();
+  return true;
+}
+
+/** A building tap/Enter plans the full move; soft overlaps ask first. */
+function placeBuildingDraft() {
   const draft = decorate?.draft;
   if (!draft) return false;
+  const plan = planActiveBuildingMove({ x: draft.x, y: draft.y });
+  if (!plan?.ok) {
+    draft.reason = plan?.reason || 'unknown';
+    draft.blocker = plan?.blocker || null;
+    draft.scootCount = 0;
+    syncWorldDraft();
+    refreshDecorateHud();
+    showToast(`Cannot place there: ${worldObjectReasonText(draft.reason, draft.blocker)}`);
+    return false;
+  }
+  if (plan.scoots.length) return showBuildingConfirmation(plan);
+  return commitBuildingMove(plan);
+}
+
+function placeDecorateDraft() {
+  if (decorate.pending) return confirmBuildingMove();
+  const draft = decorate?.draft;
+  if (!draft) return false;
+  if (isWorldBuilding(draft.record)) return placeBuildingDraft();
   const placement = validateDecorateDraft();
   if (!placement?.ok) {
     showToast(`Cannot place there: ${worldObjectReasonText(draft.reason)}`);
@@ -3771,7 +3806,6 @@ function resetDecorateRecord() {
 
 /** Put every prop and tree in the location back where the seed had it. */
 function resetDecoratePlace() {
-  if (!decorate) return false;
   if (!window.confirm('Put every prop, tree, and building back where it started?')) return false;
   cancelDecorateDraft({ silent: true });
   closeDecorateCard();
@@ -3791,42 +3825,53 @@ function resetDecoratePlace() {
   return true;
 }
 
-/** Click routing while Decorate is on: click an object, swap, or drop the draft. */
+/**
+ * Canvas clicks are always contextual: a draft owns the click, characters keep
+ * priority over objects, and empty ground falls through to walking. Home keeps
+ * its own item path.
+ */
 function handleDecorateCanvasPointer(event, point) {
-  if (!decorate || !game) return false;
+  if (!game) return false;
   if (event?.target && event.target !== game.canvas) return false;
-  if (decorate.swap) {
-    const hit = worldObjectAt(activeDecorateProps(), activeDecorateScenery(), point.tileX, point.tileY);
-    if (hit?.kind === 'prop' && isWorldBuilding(hit.record)) {
-      swapDecorateBuildings(decorate.swap.uid, worldObjectUid(hit.record));
-    } else if (!hit) {
-      cancelBuildingSwap();
-      closeDecorateCard();
-    } else {
-      showToast('Pick another building to swap with.');
-    }
-    return true;
-  }
-  if (decorate.draft) {
+  // The confirmation beat owns input until it is answered.
+  if (decorate.pending) return true;
+
+  const hit = worldObjectAt(activeDecorateProps(), activeDecorateScenery(), point.tileX, point.tileY);
+  const character = decorate.draft ? null : game.characterAtScreen(point.sx, point.sy);
+  const intent = resolveWorldClick({
+    character,
+    draft: Boolean(decorate.draft),
+    card: Boolean(decorate.card),
+    hit
+  });
+
+  if (intent === 'place-draft') {
     moveDecorateTo(point.tileX, point.tileY);
     return true;
   }
-  const hit = worldObjectAt(activeDecorateProps(), activeDecorateScenery(), point.tileX, point.tileY);
-  if (!hit) {
+  if (intent === 'character') {
+    // Let Game open the character card, but drop the object card first so the
+    // two surfaces never stack.
     closeDecorateCard();
+    return false;
+  }
+  if (intent === 'open-object') {
+    openDecorateCard(hit.kind, worldObjectUid(hit.record));
     return true;
   }
-  openDecorateCard(hit.kind, worldObjectUid(hit.record));
-  return true;
+  if (intent === 'close-card') {
+    closeDecorateCard();
+    return false;
+  }
+  return false;
 }
 
 /**
- * Decorate owns the keyboard while it is on, including the movement keys: the
- * player must not walk, bump a neighbour, or step into a door while editing.
- * Capture phase beats Game's window listener.
+ * A draft owns arrows, WASD, R, C, Enter, and Escape. With no draft only
+ * Escape may close the object card, so walking and global shortcuts pass
+ * through untouched. Capture phase beats Game's window listener.
  */
 function handleDecorateKey(event) {
-  if (!decorate) return false;
   if (panels?.isMenuOpen?.()) return false;
   if (dialogue?.isOpen?.()) return false;
   if (event.target instanceof HTMLElement
@@ -3835,40 +3880,35 @@ function handleDecorateKey(event) {
     && event.target.closest('button')
     && (event.key === 'Enter' || event.key === ' ')) return false;
 
-  const key = event.key;
-  const lower = key.toLowerCase();
-  const draft = decorate.draft;
-  let handled = true;
-
-  if (draft) {
-    if (key === 'Escape') cancelDecorateDraft();
-    else if (key === 'Enter' || key === ' ') placeDecorateDraft();
-    else if (lower === 'r') rotateDecorateRecord();
-    else if (lower === 'c') cycleDecorateStyle();
-    else if (key === 'ArrowUp' || lower === 'w') moveDecorateBy(0, -1);
-    else if (key === 'ArrowDown' || lower === 's') moveDecorateBy(0, 1);
-    else if (key === 'ArrowLeft' || lower === 'a') moveDecorateBy(-1, 0);
-    else if (key === 'ArrowRight' || lower === 'd') moveDecorateBy(1, 0);
-    else handled = false;
-  } else if (key === 'Escape') {
-    if (decorate.swap) {
-      cancelBuildingSwap();
-      closeDecorateCard();
-    } else if (!closeDecorateCard()) {
-      stopDecorate();
-    }
-  } else if (
-    key === 'ArrowUp' || key === 'ArrowDown' || key === 'ArrowLeft' || key === 'ArrowRight'
-    || lower === 'w' || lower === 'a' || lower === 's' || lower === 'd'
-    || key === 'Enter' || key === ' ' || lower === 'r' || lower === 'c'
-  ) {
-    // Swallow movement and action keys while browsing; no draft yet.
-    handled = true;
-  } else {
-    handled = false;
+  if (decorate.pending) {
+    if (event.key === 'Escape') cancelBuildingMoveConfirmation();
+    else if (event.key === 'Enter' || event.key === ' ') confirmBuildingMove();
+    else return true;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    return true;
   }
 
-  if (!handled) return false;
+  const draft = Boolean(decorate.draft);
+  const card = Boolean(decorate.card);
+  if (!draft && !card) return false;
+
+  const fixedBuilding = Boolean(draft && isWorldBuilding(decorate.draft.record));
+  const action = worldEditorKeyAction(event.key, {
+    draft,
+    card,
+    rotatable: !fixedBuilding,
+    stylable: !fixedBuilding
+  });
+  if (!action) return false;
+
+  if (action.action === 'cancel') cancelDecorateDraft();
+  else if (action.action === 'place') placeDecorateDraft();
+  else if (action.action === 'rotate') rotateDecorateRecord();
+  else if (action.action === 'style') cycleDecorateStyle();
+  else if (action.action === 'move') moveDecorateBy(action.dx, action.dy);
+  else if (action.action === 'close-card') closeDecorateCard();
+
   event.preventDefault();
   event.stopImmediatePropagation();
   return true;
@@ -4390,12 +4430,14 @@ function handleHomeItemClick(record) {
 }
 
 /**
- * Furnish and Decorate own canvas clicks while they are on. Returning true
- * stops Game's normal walk, select, home-item, and doorway handling.
+ * Furnish owns Home canvas clicks while it is on. Everywhere else the object
+ * hit test is always live, with characters and empty ground falling through to
+ * Game's normal select and walk handling.
  */
 function handleCanvasPointer(event, point) {
-  if (decorate) return handleDecorateCanvasPointer(event, point);
-  return handleHomeCanvasPointer(event, point);
+  if (furnish) return handleHomeCanvasPointer(event, point);
+  if (currentLocationId === 'home' || !game) return false;
+  return handleDecorateCanvasPointer(event, point);
 }
 
 /**
@@ -4742,8 +4784,8 @@ function bindEvents() {
   $('furnish-place')?.addEventListener('click', placeFurnish);
   $('furnish-cancel')?.addEventListener('click', () => cancelFurnish());
 
-  // Decorate card and banner. Move starts a draft; the other verbs apply in
-  // place and save immediately, so a tap is a complete edit.
+  // World-object card and banner. Move starts a draft; the other verbs apply
+  // in place and save immediately, so a tap is a complete edit.
   $('decorate-move')?.addEventListener('click', startDecorateMove);
   $('decorate-style')?.addEventListener('click', cycleDecorateStyle);
   $('decorate-rotate')?.addEventListener('click', rotateDecorateRecord);
@@ -4751,12 +4793,11 @@ function bindEvents() {
   $('decorate-close')?.addEventListener('click', () => closeDecorateCard());
   $('decorate-place')?.addEventListener('click', placeDecorateDraft);
   $('decorate-cancel')?.addEventListener('click', () => {
-    if (decorate?.draft) cancelDecorateDraft();
-    else if (decorate?.swap) {
-      cancelBuildingSwap();
-      closeDecorateCard();
-    } else stopDecorate();
+    if (decorate.draft) cancelDecorateDraft();
+    else closeDecorateCard();
   });
+  $('decorate-confirm-place')?.addEventListener('click', confirmBuildingMove);
+  $('decorate-confirm-cancel')?.addEventListener('click', cancelBuildingMoveConfirmation);
   $('decorate-reset-place')?.addEventListener('click', resetDecoratePlace);
 
   document.addEventListener('pointerdown', event => {
@@ -5033,10 +5074,6 @@ function boot() {
     onFurnishSelect: uid => startFurnish(uid),
     onFurnishStop: () => cancelFurnish(),
     getDecorate: decorateState,
-    onDecorateToggle: () => {
-      panels?.closeMenu();
-      return toggleDecorate();
-    },
     onDecorateReset: () => {
       panels?.closeMenu();
       return resetDecoratePlace();

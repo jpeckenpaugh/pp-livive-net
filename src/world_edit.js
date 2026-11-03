@@ -29,7 +29,7 @@ const SCENERY_TYPE_SET = new Set(SCENERY_TYPES);
 export const SCENERY_SCALE_MIN = 0.5;
 export const SCENERY_SCALE_MAX = 1.6;
 
-/** Every refusal `canPlaceWorldObject` may return. */
+/** Every refusal `canPlaceWorldObject` or `planBuildingMove` may return. */
 export const WORLD_PLACE_REASONS = [
   'outside-world',
   'outside-room',
@@ -39,6 +39,7 @@ export const WORLD_PLACE_REASONS = [
   'character',
   'terrain',
   'no-path',
+  'no-scoot-space',
   'unknown'
 ];
 
@@ -89,7 +90,7 @@ export function normalizeSceneryScale(scale) {
 
 /**
  * A building-owned travel trigger in its compact save shape. Offsets are
- * relative to the building origin, so the door travels with a swapped facade.
+ * relative to the building origin, so the door travels with a moved facade.
  * A door without a destination or an in-footprint offset is not a door.
  */
 function normalizeBuildingDoor(entry, prop, x, y, rot) {
@@ -234,18 +235,33 @@ export function worldBlockedTiles(props = []) {
   return locationBlockedTiles(props);
 }
 
-/** Buildings swap whole lots; their doors travel with them. */
+/** Buildings move as whole facades; their doors travel with them. */
 export function isWorldBuilding(record) {
   return record?.type === 'building';
+}
+
+/** Ground cover (rug, towel, blanket, flower bed) never blocks or scoots. */
+function isGroundCover(record) {
+  const prop = propDefinition(record?.type);
+  return prop?.ground === true;
+}
+
+function objectLabel(record, kind = 'prop') {
+  const label = typeof record?.label === 'string' ? record.label.trim() : '';
+  if (label) return label;
+  const prop = propDefinition(record?.type);
+  if (prop?.label) return prop.label;
+  const words = String(record?.type || (kind === 'scenery' ? 'scenery' : 'object')).replace(/-/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 /**
  * Attach each declarative travel door whose tile sits inside a building
  * footprint to that building as `door: { to, dx, dy, prompt }`. The door tile
- * becomes relative to the building origin, so the trigger follows a swap.
+ * becomes relative to the building origin, so the trigger follows a move.
  *
  * A building that already carries a saved door keeps it verbatim; this is how a
- * swapped town survives a reload. Returns the normalised prop list plus every
+ * moved town survives a reload. Returns the normalised prop list plus every
  * door no building claimed (park gate, beach path, activity entrances).
  */
 export function linkBuildingDoors(props, doors = []) {
@@ -316,121 +332,6 @@ export function buildingDoorEntries(props = []) {
   return entries;
 }
 
-/** Swap two buildings' tiles; each keeps its own label, door, and openings. */
-export function swapWorldBuildings(props, aUid, bUid) {
-  const list = Array.isArray(props) ? props : [];
-  if (!aUid || !bUid || aUid === bUid) return list;
-  const a = list.find(record => record?.uid === aUid && isWorldBuilding(record));
-  const b = list.find(record => record?.uid === bUid && isWorldBuilding(record));
-  if (!a || !b) return list;
-  const ax = finiteTile(a.x);
-  const ay = finiteTile(a.y);
-  const bx = finiteTile(b.x);
-  const by = finiteTile(b.y);
-  if (ax === null || ay === null || bx === null || by === null) return list;
-  return list.map(record => {
-    if (record === a) return { ...record, x: bx, y: by };
-    if (record === b) return { ...record, x: ax, y: ay };
-    return record;
-  });
-}
-
-/**
- * Validate a two-building lot swap. Both facades must stay in bounds, keep
- * their doorway clear of solids, scenery, characters, the spawn, and every
- * door (including the other buildings' triggers), and leave the spawn
- * connected to every trigger.
- */
-export function canSwapWorldBuildings({
-  props = [],
-  aUid = null,
-  bUid = null,
-  terrain = null,
-  spawn = null,
-  doors = [],
-  scenery = [],
-  characters = [],
-  requirePath = true
-} = {}) {
-  const list = Array.isArray(props) ? props : [];
-  const a = list.find(record => record?.uid === aUid && isWorldBuilding(record));
-  const b = list.find(record => record?.uid === bUid && isWorldBuilding(record));
-  if (!a || !b || aUid === bUid) return { ok: false, reason: 'unknown', tiles: [] };
-
-  const next = swapWorldBuildings(list, aUid, bUid);
-  const movedUids = new Set([aUid, bUid]);
-  const moved = next.filter(record => movedUids.has(record?.uid));
-  const others = next.filter(record => !movedUids.has(record?.uid));
-  if (moved.length !== 2) return { ok: false, reason: 'unknown', tiles: [] };
-
-  const blockedByBuilding = moved.map(record => new Set(solidTiles(record).map(propTileKey)));
-  const movedBlocked = new Set(blockedByBuilding.flatMap(set => [...set]));
-
-  for (const record of moved) {
-    const tiles = worldObjectTiles(record, 'prop');
-    if (!tiles.length || tiles.some(tile => (
-      tile.x < 0 || tile.x >= WORLD_SIZE || tile.y < 0 || tile.y >= WORLD_SIZE
-    ))) {
-      return { ok: false, reason: 'outside-world', tiles };
-    }
-  }
-
-  // The two facades may not interlock, and neither may land on a solid prop.
-  const taken = worldBlockedTiles(others);
-  if (blockedByBuilding[0] && [...blockedByBuilding[0]].some(key => blockedByBuilding[1].has(key))) {
-    return { ok: false, reason: 'overlap', tiles: [] };
-  }
-  if ([...movedBlocked].some(key => taken.has(key))) {
-    return { ok: false, reason: 'overlap', tiles: [] };
-  }
-
-  // A tree or flower inside a facade would draw through it. Scenery never
-  // blocks a step, but a building is not allowed to swallow it.
-  const sceneryKeys = new Set(
-    (Array.isArray(scenery) ? scenery : [])
-      .map(item => `${finiteTile(item?.x)},${finiteTile(item?.y)}`)
-  );
-  if ([...movedBlocked].some(key => sceneryKeys.has(key))) {
-    return { ok: false, reason: 'overlap', tiles: [] };
-  }
-
-  const spawnTile = isRecord(spawn)
-    ? { x: finiteTile(spawn.x), y: finiteTile(spawn.y) }
-    : null;
-  if (spawnTile && spawnTile.x !== null && spawnTile.y !== null
-    && movedBlocked.has(propTileKey(spawnTile))) {
-    return { ok: false, reason: 'spawn', tiles: [] };
-  }
-
-  const characterKeys = new Set(tileKeyList(characters).map(propTileKey));
-  if ([...movedBlocked].some(key => characterKeys.has(key))) {
-    return { ok: false, reason: 'character', tiles: [] };
-  }
-
-  // Every trigger that stays put, plus every building trigger at its new tile.
-  const fixedDoors = tileKeyList(doors);
-  const buildingDoors = buildingDoorEntries(next);
-  const doorTiles = [
-    ...fixedDoors,
-    ...buildingDoors.map(door => ({ x: door.x, y: door.y }))
-  ];
-  const doorKeys = new Set(doorTiles.map(propTileKey));
-  if ([...movedBlocked].some(key => doorKeys.has(key))) {
-    return { ok: false, reason: 'door', tiles: [] };
-  }
-
-  if (requirePath && terrain && spawnTile && spawnTile.x !== null && spawnTile.y !== null) {
-    const blocked = new Set(taken);
-    for (const key of movedBlocked) blocked.add(key);
-    const reachable = reachableWorldTiles(terrain, spawnTile, blocked);
-    if (doorTiles.some(tile => !reachable.has(propTileKey(tile)))) {
-      return { ok: false, reason: 'no-path', tiles: [] };
-    }
-  }
-
-  return { ok: true, reason: null, tiles: [] };
-}
-
 /**
  * Topmost editable object at one tile. A solid prop wins over ground cover,
  * and any prop wins over scenery (scenery draws beneath props). Returns
@@ -463,16 +364,67 @@ export function worldObjectAt(props, scenery, x, y) {
 }
 
 /**
- * The actions a Decorate card offers for one object. Scenery has no rotation;
- * a building offers only a lot swap and Close.
+ * The actions a world-object card offers for one object. Scenery has no
+ * rotation, and a building only moves or resets: the facade art is south-facing.
  */
 export function worldObjectCardActions(kind, record) {
   if (!record) return ['close'];
-  if (kind === 'prop' && isWorldBuilding(record)) return ['swap', 'close'];
+  if (kind === 'prop' && isWorldBuilding(record)) return ['move', 'reset', 'close'];
   const actions = ['move', 'style'];
   if (kind === 'prop') actions.push('rotate');
   actions.push('reset', 'close');
   return actions;
+}
+
+/**
+ * Resolve a canvas click without a global editing mode. A draft owns every
+ * click, characters beat objects so a neighbour in front of a bench still
+ * opens their card, and empty ground falls through to walking.
+ *
+ * Returns one of: `place-draft`, `character`, `open-object`, `close-card`,
+ * or `walk`.
+ */
+export function resolveWorldClick({ character = null, draft = false, card = false, hit = null } = {}) {
+  if (draft) return 'place-draft';
+  if (character) return 'character';
+  if (hit) return 'open-object';
+  if (card) return 'close-card';
+  return 'walk';
+}
+
+const WORLD_EDIT_MOVES = {
+  arrowup: [0, -1],
+  w: [0, -1],
+  arrowdown: [0, 1],
+  s: [0, 1],
+  arrowleft: [-1, 0],
+  a: [-1, 0],
+  arrowright: [1, 0],
+  d: [1, 0]
+};
+
+/**
+ * The keyboard action an open editor surface claims. A draft captures the
+ * movement keys, `R`, `C`, Enter, and Escape; with no draft only Escape may
+ * close the object card, so walking and global shortcuts keep working.
+ * Buildings pass `rotatable: false` and `stylable: false`: their art is fixed.
+ */
+export function worldEditorKeyAction(
+  key,
+  { draft = false, card = false, rotatable = true, stylable = true } = {}
+) {
+  if (draft) {
+    if (key === 'Escape') return { action: 'cancel' };
+    if (key === 'Enter' || key === ' ') return { action: 'place' };
+    const lower = String(key || '').toLowerCase();
+    if (lower === 'r') return rotatable ? { action: 'rotate' } : null;
+    if (lower === 'c') return stylable ? { action: 'style' } : null;
+    const move = WORLD_EDIT_MOVES[lower];
+    if (move) return { action: 'move', dx: move[0], dy: move[1] };
+    return null;
+  }
+  if (card && key === 'Escape') return { action: 'close-card' };
+  return null;
 }
 
 /**
@@ -663,6 +615,398 @@ export function canPlaceWorldObject({
   return { ok: true, reason: null, tiles };
 }
 
+/** A room constraint may arrive as tile records, tile keys, a Set, or `{ tiles }`. */
+function roomKeySet(room) {
+  const list = room instanceof Set
+    ? [...room]
+    : (Array.isArray(room) ? room : (isRecord(room) && Array.isArray(room.tiles) ? room.tiles : null));
+  if (!list || !list.length) return null;
+  const keys = new Set();
+  for (const tile of list) {
+    if (isRecord(tile)) {
+      const x = finiteTile(tile.x);
+      const y = finiteTile(tile.y);
+      if (x !== null && y !== null) keys.add(`${x},${y}`);
+    } else if (typeof tile === 'string' && /^-?\d+,-?\d+$/.test(tile)) {
+      keys.add(tile);
+    }
+  }
+  return keys.size ? keys : null;
+}
+
+/** Candidates in expanding Chebyshev rings, nearest-first inside each ring. */
+function spiralOffsets(maxRadius) {
+  const offsets = [{ dx: 0, dy: 0, distance: 0 }];
+  for (let radius = 1; radius <= maxRadius; radius += 1) {
+    const ring = [];
+    for (let dy = -radius; dy <= radius; dy += 1) {
+      for (let dx = -radius; dx <= radius; dx += 1) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== radius) continue;
+        ring.push({ dx, dy, distance: dx * dx + dy * dy });
+      }
+    }
+    ring.sort((a, b) => (
+      a.distance - b.distance
+      || Math.abs(a.dy) - Math.abs(b.dy)
+      || a.dx - b.dx
+    ));
+    offsets.push(...ring);
+  }
+  return offsets;
+}
+
+function buildingFootprintKeys(record) {
+  return new Set(worldObjectTiles(record, 'prop').map(propTileKey));
+}
+
+/** The tile just outside each edge doorway: keep the approach clear when scooting. */
+function doorwayApproachKeys(record) {
+  const keys = new Set();
+  const size = locationPropSize(record?.type, record?.rot);
+  const originX = finiteTile(record?.x);
+  const originY = finiteTile(record?.y);
+  if (!size || originX === null || originY === null) return keys;
+  for (const opening of propOpenings(record)) {
+    const dx = finiteTile(opening.dx);
+    const dy = finiteTile(opening.dy);
+    if (dx === null || dy === null) continue;
+    const x = originX + dx;
+    const y = originY + dy;
+    if (dy === 0) keys.add(`${x},${y - 1}`);
+    if (dy === size.h - 1) keys.add(`${x},${y + 1}`);
+    if (dx === 0) keys.add(`${x - 1},${y}`);
+    if (dx === size.w - 1) keys.add(`${x + 1},${y}`);
+  }
+  return keys;
+}
+
+function occupantsOf(props, extra = []) {
+  return worldBlockedTiles([...(Array.isArray(props) ? props : []), ...extra]);
+}
+
+/**
+ * Plan a free building move, scooting every soft object the footprint covers.
+ *
+ * Hard blockers refuse the move outright: another building, a door/activity
+ * trigger, the spawn, a character, unwalkable terrain, the map edge, and (when
+ * supplied) the room. Scenery and non-building props are soft: each finds the
+ * nearest valid footprint by spiral search, honouring its own size, terrain,
+ * doors, spawn, characters, other objects, and the new facade.
+ *
+ * Ground cover is left alone beneath the building. The whole plan is built and
+ * path-checked before this returns, so a failed plan moves nothing.
+ *
+ * Returns `{ ok, reason, tiles, building, door, props, scenery, scoots, moves }`
+ * on success; `{ ok: false, reason, tiles }` (plus `blocker` when a soft object
+ * has nowhere to go) otherwise.
+ */
+export function planBuildingMove({
+  props = [],
+  scenery = [],
+  record = null,
+  target = null,
+  terrain = null,
+  doors = [],
+  spawn = null,
+  characters = [],
+  room = null,
+  requirePath = true,
+  maxScoot = 12
+} = {}) {
+  const list = Array.isArray(props) ? props : [];
+  const sceneryList = Array.isArray(scenery) ? scenery : [];
+  const targetX = finiteTile(target?.x);
+  const targetY = finiteTile(target?.y);
+  if (!isWorldBuilding(record) || targetX === null || targetY === null) {
+    return { ok: false, reason: 'unknown', tiles: [] };
+  }
+
+  const movingIndex = list.findIndex(item => (
+    item === record || (record.uid && item?.uid === record.uid)
+  ));
+  if (movingIndex < 0) return { ok: false, reason: 'unknown', tiles: [] };
+  const current = list[movingIndex];
+  const building = {
+    ...current,
+    x: targetX,
+    y: targetY,
+    rot: normalizePropRotation(current.rot)
+  };
+  const footprint = worldObjectTiles(building, 'prop');
+  if (!footprint.length) return { ok: false, reason: 'outside-world', tiles: [] };
+  if (footprint.some(tile => (
+    tile.x < 0 || tile.x >= WORLD_SIZE || tile.y < 0 || tile.y >= WORLD_SIZE
+  ))) {
+    return { ok: false, reason: 'outside-world', tiles: footprint };
+  }
+
+  const roomKeys = roomKeySet(room);
+  if (roomKeys && !footprint.every(tile => roomKeys.has(propTileKey(tile)))) {
+    return { ok: false, reason: 'outside-room', tiles: footprint };
+  }
+
+  // A facade may not stand in water or another unwalkable cell.
+  if (terrain && footprint.some(tile => !isWalkable(typeAt(terrain, tile.x, tile.y)))) {
+    return { ok: false, reason: 'terrain', tiles: footprint };
+  }
+
+  const footprintKeys = new Set(footprint.map(propTileKey));
+  const approachKeys = doorwayApproachKeys(building);
+  const otherBuildings = list.filter((item, index) => index !== movingIndex && isWorldBuilding(item));
+  const allBuildingKeys = new Set(footprintKeys);
+  for (const other of otherBuildings) {
+    for (const key of buildingFootprintKeys(other)) allBuildingKeys.add(key);
+  }
+  if (otherBuildings.some(other => {
+    const keys = buildingFootprintKeys(other);
+    return [...keys].some(key => footprintKeys.has(key));
+  })) {
+    return { ok: false, reason: 'overlap', tiles: footprint };
+  }
+
+  const spawnTile = isRecord(spawn)
+    ? { x: finiteTile(spawn.x), y: finiteTile(spawn.y) }
+    : null;
+  const hasSpawn = spawnTile && spawnTile.x !== null && spawnTile.y !== null;
+  const spawnKey = hasSpawn ? propTileKey(spawnTile) : null;
+  const characterKeys = new Set(tileKeyList(characters).map(propTileKey));
+  const fixedDoorTiles = tileKeyList(doors);
+  const newBuildingDoor = buildingDoorEntries([building])[0] || null;
+  const doorTiles = [
+    ...fixedDoorTiles,
+    ...(newBuildingDoor ? [{ x: newBuildingDoor.x, y: newBuildingDoor.y }] : [])
+  ];
+  const fixedDoorKeys = new Set(fixedDoorTiles.map(propTileKey));
+  const doorKeys = new Set(doorTiles.map(propTileKey));
+
+  // The building's own new doorway is inside its footprint by design; only a
+  // fixed trigger (park gate, beach path, activity entrance) is a hard blocker.
+  if ([...footprintKeys].some(key => fixedDoorKeys.has(key))) {
+    return { ok: false, reason: 'door', tiles: footprint };
+  }
+  if (spawnKey && footprintKeys.has(spawnKey)) {
+    return { ok: false, reason: 'spawn', tiles: footprint };
+  }
+  if ([...footprintKeys].some(key => characterKeys.has(key))) {
+    return { ok: false, reason: 'character', tiles: footprint };
+  }
+
+  // Soft overlaps: solid props and scenery under the new facade. Ground cover
+  // stays where it is, safely beneath the building.
+  const softPropIndexes = new Set();
+  for (let index = 0; index < list.length; index += 1) {
+    if (index === movingIndex) continue;
+    const item = list[index];
+    if (isWorldBuilding(item) || isGroundCover(item)) continue;
+    if (worldObjectTiles(item, 'prop').some(tile => footprintKeys.has(propTileKey(tile)))) {
+      softPropIndexes.add(index);
+    }
+  }
+  const softSceneryIndexes = new Set();
+  for (let index = 0; index < sceneryList.length; index += 1) {
+    const item = sceneryList[index];
+    if (footprintKeys.has(`${finiteTile(item?.x)},${finiteTile(item?.y)}`)) {
+      softSceneryIndexes.add(index);
+    }
+  }
+
+  const restProps = list.filter((item, index) => (
+    index !== movingIndex && !softPropIndexes.has(index)
+  ));
+  const placedProps = [];
+  const sceneryOccupancy = new Set();
+  for (let index = 0; index < sceneryList.length; index += 1) {
+    if (softSceneryIndexes.has(index)) continue;
+    const x = finiteTile(sceneryList[index]?.x);
+    const y = finiteTile(sceneryList[index]?.y);
+    if (x !== null && y !== null) sceneryOccupancy.add(`${x},${y}`);
+  }
+
+  const roomTiles = roomKeys
+    ? [...roomKeys].map(key => {
+      const [x, y] = key.split(',').map(Number);
+      return { x, y };
+    })
+    : null;
+  const offsets = spiralOffsets(Math.max(0, Math.round(Number(maxScoot) || 12)));
+  const scoots = [];
+  const scootProps = new Map();
+  const scootScenery = new Map();
+
+  const candidateFits = (tiles) => {
+    if (!tiles.length) return false;
+    if (tiles.some(tile => (
+      tile.x < 0 || tile.x >= WORLD_SIZE || tile.y < 0 || tile.y >= WORLD_SIZE
+    ))) return false;
+    if (roomKeys && !tiles.every(tile => roomKeys.has(propTileKey(tile)))) return false;
+    if (tiles.some(tile => allBuildingKeys.has(propTileKey(tile)))) return false;
+    if (tiles.some(tile => approachKeys.has(propTileKey(tile)))) return false;
+    if (tiles.some(tile => doorKeys.has(propTileKey(tile)))) return false;
+    if (spawnKey && tiles.some(tile => propTileKey(tile) === spawnKey)) return false;
+    if (tiles.some(tile => characterKeys.has(propTileKey(tile)))) return false;
+    if (terrain && tiles.some(tile => !isWalkable(typeAt(terrain, tile.x, tile.y)))) return false;
+    return true;
+  };
+
+  // Props first: a 2 x 1 bench keeps its size and rotation.
+  for (const index of softPropIndexes) {
+    const item = list[index];
+    const from = { x: Math.round(Number(item.x)), y: Math.round(Number(item.y)) };
+    let placed = null;
+    for (const offset of offsets) {
+      const candidate = { ...item, x: from.x + offset.dx, y: from.y + offset.dy };
+      const tiles = worldObjectTiles(candidate, 'prop');
+      if (!candidateFits(tiles)) continue;
+      if (tiles.some(tile => sceneryOccupancy.has(propTileKey(tile)))) continue;
+      const placement = canPlaceWorldObject({
+        kind: 'prop',
+        props: [...restProps, building, ...placedProps],
+        type: candidate.type,
+        x: candidate.x,
+        y: candidate.y,
+        rot: candidate.rot,
+        variant: candidate.variant,
+        seed: candidate.seed,
+        uid: candidate.uid,
+        openings: candidate.openings,
+        terrain,
+        roomTiles,
+        doors: doorTiles,
+        spawn,
+        characters,
+        requirePath: false
+      });
+      if (!placement.ok) continue;
+      placed = candidate;
+      break;
+    }
+    if (!placed) {
+      return {
+        ok: false,
+        reason: 'no-scoot-space',
+        blocker: objectLabel(item).toLowerCase(),
+        blockerUid: item.uid || '',
+        blockerKind: 'prop',
+        tiles: []
+      };
+    }
+    placedProps.push(placed);
+    scootProps.set(index, placed);
+    scoots.push({
+      kind: 'prop',
+      uid: item.uid || '',
+      label: objectLabel(item).toLowerCase(),
+      from,
+      to: { x: placed.x, y: placed.y }
+    });
+  }
+
+  for (const index of softSceneryIndexes) {
+    const item = sceneryList[index];
+    const from = {
+      x: finiteTile(item?.x),
+      y: finiteTile(item?.y)
+    };
+    let placed = null;
+    for (const offset of offsets) {
+      const next = { x: from.x + offset.dx, y: from.y + offset.dy };
+      const tiles = [{ x: next.x, y: next.y }];
+      if (!candidateFits(tiles)) continue;
+      if (tiles.some(tile => sceneryOccupancy.has(propTileKey(tile)))) continue;
+      const blocked = occupantsOf([...restProps, building, ...placedProps]);
+      if (tiles.some(tile => blocked.has(propTileKey(tile)))) continue;
+      placed = next;
+      break;
+    }
+    if (!placed) {
+      return {
+        ok: false,
+        reason: 'no-scoot-space',
+        blocker: objectLabel(item, 'scenery').toLowerCase(),
+        blockerUid: item.uid || '',
+        blockerKind: 'scenery',
+        tiles: []
+      };
+    }
+    sceneryOccupancy.add(propTileKey(placed));
+    scootScenery.set(index, { ...item, x: placed.x, y: placed.y });
+    scoots.push({
+      kind: 'scenery',
+      uid: item.uid || '',
+      label: objectLabel(item, 'scenery').toLowerCase(),
+      from,
+      to: placed
+    });
+  }
+
+  const nextProps = list.map((item, index) => {
+    if (index === movingIndex) return building;
+    return scootProps.get(index) || item;
+  });
+  const nextScenery = sceneryList.map((item, index) => scootScenery.get(index) || item);
+
+  // Validate the whole final layout: spawn plus every fixed and building door.
+  if (requirePath && terrain && hasSpawn) {
+    const blocked = worldBlockedTiles(nextProps);
+    if (blocked.has(spawnKey)) return { ok: false, reason: 'no-path', tiles: footprint };
+    const reachable = reachableWorldTiles(terrain, spawnTile, blocked);
+    const finalDoors = [
+      ...tileKeyList(doors),
+      ...buildingDoorEntries(nextProps).map(entry => ({ x: entry.x, y: entry.y }))
+    ];
+    if (finalDoors.some(tile => !reachable.has(propTileKey(tile)))) {
+      return { ok: false, reason: 'no-path', tiles: footprint };
+    }
+  }
+
+  const oldDoor = buildingDoorEntries([current])[0] || null;
+  return {
+    ok: true,
+    reason: null,
+    tiles: footprint,
+    building,
+    door: newBuildingDoor,
+    props: nextProps,
+    scenery: nextScenery,
+    scoots,
+    moves: {
+      building: {
+        uid: current.uid || '',
+        from: { x: Math.round(Number(current.x)), y: Math.round(Number(current.y)) },
+        to: { x: targetX, y: targetY }
+      },
+      door: oldDoor && newBuildingDoor ? {
+        uid: newBuildingDoor.uid || '',
+        to: newBuildingDoor.to,
+        from: { x: oldDoor.x, y: oldDoor.y },
+        to: { x: newBuildingDoor.x, y: newBuildingDoor.y }
+      } : null
+    }
+  };
+}
+
+/**
+ * Player-facing confirmation for a successful building plan. Ground cover is
+ * never listed; solid soft objects are named so nothing moves by surprise.
+ */
+export function buildingMoveConfirmation(plan) {
+  const labels = (Array.isArray(plan?.scoots) ? plan.scoots : [])
+    .map(scoot => scoot.label)
+    .filter(label => typeof label === 'string' && label);
+  const name = objectLabel(plan?.building).toLowerCase();
+  const count = labels.length;
+  return {
+    needed: count > 0,
+    title: `Place the ${name} here?`,
+    note: count
+      ? `${count} ${count === 1 ? 'object' : 'objects'} will move nearby: ${labels.join(', ')}`
+      : '',
+    confirm: count ? 'Place and move them' : 'Place',
+    cancel: 'Cancel',
+    labels
+  };
+}
+
 /** Move one record by uid; a missing uid or bad tile returns the same list. */
 export function moveWorldObject(objects, uid, x, y) {
   const list = Array.isArray(objects) ? objects : [];
@@ -784,8 +1128,8 @@ export function resetLocationObjects(record, defaults = {}) {
   };
 }
 
-/** Player-facing copy for a placement refusal (used by the Phase 2 editor). */
-export function worldObjectReasonText(reason) {
+/** Player-facing copy for a placement refusal (used by the contextual editor). */
+export function worldObjectReasonText(reason, detail = null) {
   switch (reason) {
     case 'outside-world': return 'that needs to stay on the map.';
     case 'outside-room': return 'that needs to stay inside the room.';
@@ -795,6 +1139,12 @@ export function worldObjectReasonText(reason) {
     case 'character': return 'someone is standing there.';
     case 'terrain': return 'that does not belong on this ground.';
     case 'no-path': return 'that would block the way through.';
+    case 'no-scoot-space': {
+      const blocker = typeof detail === 'string' ? detail : detail?.blocker;
+      return blocker
+        ? `there is no room nearby to move the ${blocker}.`
+        : 'there is no room nearby to move what it covers.';
+    }
     case 'unknown': return 'that object is missing from the catalog.';
     default: return 'that spot will not work.';
   }

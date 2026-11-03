@@ -111,12 +111,21 @@
       </div>
     </div>
 
-    <div id="decorate-hud" class="furnish-hud decorate-hud" hidden role="group" aria-label="Decorate mode">
-      <strong id="decorate-hud-title">decorate mode</strong>
+    <aside id="decorate-confirm" class="decorate-confirm" hidden role="dialog" aria-labelledby="decorate-confirm-title">
+      <strong id="decorate-confirm-title">Place the house here?</strong>
+      <p id="decorate-confirm-note" class="panel-note" hidden></p>
+      <div class="furnish-actions">
+        <button id="decorate-confirm-place" class="pill primary" type="button">Place and move them</button>
+        <button id="decorate-confirm-cancel" class="pill quiet" type="button">Cancel</button>
+      </div>
+    </aside>
+
+    <div id="decorate-hud" class="furnish-hud decorate-hud" hidden role="group" aria-label="World object draft">
+      <strong id="decorate-hud-title">moving</strong>
       <span id="decorate-note"></span>
       <div class="furnish-actions">
         <button id="decorate-place" class="pill primary" type="button">Place (Enter)</button>
-        <button id="decorate-cancel" class="pill quiet" type="button">Done (Esc)</button>
+        <button id="decorate-cancel" class="pill quiet" type="button">Cancel (Esc)</button>
         <button id="decorate-reset-place" class="pill quiet" type="button">Reset place</button>
       </div>
     </div>

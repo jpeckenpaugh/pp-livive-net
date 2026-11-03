@@ -447,6 +447,7 @@ body.activity-open #npc-card,
 body.activity-open #home-note,
 body.activity-open #home-item-card,
 body.activity-open #decorate-card,
+body.activity-open #decorate-confirm,
 body.activity-open #shop-panel,
 body.activity-open #furnish-hud,
 body.activity-open #decorate-hud {
@@ -722,15 +723,43 @@ body.activity-open #decorate-hud {
   width: 216px;
 }
 
-.decorate-toggle,
+.decorate-confirm {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 61;
+  width: min(360px, calc(100vw - 24px));
+  padding: 12px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  background: var(--panel);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.decorate-confirm[hidden] {
+  display: none;
+}
+
+.decorate-confirm strong {
+  display: block;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-transform: capitalize;
+}
+
+.decorate-confirm .panel-note {
+  margin: 6px 0 2px;
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
 .decorate-reset-place {
   min-height: 32px;
   margin: 0 0 6px;
   font-size: 10.5px;
-}
-
-.decorate-reset-place {
-  margin-left: 6px;
 }
 
 .furnish-actions {
@@ -754,7 +783,8 @@ body.activity-open #decorate-hud {
 }
 
 @media (pointer: coarse), (max-width: 768px) {
-  .furnish-hud {
+  .furnish-hud,
+  .decorate-confirm {
     bottom: calc(196px + env(safe-area-inset-bottom, 0px));
   }
 }

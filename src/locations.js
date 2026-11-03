@@ -267,7 +267,7 @@ export function doorsFor(id, {
 
 /**
  * Runtime triggers derived from building records. Each facade carries its own
- * `door` offset, so a swapped building's trigger sits on its new inner tile.
+ * `door` offset, so a moved building's trigger sits on its new inner tile.
  */
 export function buildingDoorsFor(props = [], { isEnabled = isLocationEnabled } = {}) {
   const doors = [];
